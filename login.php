@@ -60,10 +60,6 @@
                     Iniciar Sesión
                 </button>
             </form>
-
-            <p class="text-center text-muted text-small mt-3">
-                Credenciales por defecto: admin / admin123
-            </p>
         </div>
     </div>
 </body>

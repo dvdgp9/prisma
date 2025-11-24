@@ -90,7 +90,7 @@ $user = get_logged_user();
                 <div class="actions">
                     <button class="btn btn-primary" onclick="openNewRequestModal()">
                         <i class="iconoir-plus"></i>
-                        Nueva Petición
+                        Nueva Mejora
                     </button>
                 </div>
             </div>
@@ -141,7 +141,7 @@ $user = get_logged_user();
     <div class="modal" id="new-request-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Nueva Petición</h3>
+                <h3 class="modal-title">Nueva Mejora</h3>
                 <button class="close-modal" onclick="closeModal('new-request-modal')">×</button>
             </div>
 
