@@ -83,9 +83,9 @@ function loadView(type, appId = null) {
 // Load requests with filters
 async function loadRequests() {
     try {
-        const sortBy = document.getElementById('sort-by')?.value || 'date_desc';
-        const priority = document.getElementById('filter-priority')?.value || 'all';
-        const status = document.getElementById('filter-status')?.value || 'all';
+        const sortBy = document.getElementById('sort-select')?.value || 'date_desc';
+        const priority = document.getElementById('priority-filter')?.value || 'all';
+        const status = document.getElementById('status-filter')?.value || 'all';
 
         let url = '/api/requests.php?';
         const params = [];
