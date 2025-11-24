@@ -59,7 +59,7 @@ async function loadApps() {
 function populateAppSelects() {
     const selects = document.querySelectorAll('#request-app');
     selects.forEach(select => {
-        select.innerHTML = '<option value="">Selecciona una app</option>' +
+        select.innerHTML = '<option value="">Selecciona una aplicación</option>' +
             apps.map(app => `< option value = "${app.id}" > ${ escapeHtml(app.name) }</option > `).join('');
     });
 }
