@@ -212,6 +212,14 @@ async function vote(requestId, action) {
 // Open new request modal
 function openNewRequestModal() {
     document.getElementById('new-request-modal').classList.add('active');
+
+    // Pre-select current app if viewing specific app
+    if (currentView === 'app' && currentAppId) {
+        const appSelect = document.getElementById('request-app');
+        if (appSelect) {
+            appSelect.value = currentAppId;
+        }
+    }
 }
 
 // Close modal
