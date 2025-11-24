@@ -137,58 +137,203 @@ function createRequestCard(request) {
     });
 
     // Check if current user is admin (passed from PHP - we'll add this)
-    const isAdmin = document.body.dataset.userRole === 'admin' || document.body.dataset.userRole === 'superadmin';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.requestId = request.id;
 
-    return `
-        <div class="card" data-request-id="${request.id}">
-            <div class="card-header">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <span class="priority-badge ${priorityClass}">${getPriorityLabel(request.priority)}</span>
-                    <span class="status-badge ${statusClass}">${getStatusLabel(request.status)}</span>
-                </div>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <span class="text-small text-muted">${date}</span>
-                    ${isAdmin ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); openEditRequestModal(${request.id})" style="padding: 0.25rem 0.5rem;"><i class="iconoir-edit"></i></button>` : ''}
-                </div>
-            </div>
-            
-            <h3 class="card-title">${escapeHtml(request.title)}</h3>
-            
-            ${request.description ? `
-                <p class="card-description">${escapeHtml(request.description)}</p>
-            ` : ''}
-            
-            <div class="card-footer">
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <span class="text-small text-muted">
-                        <i class="iconoir-app-window" style="font-size: 0.875rem;"></i>
-                        ${escapeHtml(request.app_name)}
-                    </span>
-                    <span class="text-small text-muted">
-                        <i class="iconoir-user" style="font-size: 0.875rem;"></i>
-                        ${escapeHtml(request.creator_name || request.creator_username)}
-                    </span>
-                    ${request.attachment_count > 0 ? `
-                        <span class="text-small text-muted">
-                            <i class="iconoir-attachment" style="font-size: 0.875rem;"></i>
-                            ${request.attachment_count} adjunto(s)
-                        </span>
+    const priorityLabels = {
+        'critical': 'CRÍTICA',
+        'high': 'ALTA',
+        'medium': 'MEDIA',
+        'low': 'BAJA'
+    };
+
+    const statusLabels = {
+        'pending': 'Pendiente',
+        'in_progress': 'En Progreso',
+        'completed': 'Completado',
+        'discarded': 'Descartado'
+    };
+
+    const userRole = document.body.dataset.userRole;
+    const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
+
+    card.innerHTML = `
+        <div class="card-header">
+            <h3 class="card-title" style="max-width: 70%;">${escapeHtml(request.title)}</h3>
+            ${isAdminOrSuperadmin ? `
+                <div class="card-quick-actions">
+                    <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
+                        <i class="iconoir-edit"></i>
+                    </button>
+                    ${userRole === 'superadmin' ? `
+                        <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
+                            <i class="iconoir-trash"></i>
+                        </button>
                     ` : ''}
                 </div>
-                
-                <div class="vote-section">
-                    <button class="vote-btn" onclick="event.stopPropagation(); vote(${request.id}, 'up')" title="Votar">
-                        <i class="iconoir-arrow-up"></i>
-                    </button>
-                    <span class="vote-count">${request.vote_count || 0}</span>
-                </div>
+            ` : ''}
+        </div>
+
+        <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md);">
+            <div class="priority-badge priority-${request.priority}" 
+                 ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
+                ${priorityLabels[request.priority] || request.priority.toUpperCase()}
+                ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
+                ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
             </div>
+            <div class="status-badge status-${request.status}"
+                 ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'status')"` : ''}>
+                ${statusLabels[request.status] || request.status}
+                ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
+                ${isAdminOrSuperadmin ? createStatusDropdown(request.id, request.status) : ''}
+            </div>
+        </div>
+
+        <p class="card-description">${escapeHtml(request.description)}</p>
+
+        ${request.files && request.files.length > 0 ? `
+            <div style="margin-bottom: var(--spacing-md);">
+                <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">
+                    <i class="iconoir-attachment"></i> Archivos adjuntos:
+                </div>
+                <ul style="list-style: none; padding: 0;">
+                    ${request.files.map(file => `
+                        <li style="margin-bottom: var(--spacing-xs);">
+                            <a href="${escapeHtml(file)}" target="_blank" 
+                               style="color: var(--primary-color); text-decoration: none; font-size: 0.875rem;">
+                                <i class="iconoir-download"></i> ${escapeHtml(file.split('/').pop())}
+                            </a>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        ` : ''}
+
+        <div class="card-footer">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                <i class="iconoir-user" style="color: var(--text-muted);"></i>
+                <span class="text-small text-muted">${escapeHtml(request.created_by)}</span>
+            </div>
+            <div class="vote-section">
+                <button class="vote-btn ${request.user_voted ? 'voted' : ''}" 
+                        onclick="toggleVote(${request.id})"
+                        title="${request.user_voted ? 'Quitar voto' : 'Votar'}">
+                    <i class="iconoir-arrow-up"></i>
+                </button>
+                <span class="vote-count">${request.votes || 0}</span>
+            </div>
+        </div>
+    `;
+
+    return card;
+}
+
+// Create priority dropdown
+function createPriorityDropdown(requestId, currentPriority) {
+    const priorities = [
+        { value: 'low', label: 'BAJA' },
+        { value: 'medium', label: 'MEDIA' },
+        { value: 'high', label: 'ALTA' },
+        { value: 'critical', label: 'CRÍTICA' }
+    ];
+
+    return `
+        <div class="badge-dropdown" data-dropdown="priority-${requestId}">
+            ${priorities.map(p => `
+                <div class="badge-dropdown-item ${p.value === currentPriority ? 'selected' : ''}"
+                     onclick="quickUpdateRequest(${requestId}, 'priority', '${p.value}', event)">
+                    <span class="priority-badge priority-${p.value}" style="cursor: default; padding: 2px 8px;">
+                        ${p.label}
+                    </span>
+                </div>
+            `).join('')}
         </div>
     `;
 }
 
+// Create status dropdown
+function createStatusDropdown(requestId, currentStatus) {
+    const statuses = [
+        { value: 'pending', label: 'Pendiente' },
+        { value: 'in_progress', label: 'En Progreso', color: 'var(--color-blue)' },
+        { value: 'completed', label: 'Completado', color: 'var(--color-green)' },
+        { value: 'discarded', label: 'Descartado', color: 'var(--color-red)' }
+    ];
+
+    return `
+        <div class="badge-dropdown" data-dropdown="status-${requestId}">
+            ${statuses.map(s => `
+                <div class="badge-dropdown-item ${s.value === currentStatus ? 'selected' : ''}"
+                     onclick="quickUpdateRequest(${requestId}, 'status', '${s.value}', event)">
+                    <span class="status-badge status-${s.value}" style="cursor: default; padding: 2px 8px;">
+                        ${s.label}
+                    </span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Toggle badge dropdown
+function toggleBadgeDropdown(event, requestId, type) {
+    event.stopPropagation();
+
+    const dropdownId = `${type}-${requestId}`;
+    const dropdown = document.querySelector(`[data-dropdown="${dropdownId}"]`);
+
+    // Close all other dropdowns
+    document.querySelectorAll('.badge-dropdown.active').forEach(d => {
+        if (d !== dropdown) d.classList.remove('active');
+    });
+
+    if (dropdown) {
+        dropdown.classList.toggle('active');
+    }
+}
+
+// Quick update request (priority or status)
+async function quickUpdateRequest(requestId, field, value, event) {
+    event.stopPropagation();
+
+    const data = { id: requestId };
+    data[field] = value;
+
+    try {
+        const response = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close dropdown
+            document.querySelectorAll('.badge-dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+
+            // Reload requests to show updated state
+            await loadRequests();
+        } else {
+            alert(result.error || 'Error al actualizar');
+        }
+    } catch (error) {
+        console.error('Error updating request:', error);
+        alert('Error al actualizar');
+    }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', () => {
+    document.querySelectorAll('.badge-dropdown.active').forEach(d => {
+        d.classList.remove('active');
+    });
+});
+
 // Vote on a request
-async function vote(requestId, action) {
+async function toggleVote(requestId) {
     try {
         const response = await fetch('/api/votes.php', {
             method: 'POST',
