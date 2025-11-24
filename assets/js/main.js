@@ -76,9 +76,13 @@ function loadView(view, appId = null) {
 
 // Load requests with filters
 async function loadRequests() {
-    const sort = document.getElementById('sort-select').value;
-    const priority = document.getElementById('priority-filter').value;
-    const status = document.getElementById('status-filter').value;
+    const sortSelect = document.getElementById('sort-select');
+    const priorityFilter = document.getElementById('priority-filter');
+    const statusFilter = document.getElementById('status-filter');
+    
+    const sort = sortSelect ? sortSelect.value : 'recent';
+    const priority = priorityFilter ? priorityFilter.value : '';
+    const status = statusFilter ? statusFilter.value : '';
 
     let url = '/api/requests.php?sort=' + sort;
 
@@ -100,6 +104,8 @@ async function loadRequests() {
 
         if (data.success) {
             renderRequests(data.data);
+        } else {
+            console.error('API error:', data.error);
         }
     } catch (error) {
         console.error('Error loading requests:', error);
