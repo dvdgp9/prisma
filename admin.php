@@ -223,6 +223,7 @@ $user = get_logged_user();
                             <th>Descripción</th>
                             <th>Usuarios</th>
                             <th>Admins</th>
+                            <th>Apps</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -262,20 +263,22 @@ $user = get_logged_user();
             <!-- Apps Tab -->
             <div id="apps-tab" class="tab-content">
                 <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-lg);">
-                    <h2 style="font-size: 1.25rem; font-weight: var(--font-weight-semibold);">Aplicaciones y Empresas
+                    <h2 style="font-size: 1.25rem; font-weight: var(--font-weight-semibold);">Gestión de Aplicaciones
                     </h2>
-                    <a href="/manage-apps.php" class="btn btn-primary">
-                        <i class="iconoir-settings"></i>
-                        Gestionar Apps
-                    </a>
+                    <button class="btn btn-primary" onclick="openNewAppModal()">
+                        <i class="iconoir-plus"></i>
+                        Nueva Aplicación
+                    </button>
                 </div>
                 <table id="apps-table">
                     <thead>
                         <tr>
                             <th>Aplicación</th>
                             <th>Descripción</th>
+                            <th>Empresa</th>
                             <th>Estado</th>
                             <th>Fecha Creación</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -378,8 +381,53 @@ $user = get_logged_user();
             </form>
         </div>
     </div>
-
+    
+    <!-- App Modal -->
+    <div class="modal" id="app-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="app-modal-title">Nueva Aplicación</h3>
+                <button class="close-modal" onclick="closeModal('app-modal')">×</button>
+            </div>
+            
+            <form id="app-form" onsubmit="submitApp(event)">
+                <input type="hidden" id="app-id">
+                
+                <div class="form-group">
+                    <label for="app-name">Nombre *</label>
+                    <input type="text" id="app-name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="app-description">Descripción</label>
+                    <textarea id="app-description" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="app-company">Empresa *</label>
+                    <select id="app-company" required>
+                        <option value="">Selecciona una empresa</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                        <input type="checkbox" id="app-active" checked>
+                        <span>Aplicación activa</span>
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
+                    <button type="button" class="btn btn-secondary" id="delete-app-btn" onclick="deleteApp()" style="display: none;">Eliminar</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal('app-modal')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script src="/assets/js/admin.js"></script>
 </body>
 
 </html>
+```
