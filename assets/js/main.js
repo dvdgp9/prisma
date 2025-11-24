@@ -479,6 +479,78 @@ async function deleteRequest() {
     }
 }
 
+// ========== PROFILE ==========
+
+// Open profile modal
+async function openProfileModal() {
+    try {
+        const response = await fetch('/api/profile.php');
+        const data = await response.json();
+
+        if (data.success) {
+            const profile = data.data;
+
+            // Populate form
+            document.getElementById('profile-username').value = profile.username;
+            document.getElementById('profile-fullname').value = profile.full_name || '';
+            document.getElementById('profile-email').value = profile.email || '';
+            document.getElementById('profile-password').value = '';
+
+            // Show read-only fields
+            const roleLabels = {
+                'superadmin': 'Superadministrador',
+                'admin': 'Administrador',
+                'user': 'Usuario'
+            };
+            document.getElementById('profile-role').textContent = roleLabels[profile.role] || profile.role;
+            document.getElementById('profile-company').textContent = profile.company_name || 'Sin asignar';
+
+            // Open modal
+            document.getElementById('profile-modal').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        alert('Error al cargar el perfil');
+    }
+}
+
+// Submit profile update
+async function submitProfile(event) {
+    event.preventDefault();
+
+    const data = {
+        username: document.getElementById('profile-username').value,
+        full_name: document.getElementById('profile-fullname').value,
+        email: document.getElementById('profile-email').value
+    };
+
+    const password = document.getElementById('profile-password').value;
+    if (password) {
+        data.password = password;
+    }
+
+    try {
+        const response = await fetch('/api/profile.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeModal('profile-modal');
+            // Reload page to update sidebar
+            location.reload();
+        } else {
+            alert(result.error || 'Error al actualizar el perfil');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Error al actualizar el perfil');
+    }
+}
+
 // Close modal on outside click
 window.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal')) {

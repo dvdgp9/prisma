@@ -31,7 +31,7 @@ $user = get_logged_user();
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">Prisma</div>
-                <div class="user-info">
+                <div class="user-info" onclick="openProfileModal()" style="cursor: pointer;" title="Editar perfil">
                     <div class="user-avatar">
                         <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
                     </div>
@@ -41,6 +41,7 @@ $user = get_logged_user();
                         </div>
                         <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
                     </div>
+                    <i class="iconoir-edit" style="margin-left: auto; opacity: 0.5;"></i>
                 </div>
             </div>
 
@@ -247,7 +248,56 @@ $user = get_logged_user();
             </form>
         </div>
     </div>
-
+    
+    <!-- Profile Modal -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Mi Perfil</h3>
+                <button class="close-modal" onclick="closeModal('profile-modal')">×</button>
+            </div>
+            
+            <form id="profile-form" onsubmit="submitProfile(event)">
+                <div class="form-group">
+                    <label for="profile-username">Usuario *</label>
+                    <input type="text" id="profile-username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="profile-fullname">Nombre Completo</label>
+                    <input type="text" id="profile-fullname" placeholder="Tu nombre completo">
+                </div>
+                
+                <div class="form-group">
+                    <label for="profile-email">Email</label>
+                    <input type="email" id="profile-email" placeholder="tu@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="profile-password">Nueva Contraseña</label>
+                    <input type="password" id="profile-password" placeholder="Dejar vacío para no cambiar">
+                    <small class="text-muted">Solo completa este campo si quieres cambiar tu contraseña</small>
+                </div>
+                
+                <div style="padding: var(--spacing-md); background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                        <span class="text-muted">Rol:</span>
+                        <span id="profile-role" style="font-weight: var(--font-weight-semibold);"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="text-muted">Empresa:</span>
+                        <span id="profile-company" style="font-weight: var(--font-weight-semibold);"></span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal('profile-modal')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script src="/assets/js/main.js"></script>
 </body>
 
