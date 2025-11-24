@@ -77,7 +77,7 @@ function require_login()
 /**
  * Get current user data
  */
-function get_current_user()
+function get_logged_user()
 {
     if (!is_logged_in()) {
         return null;
@@ -131,7 +131,7 @@ function require_role($role)
  */
 function can_modify_request($request_creator_id = null)
 {
-    $user = get_current_user();
+    $user = get_logged_user();
 
     if ($user['role'] === 'superadmin') {
         return true;

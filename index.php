@@ -13,7 +13,7 @@
     require_once __DIR__ . '/includes/auth.php';
     require_login();
 
-    $user = get_current_user();
+    $user = get_logged_user();
     ?>
 
     <div class="dashboard-container">
@@ -27,7 +27,8 @@
                     </div>
                     <div>
                         <div style="font-weight: 600;">
-                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?></div>
+                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
+                        </div>
                         <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
                     </div>
                 </div>

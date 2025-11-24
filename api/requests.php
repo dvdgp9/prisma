@@ -13,7 +13,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 require_login();
 
 $db = getDB();
-$user = get_current_user();
+$user = get_logged_user();
 
 switch ($method) {
     case 'GET':
