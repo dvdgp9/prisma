@@ -205,19 +205,27 @@ function get_user_apps()
 
     // Admins see all apps in their company
     if ($user['role'] === 'admin') {
-        $stmt = $db->query("SELECT * FROM apps WHERE is_active = 1 ORDER BY name");
+        $stmt = $db->prepare("
+            SELECT * FROM apps 
+            WHERE is_active = 1 AND company_id = ?
+            ORDER BY name
+        ");
+        $stmt->execute([$user['company_id']]);
         return $stmt->fetchAll();
     }
 
-    // Regular users only see apps they have permissions for
+    // Regular users only see apps they have permissions for IN their company
     $stmt = $db->prepare("
         SELECT DISTINCT a.* 
         FROM apps a
         INNER JOIN user_app_permissions uap ON a.id = uap.app_id
-        WHERE uap.user_id = ? AND uap.can_view = 1 AND a.is_active = 1
+        WHERE uap.user_id = ? 
+            AND uap.can_view = 1 
+            AND a.is_active = 1
+            AND a.company_id = ?
         ORDER BY a.name
     ");
-    $stmt->execute([$user['id']]);
+    $stmt->execute([$user['id'], $user['company_id']]);
     return $stmt->fetchAll();
 }
 

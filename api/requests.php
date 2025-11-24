@@ -34,6 +34,12 @@ switch ($method) {
                 $params[] = $_GET['app_id'];
             }
 
+            // Filter by company (non-superadmins only see their company's requests)
+            if ($user['role'] !== 'superadmin') {
+                $where[] = 'a.company_id = ?';
+                $params[] = $user['company_id'];
+            }
+
             // Filter by priority
             if (!empty($_GET['priority'])) {
                 $where[] = 'r.priority = ?';
@@ -45,7 +51,7 @@ switch ($method) {
                 $where[] = 'r.status = ?';
                 $params[] = $_GET['status'];
             }
-            
+
             // Sorting
             $sort = 'r.created_at DESC'; // Default sort
             if (!empty($_GET['sort'])) {

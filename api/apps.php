@@ -37,13 +37,19 @@ switch ($method) {
         }
 
         try {
+            // Admins create apps in their company, superadmins can choose
+            $company_id = $user['role'] === 'superadmin' && isset($input['company_id'])
+                ? $input['company_id']
+                : $user['company_id'];
+
             $stmt = $db->prepare("
-                INSERT INTO apps (name, description) 
-                VALUES (?, ?)
+                INSERT INTO apps (name, description, company_id)
+                VALUES (?, ?, ?)
             ");
             $stmt->execute([
                 $input['name'],
-                $input['description'] ?? null
+                $input['description'] ?? null,
+                $company_id
             ]);
 
             $app_id = $db->lastInsertId();
