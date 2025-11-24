@@ -22,6 +22,12 @@ switch ($method) {
             $where = ['1=1'];
             $params = [];
 
+            // Filter by ID (single request)
+            if (!empty($_GET['id'])) {
+                $where[] = 'r.id = ?';
+                $params[] = $_GET['id'];
+            }
+
             // Filter by app
             if (!empty($_GET['app_id'])) {
                 $where[] = 'r.app_id = ?';

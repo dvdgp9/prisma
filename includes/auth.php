@@ -184,3 +184,65 @@ function success_response($data = [], $message = 'Success')
 {
     json_response(['success' => true, 'message' => $message, 'data' => $data]);
 }
+
+/**
+ * Get apps that the current user has permission to see
+ */
+function get_user_apps()
+{
+    $user = get_logged_user();
+    if (!$user) {
+        return [];
+    }
+
+    $db = getDB();
+
+    // Superadmins see all apps
+    if ($user['role'] === 'superadmin') {
+        $stmt = $db->query("SELECT * FROM apps WHERE is_active = 1 ORDER BY name");
+        return $stmt->fetchAll();
+    }
+
+    // Admins see all apps in their company
+    if ($user['role'] === 'admin') {
+        $stmt = $db->query("SELECT * FROM apps WHERE is_active = 1 ORDER BY name");
+        return $stmt->fetchAll();
+    }
+
+    // Regular users only see apps they have permissions for
+    $stmt = $db->prepare("
+        SELECT DISTINCT a.* 
+        FROM apps a
+        INNER JOIN user_app_permissions uap ON a.id = uap.app_id
+        WHERE uap.user_id = ? AND uap.can_view = 1 AND a.is_active = 1
+        ORDER BY a.name
+    ");
+    $stmt->execute([$user['id']]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Check if user can access a specific app
+ */
+function can_access_app($app_id)
+{
+    $user = get_logged_user();
+    if (!$user) {
+        return false;
+    }
+
+    // Superadmins and Admins can access all apps
+    if (in_array($user['role'], ['superadmin', 'admin'])) {
+        return true;
+    }
+
+    // Check if user has permission
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT can_view 
+        FROM user_app_permissions 
+        WHERE user_id = ? AND app_id = ? AND can_view = 1
+    ");
+    $stmt->execute([$user['id'], $app_id]);
+    return $stmt->fetch() !== false;
+}

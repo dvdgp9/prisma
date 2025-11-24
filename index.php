@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
-<body>
+<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
     <?php
     require_once __DIR__ . '/includes/auth.php';
     require_login();
@@ -171,6 +171,61 @@
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Crear Petición</button>
                     <button type="button" class="btn btn-outline"
                         onclick="closeModal('new-request-modal')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Request Modal (Admin/Superadmin) -->
+    <div class="modal" id="edit-request-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Editar Petición</h3>
+                <button class="close-modal" onclick="closeModal('edit-request-modal')">×</button>
+            </div>
+
+            <form id="edit-request-form" onsubmit="submitEditRequest(event)">
+                <input type="hidden" id="edit-request-id">
+
+                <div class="form-group">
+                    <label for="edit-request-title">Título *</label>
+                    <input type="text" id="edit-request-title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-request-description">Descripción</label>
+                    <textarea id="edit-request-description" rows="5"></textarea>
+                </div>
+
+                <?php if (has_role('admin')): ?>
+                    <div class="form-group">
+                        <label for="edit-request-priority">Prioridad</label>
+                        <select id="edit-request-priority">
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-request-status">Estado</label>
+                        <select id="edit-request-status">
+                            <option value="pending">Pendiente</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="completed">Completado</option>
+                            <option value="discarded">Descartado</option>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
+                    <?php if (has_role('superadmin')): ?>
+                        <button type="button" class="btn btn-secondary" onclick="deleteRequest()">Eliminar</button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-outline"
+                        onclick="closeModal('edit-request-modal')">Cancelar</button>
                 </div>
             </form>
         </div>

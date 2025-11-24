@@ -17,16 +17,9 @@ $user = get_logged_user();
 
 switch ($method) {
     case 'GET':
-        // Get all apps
+        // Get all apps (filtered by user permissions)
         try {
-            $stmt = $db->query("
-                SELECT id, name, description, is_active, created_at, updated_at
-                FROM apps 
-                WHERE is_active = 1
-                ORDER BY name ASC
-            ");
-            $apps = $stmt->fetchAll();
-
+            $apps = get_user_apps();
             success_response($apps);
         } catch (Exception $e) {
             error_response('Failed to fetch apps: ' . $e->getMessage(), 500);
