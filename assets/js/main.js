@@ -1,4 +1,3 @@
-```javascript
 // Prisma Dashboard - Main JavaScript
 
 let currentView = 'global';
@@ -9,11 +8,11 @@ let selectedFiles = [];
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
     loadApps();
-    
+
     // Check if there's an app parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     const appId = urlParams.get('app');
-    
+
     if (appId) {
         // Load specific app view
         currentView = 'app';
@@ -37,7 +36,7 @@ async function loadApps() {
         if (data.success) {
             apps = data.data;
             populateAppSelects();
-            
+
             // Update page title if viewing specific app
             const urlParams = new URLSearchParams(window.location.search);
             const appId = urlParams.get('app');
@@ -60,7 +59,7 @@ function populateAppSelects() {
     const selects = document.querySelectorAll('#request-app');
     selects.forEach(select => {
         select.innerHTML = '<option value="">Selecciona una aplicación</option>' +
-            apps.map(app => `< option value = "${app.id}" > ${ escapeHtml(app.name) }</option > `).join('');
+            apps.map(app => `< option value = "${app.id}" > ${escapeHtml(app.name)}</option > `).join('');
     });
 }
 
@@ -70,7 +69,7 @@ function loadView(view, appId = null) {
     if (view === 'global') {
         window.location.href = '/index.php';
     } else if (view === 'app' && appId) {
-        window.location.href = `/ index.php ? app = ${ appId } `;
+        window.location.href = `/ index.php ? app = ${appId} `;
     }
 }
 
@@ -79,7 +78,7 @@ async function loadRequests() {
     const sortSelect = document.getElementById('sort-select');
     const priorityFilter = document.getElementById('priority-filter');
     const statusFilter = document.getElementById('status-filter');
-    
+
     const sort = sortSelect ? sortSelect.value : 'recent';
     const priority = priorityFilter ? priorityFilter.value : '';
     const status = statusFilter ? statusFilter.value : '';
@@ -131,8 +130,8 @@ function renderRequests(requests) {
 
 // Create a single request card
 function createRequestCard(request) {
-    const priorityClass = `priority - ${ request.priority } `;
-    const statusClass = `status - ${ request.status } `;
+    const priorityClass = `priority - ${request.priority} `;
+    const statusClass = `status - ${request.status} `;
     const date = new Date(request.created_at).toLocaleDateString('es-ES', {
         day: '2-digit',
         month: 'short',
@@ -157,11 +156,10 @@ function createRequestCard(request) {
             
             <h3 class="card-title">${escapeHtml(request.title)}</h3>
             
-            ${
-    request.description ? `
+            ${request.description ? `
                 <p class="card-description">${escapeHtml(request.description)}</p>
             ` : ''
-}
+        }
 
 <div class="card-footer">
     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -380,7 +378,7 @@ function escapeHtml(text) {
 async function openEditRequestModal(requestId) {
     try {
         // Fetch request details
-        const response = await fetch(`/ api / requests.php ? id = ${ requestId } `);
+        const response = await fetch(`/ api / requests.php ? id = ${requestId} `);
         const data = await response.json();
 
         if (data.success && data.data.length > 0) {
