@@ -433,6 +433,21 @@ label {
     padding: var(--spacing-md);
     background: var(--bg-secondary);
     border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.user-info:hover {
+    background: var(--bg-tertiary);
+}
+
+.user-info-edit-icon {
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.user-info:hover .user-info-edit-icon {
+    opacity: 0.6;
 }
 
 .user-avatar {
