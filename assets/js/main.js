@@ -33,7 +33,7 @@ function renderAppsNav() {
     const appsNav = document.getElementById('apps-nav');
     const navItems = apps.map(app => `
         <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})">
-            <span>📱</span>
+            <i class="iconoir-app-window"></i>
             <span>${escapeHtml(app.name)}</span>
         </a>
     `).join('');
@@ -142,13 +142,13 @@ function createRequestCard(request) {
     return `
         <div class="card" data-request-id="${request.id}">
             <div class="card-header">
-                <div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <span class="priority-badge ${priorityClass}">${getPriorityLabel(request.priority)}</span>
-                    <span class="status-badge ${statusClass}" style="margin-left: 0.5rem;">${getStatusLabel(request.status)}</span>
+                    <span class="status-badge ${statusClass}">${getStatusLabel(request.status)}</span>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <span class="text-small text-muted">${date}</span>
-                    ${isAdmin ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); openEditRequestModal(${request.id})" style="padding: 0.25rem 0.5rem;">✏️</button>` : ''}
+                    ${isAdmin ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); openEditRequestModal(${request.id})" style="padding: 0.25rem 0.5rem;"><i class="iconoir-edit"></i></button>` : ''}
                 </div>
             </div>
             
@@ -159,16 +159,27 @@ function createRequestCard(request) {
             ` : ''}
             
             <div class="card-footer">
-                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <span class="text-small text-muted">📱 ${escapeHtml(request.app_name)}</span>
-                    <span class="text-small text-muted">👤 ${escapeHtml(request.creator_name || request.creator_username)}</span>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <span class="text-small text-muted">
+                        <i class="iconoir-app-window" style="font-size: 0.875rem;"></i>
+                        ${escapeHtml(request.app_name)}
+                    </span>
+                    <span class="text-small text-muted">
+                        <i class="iconoir-user" style="font-size: 0.875rem;"></i>
+                        ${escapeHtml(request.creator_name || request.creator_username)}
+                    </span>
                     ${request.attachment_count > 0 ? `
-                        <span class="text-small text-muted">📎 ${request.attachment_count} adjunto(s)</span>
+                        <span class="text-small text-muted">
+                            <i class="iconoir-attachment" style="font-size: 0.875rem;"></i>
+                            ${request.attachment_count} adjunto(s)
+                        </span>
                     ` : ''}
                 </div>
                 
                 <div class="vote-section">
-                    <button class="vote-btn" onclick="event.stopPropagation(); vote(${request.id}, 'up')">▲</button>
+                    <button class="vote-btn" onclick="event.stopPropagation(); vote(${request.id}, 'up')" title="Votar">
+                        <i class="iconoir-arrow-up"></i>
+                    </button>
                     <span class="vote-count">${request.vote_count || 0}</span>
                 </div>
             </div>
@@ -309,7 +320,10 @@ function handleFiles(files) {
 
     fileList.innerHTML = selectedFiles.map((file, index) => `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-            <span class="text-small">📎 ${escapeHtml(file.name)} (${formatFileSize(file.size)})</span>
+            <span class="text-small">
+                <i class="iconoir-attachment"></i>
+                ${escapeHtml(file.name)} (${formatFileSize(file.size)})
+            </span>
             <button type="button" class="btn btn-sm" onclick="removeFile(${index})" style="padding: 0.25rem 0.5rem;">×</button>
         </div>
     `).join('');

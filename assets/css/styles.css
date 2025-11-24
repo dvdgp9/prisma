@@ -1,9 +1,6 @@
-/* Prisma Dashboard - Main Stylesheet */
+/* Prisma Dashboard - Modern UI Styles */
 
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-/* CSS Variables - Vibrant Color Palette */
+/* ========== CSS Variables ========== */
 :root {
     /* Primary Colors - Teal/Turquoise */
     --primary-color: #00C9B7;
