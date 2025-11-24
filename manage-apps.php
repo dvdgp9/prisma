@@ -5,6 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prisma - Gestionar Apps</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Iconoir Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
+
+    <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
@@ -38,7 +48,7 @@
                 <div class="nav-section">
                     <div class="nav-section-title">Vistas Generales</div>
                     <a href="/index.php" class="nav-item">
-                        <span>🌍</span>
+                        <i class="iconoir-globe"></i>
                         <span>Vista Global</span>
                     </a>
                 </div>
@@ -46,14 +56,14 @@
                 <div class="nav-section">
                     <div class="nav-section-title">Administración</div>
                     <a href="/manage-apps.php" class="nav-item active">
-                        <span>⚙️</span>
+                        <i class="iconoir-settings"></i>
                         <span>Gestionar Apps</span>
                     </a>
                 </div>
 
                 <div class="nav-section">
-                    <a href="/logout.php" class="nav-item" style="color: var(--danger-color);">
-                        <span>🚪</span>
+                    <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
+                        <i class="iconoir-log-out"></i>
                         <span>Cerrar Sesión</span>
                     </a>
                 </div>
@@ -66,7 +76,8 @@
                 <h1 class="page-title">Gestionar Aplicaciones</h1>
                 <div class="actions">
                     <button class="btn btn-primary" onclick="openNewAppModal()">
-                        + Nueva App
+                        <i class="iconoir-plus"></i>
+                        Nueva App
                     </button>
                 </div>
             </div>
