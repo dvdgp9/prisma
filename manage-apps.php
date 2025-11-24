@@ -11,7 +11,7 @@
 <body>
     <?php
     require_once __DIR__ . '/includes/auth.php';
-    require_role('superadmin');
+    require_role('admin');
 
     $user = get_logged_user();
     ?>

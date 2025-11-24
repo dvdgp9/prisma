@@ -27,8 +27,8 @@ switch ($method) {
         break;
 
     case 'POST':
-        // Create new app (superadmin only)
-        require_role('superadmin');
+        // Create new app (admin or superadmin)
+        require_role('admin');
 
         $input = get_json_input();
 
@@ -55,8 +55,8 @@ switch ($method) {
         break;
 
     case 'PUT':
-        // Update app (superadmin only)
-        require_role('superadmin');
+        // Update app (admin or superadmin)
+        require_role('admin');
 
         $input = get_json_input();
 

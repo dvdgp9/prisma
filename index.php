@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_login();
+
+$user = get_logged_user();
+?>
+
 <body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
-    <?php
-    require_once __DIR__ . '/includes/auth.php';
-    require_login();
-
-    $user = get_logged_user();
-    ?>
-
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -48,7 +48,7 @@
                     <!-- Apps will be loaded dynamically -->
                 </div>
 
-                <?php if (has_role('superadmin')): ?>
+                <?php if (has_role('admin')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Administración</div>
                         <a href="/manage-apps.php" class="nav-item">
