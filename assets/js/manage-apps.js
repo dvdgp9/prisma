@@ -1,0 +1,193 @@
+// Prisma - Manage Apps JavaScript
+
+let apps = [];
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function () {
+    loadApps();
+});
+
+// Load all apps
+async function loadApps() {
+    try {
+        const response = await fetch('/api/apps.php');
+        const data = await response.json();
+
+        if (data.success) {
+            apps = data.data;
+            renderApps();
+        }
+    } catch (error) {
+        console.error('Error loading apps:', error);
+    }
+}
+
+// Render apps grid
+function renderApps() {
+    const grid = document.getElementById('apps-grid');
+
+    if (apps.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                <h3>No hay aplicaciones aún</h3>
+                <p>Crea la primera aplicación usando el botón de arriba.</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = apps.map(app => `
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">${escapeHtml(app.name)}</h3>
+                <button class="btn btn-sm btn-outline" onclick="openEditAppModal(${app.id})">
+                    Editar
+                </button>
+            </div>
+            
+            ${app.description ? `
+                <p class="card-description">${escapeHtml(app.description)}</p>
+            ` : `
+                <p class="card-description text-muted">Sin descripción</p>
+            `}
+            
+            <div class="card-footer">
+                <span class="text-small text-muted">
+                    Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}
+                </span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Open new app modal
+function openNewAppModal() {
+    document.getElementById('new-app-modal').classList.add('active');
+}
+
+// Open edit app modal
+function openEditAppModal(appId) {
+    const app = apps.find(a => a.id === appId);
+    if (!app) return;
+
+    document.getElementById('edit-app-id').value = app.id;
+    document.getElementById('edit-app-name').value = app.name;
+    document.getElementById('edit-app-description').value = app.description || '';
+
+    document.getElementById('edit-app-modal').classList.add('active');
+}
+
+// Close modal
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+    if (modalId === 'new-app-modal') {
+        document.getElementById('new-app-form').reset();
+    }
+}
+
+// Submit new app
+async function submitNewApp(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('app-name').value;
+    const description = document.getElementById('app-description').value;
+
+    try {
+        const response = await fetch('/api/apps.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                description: description
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeModal('new-app-modal');
+            loadApps();
+        } else {
+            alert(data.error || 'Error al crear la aplicación');
+        }
+    } catch (error) {
+        console.error('Error creating app:', error);
+        alert('Error al crear la aplicación');
+    }
+}
+
+// Submit edit app
+async function submitEditApp(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('edit-app-id').value;
+    const name = document.getElementById('edit-app-name').value;
+    const description = document.getElementById('edit-app-description').value;
+
+    try {
+        const response = await fetch('/api/apps.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: parseInt(id),
+                name: name,
+                description: description
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeModal('edit-app-modal');
+            loadApps();
+        } else {
+            alert(data.error || 'Error al actualizar la aplicación');
+        }
+    } catch (error) {
+        console.error('Error updating app:', error);
+        alert('Error al actualizar la aplicación');
+    }
+}
+
+// Delete app
+async function deleteApp() {
+    const id = document.getElementById('edit-app-id').value;
+
+    if (!confirm('¿Estás seguro de que quieres eliminar esta aplicación? Esto eliminará todas las peticiones asociadas.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/apps.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: parseInt(id) })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeModal('edit-app-modal');
+            loadApps();
+        } else {
+            alert(data.error || 'Error al eliminar la aplicación');
+        }
+    } catch (error) {
+        console.error('Error deleting app:', error);
+        alert('Error al eliminar la aplicación');
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Close modal on outside click
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('active');
+    }
+});
