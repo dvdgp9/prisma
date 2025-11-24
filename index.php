@@ -61,6 +61,12 @@ $user = get_logged_user();
                 <?php if (has_role('admin')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Administración</div>
+                        <?php if (has_role('superadmin')): ?>
+                            <a href="/admin.php" class="nav-item">
+                                <i class="iconoir-shield-check"></i>
+                                <span>Panel Admin</span>
+                            </a>
+                        <?php endif; ?>
                         <a href="/manage-apps.php" class="nav-item">
                             <i class="iconoir-settings"></i>
                             <span>Gestionar Apps</span>
