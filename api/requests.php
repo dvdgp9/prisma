@@ -45,7 +45,7 @@ switch ($method) {
                 $where[] = 'r.status = ?';
                 $params[] = $_GET['status'];
             }
-
+            
             // Sorting
             $sort = 'r.created_at DESC'; // Default sort
             if (!empty($_GET['sort'])) {
@@ -57,10 +57,20 @@ switch ($method) {
                         $sort = 'r.created_at ASC';
                         break;
                     case 'priority':
-                        $sort = "FIELD(r.priority, 'critical', 'high', 'medium', 'low'), r.created_at DESC";
+                        // Order by priority: critical > high > medium > low
+                        $sort = "CASE r.priority 
+                                    WHEN 'critical' THEN 1 
+                                    WHEN 'high' THEN 2 
+                                    WHEN 'medium' THEN 3 
+                                    WHEN 'low' THEN 4 
+                                    ELSE 5 
+                                END, r.created_at DESC";
                         break;
                     case 'votes':
                         $sort = 'r.vote_count DESC, r.created_at DESC';
+                        break;
+                    default:
+                        $sort = 'r.created_at DESC';
                         break;
                 }
             }
