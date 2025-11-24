@@ -139,51 +139,7 @@ $user = get_logged_user();
 <body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">Prisma</div>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600;">
-                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
-                        </div>
-                        <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <nav>
-                <div class="nav-section">
-                    <div class="nav-section-title">Vistas Generales</div>
-                    <a href="/index.php" class="nav-item">
-                        <i class="iconoir-globe"></i>
-                        <span>Vista Global</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Administración</div>
-                    <a href="/admin.php" class="nav-item active">
-                        <i class="iconoir-shield-check"></i>
-                        <span>Panel Admin</span>
-                    </a>
-                    <a href="/manage-apps.php" class="nav-item">
-                        <i class="iconoir-settings"></i>
-                        <span>Gestionar Apps</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
-                        <i class="iconoir-log-out"></i>
-                        <span>Cerrar Sesión</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+        <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -381,7 +337,7 @@ $user = get_logged_user();
             </form>
         </div>
     </div>
-    
+
     <!-- App Modal -->
     <div class="modal" id="app-modal">
         <div class="modal-content">
@@ -389,43 +345,44 @@ $user = get_logged_user();
                 <h3 class="modal-title" id="app-modal-title">Nueva Aplicación</h3>
                 <button class="close-modal" onclick="closeModal('app-modal')">×</button>
             </div>
-            
+
             <form id="app-form" onsubmit="submitApp(event)">
                 <input type="hidden" id="app-id">
-                
+
                 <div class="form-group">
                     <label for="app-name">Nombre *</label>
                     <input type="text" id="app-name" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="app-description">Descripción</label>
                     <textarea id="app-description" rows="3"></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="app-company">Empresa *</label>
                     <select id="app-company" required>
                         <option value="">Selecciona una empresa</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: var(--spacing-sm);">
                         <input type="checkbox" id="app-active" checked>
                         <span>Aplicación activa</span>
                     </label>
                 </div>
-                
+
                 <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
-                    <button type="button" class="btn btn-secondary" id="delete-app-btn" onclick="deleteApp()" style="display: none;">Eliminar</button>
+                    <button type="button" class="btn btn-secondary" id="delete-app-btn" onclick="deleteApp()"
+                        style="display: none;">Eliminar</button>
                     <button type="button" class="btn btn-outline" onclick="closeModal('app-modal')">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
-    
+
     <script src="/assets/js/admin.js"></script>
 </body>
 

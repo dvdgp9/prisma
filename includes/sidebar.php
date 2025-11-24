@@ -52,7 +52,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 
         <div class="nav-section" id="apps-nav">
             <div class="nav-section-title">Aplicaciones</div>
-            <!-- Apps will be loaded dynamically if on index page -->
+            <!-- Apps will be loaded here -->
         </div>
 
         <div class="nav-section">
@@ -63,3 +63,36 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         </div>
     </nav>
 </aside>
+
+<script>
+    // Load apps in sidebar for all pages
+    (async function loadSidebarApps() {
+        try {
+            const response = await fetch('/api/apps.php');
+            const data = await response.json();
+
+            if (data.success && data.data.length > 0) {
+                const appsNav = document.getElementById('apps-nav');
+                const navItems = data.data.map(app => `
+                <a href="/index.php?app=${app.id}" class="nav-item">
+                    <i class="iconoir-app-window"></i>
+                    <span>${escapeHtmlSidebar(app.name)}</span>
+                </a>
+            `).join('');
+
+                appsNav.innerHTML = `
+                <div class="nav-section-title">Aplicaciones</div>
+                ${navItems}
+            `;
+            }
+        } catch (error) {
+            console.error('Error loading sidebar apps:', error);
+        }
+
+        function escapeHtmlSidebar(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    })();
+</script>

@@ -28,47 +28,7 @@
 
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">Prisma</div>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600;">
-                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
-                        </div>
-                        <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <nav>
-                <div class="nav-section">
-                    <div class="nav-section-title">Vistas Generales</div>
-                    <a href="/index.php" class="nav-item">
-                        <i class="iconoir-globe"></i>
-                        <span>Vista Global</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Administración</div>
-                    <a href="/manage-apps.php" class="nav-item active">
-                        <i class="iconoir-settings"></i>
-                        <span>Gestionar Apps</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
-                        <i class="iconoir-log-out"></i>
-                        <span>Cerrar Sesión</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+        <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">

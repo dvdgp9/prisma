@@ -28,22 +28,6 @@ async function loadApps() {
     }
 }
 
-// Render apps in sidebar navigation
-function renderAppsNav() {
-    const appsNav = document.getElementById('apps-nav');
-    const navItems = apps.map(app => `
-        <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})">
-            <i class="iconoir-app-window"></i>
-            <span>${escapeHtml(app.name)}</span>
-        </a>
-    `).join('');
-
-    appsNav.innerHTML = `
-        <div class="nav-section-title">Aplicaciones</div>
-        ${navItems}
-    `;
-}
-
 // Populate app select dropdowns
 function populateAppSelects() {
     const selects = document.querySelectorAll('#request-app');
