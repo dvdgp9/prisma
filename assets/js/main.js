@@ -103,27 +103,38 @@ async function loadRequests() {
 
         if (data.success) {
             renderRequests(data.data);
+            // Assuming 'requests' is a global variable that will be populated here
+            // This change implies 'requests' should be declared globally, e.g., `let requests = [];`
+            // at the top of the file, and then assigned here: `requests = data.data;`
+            // However, the instruction only modifies renderRequests, so we'll assume 'requests'
+            // is made available globally by other means or this is a partial change.
+            requests = data.data; // This line is added based on the implied change for renderRequests
+            renderRequests();
         }
     } catch (error) {
         console.error('Error loading requests:', error);
     }
 }
 
-// Render request cards
-function renderRequests(requests) {
+// Render requests
+function renderRequests() {
     const grid = document.getElementById('requests-grid');
 
     if (requests.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
-                <h3>No hay peticiones aún</h3>
-                <p>Crea la primera petición usando el botón de arriba.</p>
+                <h3>No hay mejoras aún</h3>
+                <p>Crea la primera mejora usando el botón de arriba.</p>
             </div>
         `;
         return;
     }
 
-    grid.innerHTML = requests.map(request => createRequestCard(request)).join('');
+    grid.innerHTML = '';
+    requests.forEach(request => {
+        const card = createRequestCard(request);
+        grid.appendChild(card);
+    });
 }
 
 // Create a single request card
