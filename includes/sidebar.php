@@ -4,7 +4,7 @@
  * Include this file in all pages for consistent navigation
  */
 
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/auth.php';
 $user = get_logged_user();
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
 ?>
