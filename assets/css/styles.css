@@ -407,15 +407,14 @@ label {
     padding: var(--spacing-xl);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);
+    gap: 0;
 }
 
 .sidebar-header {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    padding-bottom: var(--spacing-lg);
-    border-bottom: 2px solid var(--border-color);
+    padding-bottom: var(--spacing-md);
 }
 
 .logo {
