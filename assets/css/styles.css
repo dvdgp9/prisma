@@ -292,7 +292,7 @@ label {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.025em;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     color: white;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -346,7 +346,7 @@ label {
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.025em;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
