@@ -66,14 +66,12 @@ function populateAppSelects() {
 
 // Handle view changes
 function loadView(view, appId = null) {
-    currentView = view;
-    currentAppId = appId;
-        item.classList.remove('active');
-    });
-    event.target.closest('.nav-item').classList.add('active');
-
-    // Reload requests
-    loadRequests();
+    // Update URL and reload
+    if (view === 'global') {
+        window.location.href = '/index.php';
+    } else if (view === 'app' && appId) {
+        window.location.href = `/ index.php ? app = ${ appId } `;
+    }
 }
 
 // Load requests with filters
