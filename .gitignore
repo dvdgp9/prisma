@@ -1,8 +1,23 @@
 # Prisma Dashboard
+
+# Logs
 *.log
+
+# OS Files
 .DS_Store
 Thumbs.db
+
+# Environment and Config
 .env
+config/database.php
 config/database.php.backup
+
+# Uploads (user files)
 uploads/*
 !uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

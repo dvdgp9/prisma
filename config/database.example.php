@@ -1,14 +1,18 @@
 <?php
 /**
- * Database Configuration
- * Update these values with your cPanel MySQL credentials
+ * Database Configuration Example
+ * 
+ * INSTRUCCIONES:
+ * 1. Copia este archivo como 'database.php' en el mismo directorio
+ * 2. Actualiza los valores con tus credenciales reales de cPanel
+ * 3. NUNCA subas 'database.php' a Git (está en .gitignore)
  */
 
 // Database credentials - UPDATE THESE!
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'umilpdfe_prisma');
-define('DB_USER', 'umilpdfe_prismausr');
-define('DB_PASS', 'prisMUSR2020');
+define('DB_NAME', 'your_database_name');  // En cPanel: cpanel_user_dbname
+define('DB_USER', 'your_database_user');  // En cPanel: cpanel_user_dbuser
+define('DB_PASS', 'your_database_password');
 define('DB_CHARSET', 'utf8mb4');
 
 class Database
