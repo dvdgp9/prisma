@@ -1,9 +1,12 @@
 // Prisma Dashboard - Main JavaScript
 
+let apps = [];
+let requests = [];
 let currentView = 'global';
 let currentAppId = null;
-let apps = [];
 let selectedFiles = [];
+
+const userRole = document.body.dataset.userRole;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
@@ -79,36 +82,29 @@ function loadView(type, appId = null) {
 
 // Load requests with filters
 async function loadRequests() {
-    const sort = document.getElementById('sort-select').value;
-    const priority = document.getElementById('priority-filter').value;
-    const status = document.getElementById('status-filter').value;
-
-    let url = '/api/requests.php?sort=' + sort;
-
-    if (currentView === 'app' && currentAppId) {
-        url += '&app_id=' + currentAppId;
-    }
-
-    if (priority) {
-        url += '&priority=' + priority;
-    }
-
-    if (status) {
-        url += '&status=' + status;
-    }
-
     try {
+        const sortBy = document.getElementById('sort-by')?.value || 'date_desc';
+        const priority = document.getElementById('filter-priority')?.value || 'all';
+        const status = document.getElementById('filter-status')?.value || 'all';
+
+        let url = '/api/requests.php?';
+        const params = [];
+
+        if (currentView === 'app' && currentAppId) {
+            params.push(`app_id=${currentAppId}`);
+        }
+
+        if (priority !== 'all') params.push(`priority=${priority}`);
+        if (status !== 'all') params.push(`status=${status}`);
+        params.push(`sort=${sortBy}`);
+
+        url += params.join('&');
+
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.success) {
-            renderRequests(data.data);
-            // Assuming 'requests' is a global variable that will be populated here
-            // This change implies 'requests' should be declared globally, e.g., `let requests = [];`
-            // at the top of the file, and then assigned here: `requests = data.data;`
-            // However, the instruction only modifies renderRequests, so we'll assume 'requests'
-            // is made available globally by other means or this is a partial change.
-            requests = data.data; // This line is added based on the implied change for renderRequests
+            requests = data.data;
             renderRequests();
         }
     } catch (error) {
