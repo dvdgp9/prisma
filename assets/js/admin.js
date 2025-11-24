@@ -45,15 +45,11 @@ function renderCompanies() {
     const tbody = document.querySelector('#companies-table tbody');
 
     if (companies.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">No hay empresas registradas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">No hay empresas registradas</td></tr>';
         return;
     }
 
-    tbody.innerHTML = companies.map(company => {
-        // Count apps for this company
-        const appCount = apps.filter(app => app.company_id == company.id).length;
-
-        return `
+    tbody.innerHTML = companies.map(company => `
         <tr>
             <td style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">
                 ${escapeHtml(company.name)}
@@ -66,9 +62,6 @@ function renderCompanies() {
                 <span class="badge badge-admin">${company.admin_count} admins</span>
             </td>
             <td>
-                <span class="badge badge-user">${appCount} apps</span>
-            </td>
-            <td>
                 <div class="actions-cell">
                     <button class="btn btn-sm btn-outline" onclick="editCompany(${company.id})" title="Editar">
                         <i class="iconoir-edit"></i>
@@ -79,7 +72,7 @@ function renderCompanies() {
                 </div>
             </td>
         </tr>
-    `}).join('');
+    `).join('');
 }
 
 function openNewCompanyModal() {
@@ -322,13 +315,12 @@ async function deleteUser(id) {
 
 async function loadApps() {
     try {
-        const response = await fetch('/api/apps.php');
+        const response = await fetch('/api/apps.php?with_company=1');
         const data = await response.json();
 
         if (data.success) {
             apps = data.data;
             renderApps();
-            renderCompanies(); // Re-render companies to update app counts
         }
     } catch (error) {
         console.error('Error loading apps:', error);
@@ -345,41 +337,43 @@ function renderApps() {
 
     tbody.innerHTML = apps.map(app => {
         const company = companies.find(c => c.id == app.company_id);
-
         return `
-        <tr>
-            <td style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">
-                <i class="iconoir-app-window" style="margin-right: 0.5rem;"></i>
-                ${escapeHtml(app.name)}
-            </td>
-            <td>${escapeHtml(app.description || '-')}</td>
-            <td>${company ? escapeHtml(company.name) : '<span style="color: var(--text-muted);">Sin empresa</span>'}</td>
-            <td>
-                <span class="badge ${app.is_active ? 'badge-active' : 'badge-inactive'}">
-                    ${app.is_active ? 'Activa' : 'Inactiva'}
-                </span>
-            </td>
-            <td>${new Date(app.created_at).toLocaleDateString('es-ES')}</td>
-            <td>
-                <div class="actions-cell">
-                    <button class="btn btn-sm btn-outline" onclick="editApp(${app.id})" title="Editar">
-                        <i class="iconoir-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="deleteAppConfirm(${app.id})" title="Eliminar" style="color: var(--secondary);">
-                        <i class="iconoir-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `}).join('');
+            <tr>
+                <td style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">
+                    <i class="iconoir-app-window" style="margin-right: 0.5rem;"></i>
+                    ${escapeHtml(app.name)}
+                </td>
+                <td>
+                    ${company ? `<span class="badge badge-admin">${escapeHtml(company.name)}</span>` : '<span class="badge badge-inactive">Sin asignar</span>'}
+                </td>
+                <td>${escapeHtml(app.description || '-')}</td>
+                <td>
+                    <span class="badge ${app.is_active ? 'badge-active' : 'badge-inactive'}">
+                        ${app.is_active ? 'Activa' : 'Inactiva'}
+                    </span>
+                </td>
+                <td>${new Date(app.created_at).toLocaleDateString('es-ES')}</td>
+                <td>
+                    <div class="actions-cell">
+                        <button class="btn btn-sm btn-outline" onclick="editApp(${app.id})" title="Editar">
+                            <i class="iconoir-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="deleteApp(${app.id})" title="Eliminar" style="color: var(--secondary);">
+                            <i class="iconoir-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function openNewAppModal() {
     document.getElementById('app-modal-title').textContent = 'Nueva Aplicación';
     document.getElementById('app-form').reset();
     document.getElementById('app-id').value = '';
-    document.getElementById('delete-app-btn').style.display = 'none';
-    populateCompanySelectsForApp();
+    document.getElementById('app-active').checked = true;
+    populateAppCompanySelect();
     document.getElementById('app-modal').classList.add('active');
 }
 
@@ -391,10 +385,9 @@ function editApp(id) {
     document.getElementById('app-id').value = app.id;
     document.getElementById('app-name').value = app.name;
     document.getElementById('app-description').value = app.description || '';
-    document.getElementById('app-active').checked = app.is_active == 1;
-    populateCompanySelectsForApp();
     document.getElementById('app-company').value = app.company_id || '';
-    document.getElementById('delete-app-btn').style.display = 'inline-block';
+    document.getElementById('app-active').checked = app.is_active == 1;
+    populateAppCompanySelect();
     document.getElementById('app-modal').classList.add('active');
 }
 
@@ -437,33 +430,21 @@ async function submitApp(event) {
     }
 }
 
-async function deleteAppConfirm(id) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta aplicación? Se eliminarán todos sus requests asociados.')) {
+async function deleteApp(id) {
+    if (!confirm('¿Estás seguro? Esto eliminará todas las peticiones asociadas a esta app.')) {
         return;
     }
-
-    await deleteApp(id);
-}
-
-async function deleteApp(id) {
-    // If called from modal, use the hidden field
-    if (!id) {
-        id = document.getElementById('app-id').value;
-    }
-
-    if (!id) return;
 
     try {
         const response = await fetch('/api/apps.php', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: parseInt(id) })
+            body: JSON.stringify({ id: id })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            closeModal('app-modal');
             loadApps();
         } else {
             alert(result.error || 'Error al eliminar la aplicación');
@@ -474,18 +455,22 @@ async function deleteApp(id) {
     }
 }
 
-// ========== HELPERS ==========
-
-function populateCompanySelects() {
-    const select = document.getElementById('user-company');
+function populateAppCompanySelect() {
+    const select = document.getElementById('app-company');
     select.innerHTML = '<option value="">Selecciona una empresa</option>' +
         companies.map(company => `<option value="${company.id}">${escapeHtml(company.name)}</option>`).join('');
 }
 
-function populateCompanySelectsForApp() {
-    const select = document.getElementById('app-company');
-    select.innerHTML = '<option value="">Selecciona una empresa</option>' +
+// ========== HELPERS ==========
+
+function populateCompanySelects() {
+    // For users
+    const userSelect = document.getElementById('user-company');
+    userSelect.innerHTML = '<option value="">Selecciona una empresa</option>' +
         companies.map(company => `<option value="${company.id}">${escapeHtml(company.name)}</option>`).join('');
+
+    // For apps
+    populateAppCompanySelect();
 }
 
 function getRoleLabel(role) {

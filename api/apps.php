@@ -19,8 +19,19 @@ switch ($method) {
     case 'GET':
         // Get all apps (filtered by user permissions)
         try {
-            $apps = get_user_apps();
-            success_response($apps);
+            // For superadmin in admin panel, return with company info
+            if ($user['role'] === 'superadmin' && isset($_GET['with_company'])) {
+                $stmt = $db->query("
+                    SELECT a.*, c.name as company_name 
+                    FROM apps a
+                    LEFT JOIN companies c ON a.company_id = c.id
+                    ORDER BY a.name
+                ");
+                success_response($stmt->fetchAll());
+            } else {
+                $apps = get_user_apps();
+                success_response($apps);
+            }
         } catch (Exception $e) {
             error_response('Failed to fetch apps: ' . $e->getMessage(), 500);
         }
