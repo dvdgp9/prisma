@@ -1,3 +1,4 @@
+```javascript
 // Prisma Dashboard - Main JavaScript
 
 let currentView = 'global';
@@ -8,7 +9,22 @@ let selectedFiles = [];
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
     loadApps();
-    loadRequests();
+    
+    // Check if there's an app parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('app');
+    
+    if (appId) {
+        // Load specific app view
+        currentView = 'app';
+        currentAppId = parseInt(appId);
+        loadRequests();
+    } else {
+        // Load global view
+        currentView = 'global';
+        currentAppId = null;
+        loadRequests();
+    }
     setupFileUpload();
 });
 
@@ -20,8 +36,19 @@ async function loadApps() {
 
         if (data.success) {
             apps = data.data;
-            renderAppsNav();
             populateAppSelects();
+            
+            // Update page title if viewing specific app
+            const urlParams = new URLSearchParams(window.location.search);
+            const appId = urlParams.get('app');
+            if (appId) {
+                const app = apps.find(a => a.id == appId);
+                if (app) {
+                    document.getElementById('page-title').textContent = app.name;
+                }
+            } else {
+                document.getElementById('page-title').textContent = 'Vista Global';
+            }
         }
     } catch (error) {
         console.error('Error loading apps:', error);
@@ -33,26 +60,14 @@ function populateAppSelects() {
     const selects = document.querySelectorAll('#request-app');
     selects.forEach(select => {
         select.innerHTML = '<option value="">Selecciona una app</option>' +
-            apps.map(app => `<option value="${app.id}">${escapeHtml(app.name)}</option>`).join('');
+            apps.map(app => `< option value = "${app.id}" > ${ escapeHtml(app.name) }</option > `).join('');
     });
 }
 
-// Switch view (global or specific app)
-function loadView(type, appId = null) {
-    currentView = type;
+// Handle view changes
+function loadView(view, appId = null) {
+    currentView = view;
     currentAppId = appId;
-
-    // Update page title
-    const pageTitle = document.getElementById('page-title');
-    if (type === 'global') {
-        pageTitle.textContent = 'Vista Global';
-    } else {
-        const app = apps.find(a => a.id == appId);
-        pageTitle.textContent = app ? app.name : 'App';
-    }
-
-    // Update active nav item
-    document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
     event.target.closest('.nav-item').classList.add('active');
@@ -99,11 +114,11 @@ function renderRequests(requests) {
 
     if (requests.length === 0) {
         grid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+    < div style = "grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);" >
                 <h3>No hay peticiones aún</h3>
                 <p>Crea la primera petición usando el botón de arriba.</p>
-            </div>
-        `;
+            </div >
+    `;
         return;
     }
 
@@ -112,8 +127,8 @@ function renderRequests(requests) {
 
 // Create a single request card
 function createRequestCard(request) {
-    const priorityClass = `priority-${request.priority}`;
-    const statusClass = `status-${request.status}`;
+    const priorityClass = `priority - ${ request.priority } `;
+    const statusClass = `status - ${ request.status } `;
     const date = new Date(request.created_at).toLocaleDateString('es-ES', {
         day: '2-digit',
         month: 'short',
@@ -124,7 +139,7 @@ function createRequestCard(request) {
     const isAdmin = document.body.dataset.userRole === 'admin' || document.body.dataset.userRole === 'superadmin';
 
     return `
-        <div class="card" data-request-id="${request.id}">
+    < div class="card" data - request - id="${request.id}" >
             <div class="card-header">
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <span class="priority-badge ${priorityClass}">${getPriorityLabel(request.priority)}</span>
@@ -138,36 +153,38 @@ function createRequestCard(request) {
             
             <h3 class="card-title">${escapeHtml(request.title)}</h3>
             
-            ${request.description ? `
+            ${
+    request.description ? `
                 <p class="card-description">${escapeHtml(request.description)}</p>
-            ` : ''}
-            
-            <div class="card-footer">
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <span class="text-small text-muted">
-                        <i class="iconoir-app-window" style="font-size: 0.875rem;"></i>
-                        ${escapeHtml(request.app_name)}
-                    </span>
-                    <span class="text-small text-muted">
-                        <i class="iconoir-user" style="font-size: 0.875rem;"></i>
-                        ${escapeHtml(request.creator_name || request.creator_username)}
-                    </span>
-                    ${request.attachment_count > 0 ? `
+            ` : ''
+}
+
+<div class="card-footer">
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <span class="text-small text-muted">
+            <i class="iconoir-app-window" style="font-size: 0.875rem;"></i>
+            ${escapeHtml(request.app_name)}
+        </span>
+        <span class="text-small text-muted">
+            <i class="iconoir-user" style="font-size: 0.875rem;"></i>
+            ${escapeHtml(request.creator_name || request.creator_username)}
+        </span>
+        ${request.attachment_count > 0 ? `
                         <span class="text-small text-muted">
                             <i class="iconoir-attachment" style="font-size: 0.875rem;"></i>
                             ${request.attachment_count} adjunto(s)
                         </span>
                     ` : ''}
-                </div>
-                
-                <div class="vote-section">
-                    <button class="vote-btn" onclick="event.stopPropagation(); vote(${request.id}, 'up')" title="Votar">
-                        <i class="iconoir-arrow-up"></i>
-                    </button>
-                    <span class="vote-count">${request.vote_count || 0}</span>
-                </div>
-            </div>
-        </div>
+    </div>
+
+    <div class="vote-section">
+        <button class="vote-btn" onclick="event.stopPropagation(); vote(${request.id}, 'up')" title="Votar">
+            <i class="iconoir-arrow-up"></i>
+        </button>
+        <span class="vote-count">${request.vote_count || 0}</span>
+    </div>
+</div>
+        </div >
     `;
 }
 
@@ -303,13 +320,13 @@ function handleFiles(files) {
     selectedFiles = Array.from(files);
 
     fileList.innerHTML = selectedFiles.map((file, index) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
+    < div style = "display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;" >
             <span class="text-small">
                 <i class="iconoir-attachment"></i>
                 ${escapeHtml(file.name)} (${formatFileSize(file.size)})
             </span>
             <button type="button" class="btn btn-sm" onclick="removeFile(${index})" style="padding: 0.25rem 0.5rem;">×</button>
-        </div>
+        </div >
     `).join('');
 }
 
@@ -359,7 +376,7 @@ function escapeHtml(text) {
 async function openEditRequestModal(requestId) {
     try {
         // Fetch request details
-        const response = await fetch(`/api/requests.php?id=${requestId}`);
+        const response = await fetch(`/ api / requests.php ? id = ${ requestId } `);
         const data = await response.json();
 
         if (data.success && data.data.length > 0) {

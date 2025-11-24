@@ -28,7 +28,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
     <nav>
         <div class="nav-section">
             <div class="nav-section-title">Vistas Generales</div>
-            <a href="/index.php" class="nav-item <?php echo $current_page === 'index' ? 'active' : ''; ?>">
+            <a href="/index.php" class="nav-item <?php echo $current_page === 'index' && !isset($_GET['app']) ? 'active' : ''; ?>">
                 <i class="iconoir-globe"></i>
                 <span>Vista Global</span>
             </a>
@@ -65,34 +65,39 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 </aside>
 
 <script>
-    // Load apps in sidebar for all pages
-    (async function loadSidebarApps() {
-        try {
-            const response = await fetch('/api/apps.php');
-            const data = await response.json();
-
-            if (data.success && data.data.length > 0) {
-                const appsNav = document.getElementById('apps-nav');
-                const navItems = data.data.map(app => `
-                <a href="/index.php?app=${app.id}" class="nav-item">
+// Load apps in sidebar for all pages
+(async function loadSidebarApps() {
+    try {
+        const response = await fetch('/api/apps.php');
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+            const appsNav = document.getElementById('apps-nav');
+            
+            // Get current app ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentAppId = urlParams.get('app');
+            
+            const navItems = data.data.map(app => `
+                <a href="/index.php?app=${app.id}" class="nav-item ${currentAppId == app.id ? 'active' : ''}">
                     <i class="iconoir-app-window"></i>
                     <span>${escapeHtmlSidebar(app.name)}</span>
                 </a>
             `).join('');
-
-                appsNav.innerHTML = `
+            
+            appsNav.innerHTML = `
                 <div class="nav-section-title">Aplicaciones</div>
                 ${navItems}
             `;
-            }
-        } catch (error) {
-            console.error('Error loading sidebar apps:', error);
         }
-
-        function escapeHtmlSidebar(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    })();
+    } catch (error) {
+        console.error('Error loading sidebar apps:', error);
+    }
+    
+    function escapeHtmlSidebar(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
 </script>
