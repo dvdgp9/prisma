@@ -1,13 +1,47 @@
-// Prisma - Manage Apps JavaScript
+// Prisma Manage Apps - JavaScript
 
 let apps = [];
+let editingAppId = null;
 
-// Initialize on page load
+// Initialize
 document.addEventListener('DOMContentLoaded', function () {
+    loadUserApps(); // Load apps for sidebar
     loadApps();
 });
 
-// Load all apps
+// Load user apps for sidebar navigation
+async function loadUserApps() {
+    try {
+        const response = await fetch('/api/apps.php');
+        const data = await response.json();
+
+        if (data.success) {
+            renderAppsNav(data.data);
+        }
+    } catch (error) {
+        console.error('Error loading user apps:', error);
+    }
+}
+
+// Render apps in sidebar navigation
+function renderAppsNav(userApps) {
+    const appsNav = document.getElementById('apps-nav');
+    if (!appsNav) return;
+
+    const navItems = userApps.map(app => `
+        <a href="/index.php?app=${app.id}" class="nav-item">
+            <i class="iconoir-app-window"></i>
+            <span>${escapeHtml(app.name)}</span>
+        </a>
+    `).join('');
+
+    appsNav.innerHTML = `
+        <div class="nav-section-title">Aplicaciones</div>
+        ${navItems}
+    `;
+}
+
+// Load apps for tablell apps
 async function loadApps() {
     try {
         const response = await fetch('/api/apps.php');

@@ -8,10 +8,43 @@ let editingUserId = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function () {
+    loadUserApps(); // Load apps for sidebar
     loadCompanies();
     loadUsers();
     loadApps();
 });
+
+// Load user apps for sidebar navigation
+async function loadUserApps() {
+    try {
+        const response = await fetch('/api/apps.php');
+        const data = await response.json();
+
+        if (data.success) {
+            renderAppsNav(data.data);
+        }
+    } catch (error) {
+        console.error('Error loading user apps:', error);
+    }
+}
+
+// Render apps in sidebar navigation
+function renderAppsNav(userApps) {
+    const appsNav = document.getElementById('apps-nav');
+    if (!appsNav) return;
+
+    const navItems = userApps.map(app => `
+        <a href="/index.php?app=${app.id}" class="nav-item">
+            <i class="iconoir-app-window"></i>
+            <span>${escapeHtml(app.name)}</span>
+        </a>
+    `).join('');
+
+    appsNav.innerHTML = `
+        <div class="nav-section-title">Aplicaciones</div>
+        ${navItems}
+    `;
+}
 
 // Tab switching
 function switchTab(tabName) {

@@ -53,6 +53,11 @@
                     </a>
                 </div>
 
+                <div class="nav-section" id="apps-nav">
+                    <div class="nav-section-title">Aplicaciones</div>
+                    <!-- Apps will be loaded dynamically -->
+                </div>
+
                 <div class="nav-section">
                     <div class="nav-section-title">Administración</div>
                     <a href="/manage-apps.php" class="nav-item active">
