@@ -18,15 +18,10 @@ $user = get_logged_user();
 switch ($method) {
     case 'GET':
         // Get requests with filtering and sorting
+        // Get all requests with filters
         try {
             $where = ['1=1'];
             $params = [];
-
-            // Filter by ID (single request)
-            if (!empty($_GET['id'])) {
-                $where[] = 'r.id = ?';
-                $params[] = $_GET['id'];
-            }
 
             // Filter by app
             if (!empty($_GET['app_id'])) {
@@ -53,17 +48,17 @@ switch ($method) {
             }
 
             // Sorting
-            $sort = 'r.created_at DESC'; // Default sort
+            $sort = 'r.created_at DESC';
             if (!empty($_GET['sort'])) {
                 switch ($_GET['sort']) {
                     case 'date':
+                    case 'date_desc':
                         $sort = 'r.created_at DESC';
                         break;
                     case 'date_asc':
                         $sort = 'r.created_at ASC';
                         break;
                     case 'priority':
-                        // Order by priority: critical > high > medium > low
                         $sort = "CASE r.priority 
                                     WHEN 'critical' THEN 1 
                                     WHEN 'high' THEN 2 
@@ -73,16 +68,18 @@ switch ($method) {
                                 END, r.created_at DESC";
                         break;
                     case 'votes':
-                        $sort = 'r.vote_count DESC, r.created_at DESC';
-                        break;
-                    default:
-                        $sort = 'r.created_at DESC';
+                        $sort = 'votes DESC, r.created_at DESC';
                         break;
                 }
             }
 
-            $query = "
-                SELECT r.*,
+            $whereClause = implode(' AND ', $where);
+
+            // Add user ID at the end for the user_voted check
+            $params[] = $user['id'];
+
+            $stmt = $db->prepare("
+                SELECT r.*, 
                        a.name as app_name,
                        u.username as created_by,
                        u.full_name as creator_name,
@@ -93,13 +90,11 @@ switch ($method) {
                 LEFT JOIN apps a ON r.app_id = a.id
                 LEFT JOIN users u ON r.created_by = u.id
                 LEFT JOIN votes v ON r.id = v.request_id
-                WHERE " . implode(' AND ', $where) . "
+                WHERE {$whereClause}
                 GROUP BY r.id
                 ORDER BY {$sort}
-            ";
-            $params[] = $user['id']; // Add current user ID for user_voted check
+            ");
 
-            $stmt = $db->prepare($query);
             $stmt->execute($params);
             $requests = $stmt->fetchAll();
 
