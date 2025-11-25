@@ -126,15 +126,46 @@ function renderRequests() {
         return;
     }
 
+    // Separate active and finished requests
+    const activeRequests = requests.filter(r =>
+        r.status === 'pending' || r.status === 'in_progress'
+    );
+    const finishedRequests = requests.filter(r =>
+        r.status === 'completed' || r.status === 'discarded'
+    );
+
     grid.innerHTML = '';
-    requests.forEach(request => {
+
+    // Render active requests
+    activeRequests.forEach(request => {
         const card = createRequestCard(request);
         grid.appendChild(card);
     });
+
+    // Add separator if there are finished requests
+    if (finishedRequests.length > 0) {
+        const separator = document.createElement('div');
+        separator.className = 'requests-separator';
+        separator.innerHTML = `
+            <div class="separator-line"></div>
+            <span class="separator-text">
+                <i class="iconoir-check-circle"></i>
+                Finalizadas (${finishedRequests.length})
+            </span>
+            <div class="separator-line"></div>
+        `;
+        grid.appendChild(separator);
+
+        // Render finished requests with subtle style
+        finishedRequests.forEach(request => {
+            const card = createRequestCard(request, true);
+            grid.appendChild(card);
+        });
+    }
 }
 
 // Create a single request card
-function createRequestCard(request) {
+function createRequestCard(request, isFinished = false) {
     const priorityClass = `priority-${request.priority}`;
     const statusClass = `status-${request.status}`;
     const date = new Date(request.created_at).toLocaleDateString('es-ES', {

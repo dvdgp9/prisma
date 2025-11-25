@@ -732,6 +732,48 @@ nav {
     gap: var(--spacing-lg);
 }
 
+/* Requests Separator */
+.requests-separator {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin: var(--spacing-xl) 0;
+}
+
+.separator-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-color), transparent);
+}
+
+.separator-text {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.separator-text i {
+    font-size: 1rem;
+    color: var(--status-completed);
+}
+
+/* Finished Cards - Subtle appearance */
+.card-finished {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.card-finished:hover {
+    opacity: 1;
+}
+
 /* Login Page */
 .login-container {
     min-height: 100vh;
