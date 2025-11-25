@@ -82,18 +82,22 @@ switch ($method) {
             }
 
             $query = "
-                SELECT 
-                    r.*,
-                    a.name as app_name,
-                    u.username as creator_username,
-                    u.full_name as creator_name,
-                    (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count
+                SELECT r.*,
+                       a.name as app_name,
+                       u.username as created_by,
+                       u.full_name as creator_name,
+                       u.email as creator_email,
+                       COALESCE(SUM(v.value), 0) as votes,
+                       MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
                 FROM requests r
-                INNER JOIN apps a ON r.app_id = a.id
-                INNER JOIN users u ON r.created_by = u.id
+                LEFT JOIN apps a ON r.app_id = a.id
+                LEFT JOIN users u ON r.created_by = u.id
+                LEFT JOIN votes v ON r.id = v.request_id
                 WHERE " . implode(' AND ', $where) . "
+                GROUP BY r.id
                 ORDER BY {$sort}
             ";
+            $params[] = $user['id']; // Add current user ID for user_voted check
 
             $stmt = $db->prepare($query);
             $stmt->execute($params);
