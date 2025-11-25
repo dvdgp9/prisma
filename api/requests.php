@@ -19,8 +19,14 @@ switch ($method) {
     case 'GET':
         // Get requests with filtering and sorting
         try {
-            $where = ['r.id IS NOT NULL'];
+            $where = ['1=1'];
             $params = [];
+
+            // Filter by ID (single request)
+            if (!empty($_GET['id'])) {
+                $where[] = 'r.id = ?';
+                $params[] = $_GET['id'];
+            }
 
             // Filter by app
             if (!empty($_GET['app_id'])) {
@@ -47,52 +53,63 @@ switch ($method) {
             }
 
             // Sorting
-            $orderBy = 'r.created_at DESC';
+            $sort = 'r.created_at DESC'; // Default sort
             if (!empty($_GET['sort'])) {
                 switch ($_GET['sort']) {
-                    case 'priority':
-                        $orderBy = "CASE 
-                            WHEN r.priority = 'critical' THEN 1
-                            WHEN r.priority = 'high' THEN 2
-                            WHEN r.priority = 'medium' THEN 3
-                            WHEN r.priority = 'low' THEN 4
-                            ELSE 5 END, r.created_at DESC";
-                        break;
-                    case 'votes':
-                        $orderBy = 'votes DESC, r.created_at DESC';
-                        break;
                     case 'date':
-                        $orderBy = 'r.created_at DESC';
+                        $sort = 'r.created_at DESC';
                         break;
                     case 'date_asc':
-                        $orderBy = 'r.created_at ASC';
+                        $sort = 'r.created_at ASC';
+                        break;
+                    case 'priority':
+                        // Order by priority: critical > high > medium > low
+                        $sort = "CASE r.priority 
+                                    WHEN 'critical' THEN 1 
+                                    WHEN 'high' THEN 2 
+                                    WHEN 'medium' THEN 3 
+                                    WHEN 'low' THEN 4 
+                                    ELSE 5 
+                                END, r.created_at DESC";
+                        break;
+                    case 'votes':
+                        $sort = 'r.vote_count DESC, r.created_at DESC';
+                        break;
+                    default:
+                        $sort = 'r.created_at DESC';
                         break;
                 }
             }
 
-            $whereClause = implode(' AND ', $where);
+            $whereClause = "WHERE " . implode(' AND ', $where);
+            $orderClause = "ORDER BY {$sort}";
 
-            $stmt = $db->prepare("
-                SELECT 
-                    r.*,
-                    a.name as app_name,
-                    u.full_name,
-                    u.email,
-                    u.username,
-                    COALESCE(u.full_name, u.email, u.username) as created_by,
-                    COUNT(DISTINCT v.id) as votes,
-                    MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
+            $query = "
+                SELECT r.*,
+                       a.name as app_name,
+                       u.username as created_by,
+                       u.full_name as creator_full_name,
+                       u.email as creator_email,
+                       COALESCE(v.user_voted, 0) as user_voted,
+                       COALESCE(vote_counts.votes, 0) as votes
                 FROM requests r
-                LEFT JOIN apps a ON r.app_id = a.id
-                LEFT JOIN users u ON r.user_id = u.id
-                LEFT JOIN votes v ON r.id = v.request_id
-                WHERE {$whereClause}
-                GROUP BY r.id
-                ORDER BY {$orderBy}
-            ");
+                INNER JOIN apps a ON r.app_id = a.id
+                LEFT JOIN users u ON r.created_by = u.id
+                LEFT JOIN votes v ON r.id = v.request_id AND v.user_id = ?
+                LEFT JOIN (
+                    SELECT request_id, SUM(value) as votes
+                    FROM votes
+                    GROUP BY request_id
+                ) vote_counts ON r.id = vote_counts.request_id
+                {$whereClause}
+                {$orderClause}
+            ";
 
-            $allParams = array_merge([$user['id']], $params);
-            $stmt->execute($allParams);
+            // Add user ID to params for the LEFT JOIN votes v ON ... AND v.user_id = ?
+            array_unshift($params, $user['id']);
+
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
             $requests = $stmt->fetchAll();
 
             success_response($requests);
