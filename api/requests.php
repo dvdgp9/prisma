@@ -81,7 +81,7 @@ switch ($method) {
                 }
             }
 
-            $whereClause = "WHERE " . implode(' AND ', $where);
+            $whereClause = count($where) > 0 ? "WHERE " . implode(' AND ', $where) : "";
             $orderClause = "ORDER BY {$sort}";
 
             $query = "
@@ -105,7 +105,7 @@ switch ($method) {
                 {$orderClause}
             ";
 
-            // Add user ID to params for the LEFT JOIN votes v ON ... AND v.user_id = ?
+            // Add user ID at the beginning for the votes LEFT JOIN
             array_unshift($params, $user['id']);
 
             $stmt = $db->prepare($query);
