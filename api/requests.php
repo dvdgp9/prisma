@@ -141,43 +141,40 @@ switch ($method) {
 
         if (empty($input['id'])) {
             error_response('Request ID is required');
-        
-        if (!isset($input['id'])) {
-            error_response('Request ID is required');
         }
-        
+
         // Check if user has permission (must be admin/superadmin)
         if (!has_role('admin') && !has_role('superadmin')) {
             error_response('Unauthorized', 403);
         }
-        
+
         try {
             $updates = [];
             $values = [];
-            
+
             // Title
             if (isset($input['title'])) {
                 $updates[] = 'title = ?';
                 $values[] = $input['title'];
             }
-            
+
             // Description
             if (isset($input['description'])) {
                 $updates[] = 'description = ?';
                 $values[] = $input['description'];
             }
-            
+
             // Priority
             if (isset($input['priority'])) {
                 $updates[] = 'priority = ?';
                 $values[] = $input['priority'];
             }
-            
+
             // Status - Handle completed_at timestamp
             if (isset($input['status'])) {
                 $updates[] = 'status = ?';
                 $values[] = $input['status'];
-                
+
                 // Set completed_at when marking as completed or discarded
                 if ($input['status'] === 'completed' || $input['status'] === 'discarded') {
                     $updates[] = 'completed_at = NOW()';
@@ -187,20 +184,20 @@ switch ($method) {
                     $updates[] = 'completed_at = NULL';
                 }
             }
-            
+
             if (empty($updates)) {
                 error_response('No fields to update');
             }
-            
+
             $values[] = $input['id'];
-            
+
             $stmt = $db->prepare("
                 UPDATE requests 
                 SET " . implode(', ', $updates) . "
                 WHERE id = ?
             ");
             $stmt->execute($values);
-            
+
             success_response([], 'Request updated successfully');
         } catch (Exception $e) {
             error_response('Failed to update request: ' . $e->getMessage(), 500);
