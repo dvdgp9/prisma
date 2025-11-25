@@ -18,84 +18,81 @@ $user = get_logged_user();
 switch ($method) {
     case 'GET':
         // Get requests with filtering and sorting
-        // Get all requests with filters
         try {
-            $where = ['1=1'];
-            $whereParams = [];
+            $where = ['r.id IS NOT NULL'];
+            $params = [];
 
             // Filter by app
             if (!empty($_GET['app_id'])) {
                 $where[] = 'r.app_id = ?';
-                $whereParams[] = $_GET['app_id'];
+                $params[] = $_GET['app_id'];
             }
 
             // Filter by company (non-superadmins only see their company's requests)
             if ($user['role'] !== 'superadmin') {
                 $where[] = 'a.company_id = ?';
-                $whereParams[] = $user['company_id'];
+                $params[] = $user['company_id'];
             }
 
             // Filter by priority
             if (!empty($_GET['priority'])) {
                 $where[] = 'r.priority = ?';
-                $whereParams[] = $_GET['priority'];
+                $params[] = $_GET['priority'];
             }
 
             // Filter by status
             if (!empty($_GET['status'])) {
                 $where[] = 'r.status = ?';
-                $whereParams[] = $_GET['status'];
+                $params[] = $_GET['status'];
             }
 
             // Sorting
-            $sort = 'r.created_at DESC';
+            $orderBy = 'r.created_at DESC';
             if (!empty($_GET['sort'])) {
                 switch ($_GET['sort']) {
-                    case 'date':
-                    case 'date_desc':
-                        $sort = 'r.created_at DESC';
-                        break;
-                    case 'date_asc':
-                        $sort = 'r.created_at ASC';
-                        break;
                     case 'priority':
-                        $sort = "CASE r.priority 
-                                    WHEN 'critical' THEN 1 
-                                    WHEN 'high' THEN 2 
-                                    WHEN 'medium' THEN 3 
-                                    WHEN 'low' THEN 4 
-                                    ELSE 5 
-                                END, r.created_at DESC";
+                        $orderBy = "CASE 
+                            WHEN r.priority = 'critical' THEN 1
+                            WHEN r.priority = 'high' THEN 2
+                            WHEN r.priority = 'medium' THEN 3
+                            WHEN r.priority = 'low' THEN 4
+                            ELSE 5 END, r.created_at DESC";
                         break;
                     case 'votes':
-                        $sort = 'votes DESC, r.created_at DESC';
+                        $orderBy = 'votes DESC, r.created_at DESC';
+                        break;
+                    case 'date':
+                        $orderBy = 'r.created_at DESC';
+                        break;
+                    case 'date_asc':
+                        $orderBy = 'r.created_at ASC';
                         break;
                 }
             }
 
             $whereClause = implode(' AND ', $where);
 
-            // Build params array: user_id FIRST (for SELECT), then WHERE params
-            $params = array_merge([$user['id']], $whereParams);
-
             $stmt = $db->prepare("
-                SELECT r.*, 
-                       a.name as app_name,
-                       u.username as created_by,
-                       u.full_name as creator_name,
-                       u.email as creator_email,
-                       COALESCE(SUM(v.value), 0) as votes,
-                       MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
+                SELECT 
+                    r.*,
+                    a.name as app_name,
+                    u.full_name,
+                    u.email,
+                    u.username,
+                    COALESCE(u.full_name, u.email, u.username) as created_by,
+                    COUNT(DISTINCT v.id) as votes,
+                    MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
                 FROM requests r
                 LEFT JOIN apps a ON r.app_id = a.id
-                LEFT JOIN users u ON r.created_by = u.id
+                LEFT JOIN users u ON r.user_id = u.id
                 LEFT JOIN votes v ON r.id = v.request_id
                 WHERE {$whereClause}
                 GROUP BY r.id
-                ORDER BY {$sort}
+                ORDER BY {$orderBy}
             ");
 
-            $stmt->execute($params);
+            $allParams = array_merge([$user['id']], $params);
+            $stmt->execute($allParams);
             $requests = $stmt->fetchAll();
 
             success_response($requests);
