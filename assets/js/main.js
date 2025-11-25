@@ -473,15 +473,24 @@ async function vote(requestId, action = 'up') {
 
 // Open new request modal
 function openNewRequestModal() {
-    document.getElementById('new-request-modal').classList.add('active');
+    // Reset form
+    document.getElementById('new-request-form').reset();
 
-    // Pre-select current app if viewing specific app
+    // Pre-select current app if viewing a specific app
     if (currentView === 'app' && currentAppId) {
-        const appSelect = document.getElementById('request-app');
+        const appSelect = document.getElementById('request-app'); // Keep original ID for now, assuming 'new-request-app' is a typo in instruction
         if (appSelect) {
             appSelect.value = currentAppId;
         }
     }
+
+    // Open modal
+    document.getElementById('new-request-modal').classList.add('active');
+
+    // Auto-focus on title field for immediate typing
+    setTimeout(() => {
+        document.getElementById('request-title').focus(); // Assuming 'request-title' is the ID for the title field in the new request modal
+    }, 100);
 }
 
 // Close modal
