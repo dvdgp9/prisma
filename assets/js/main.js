@@ -183,12 +183,6 @@ function createRequestCard(request) {
         </div>
 
         <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); flex-wrap: wrap;">
-            ${currentView === 'global' && request.app_name ? `
-                <span class="app-badge">
-                    <i class="iconoir-app-window"></i>
-                    ${escapeHtml(request.app_name)}
-                </span>
-            ` : ''}
             <div class="priority-badge priority-${request.priority}" 
                  ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
                 ${priorityLabels[request.priority] || request.priority.toUpperCase()}
@@ -224,9 +218,16 @@ function createRequestCard(request) {
         ` : ''}
 
         <div class="card-footer">
-            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                <i class="iconoir-user" style="color: var(--text-muted);"></i>
-                <span class="text-small text-muted">${escapeHtml(request.created_by)}</span>
+            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.875rem;"></i>
+                    <span class="text-small text-muted">${escapeHtml(request.created_by)}</span>
+                </div>
+                ${currentView === 'global' && request.app_name ? `
+                    <span class="app-badge-footer">
+                        ${escapeHtml(request.app_name)}
+                    </span>
+                ` : ''}
             </div>
             <div class="vote-section">
                 <button class="vote-btn ${request.user_voted ? 'voted' : ''}" 
