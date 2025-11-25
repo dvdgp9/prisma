@@ -115,9 +115,8 @@ try {
             status, 
             requester_name, 
             requester_email, 
-            is_public_request,
-            created_by
-        ) VALUES (?, ?, ?, 'medium', 'pending_approval', ?, ?, 1, NULL)
+            is_public_request
+        ) VALUES (?, ?, ?, 'medium', 'pending_approval', ?, ?, 1)
     ");
 
     $stmt->execute([
