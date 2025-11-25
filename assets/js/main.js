@@ -268,7 +268,7 @@ function createRequestCard(request, isFinished = false) {
                         <i class="iconoir-arrow-down"></i>
                     </button>
                 ` : ''}
-                <span class="vote-count">${request.votes || 0}</span>
+                <span class="vote-count">${request.vote_count || 0}</span>
                 <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
                         onclick="vote(${request.id}, 'up')"
                         title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
