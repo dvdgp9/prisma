@@ -1,3 +1,27 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+
+// Redirect if already logged in
+if (is_logged_in()) {
+    header('Location: /index.php');
+    exit;
+}
+
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']);
+
+    if (login($username, $password, $remember)) {
+        header('Location: /index.php');
+        exit;
+    } else {
+        $error = 'Usuario o contraseña incorrectos';
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -15,31 +39,6 @@
                 <div class="login-logo">Prisma</div>
                 <p class="text-muted">Dashboard centralizado de desarrollo</p>
             </div>
-
-            <?php
-            require_once __DIR__ . '/includes/auth.php';
-
-            // Redirect if already logged in
-            if (is_logged_in()) {
-                header('Location: /index.php');
-                exit;
-            }
-
-            $error = '';
-
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $username = $_POST['username'] ?? '';
-                $password = $_POST['password'] ?? '';
-                $remember = isset($_POST['remember']);
-
-                if (login($username, $password, $remember)) {
-                    header('Location: /index.php');
-                    exit;
-                } else {
-                    $error = 'Usuario o contraseña incorrectos';
-                }
-            }
-            ?>
 
             <?php if ($error): ?>
                 <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
