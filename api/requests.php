@@ -50,56 +50,74 @@ switch ($method) {
             if (!empty($_GET['status'])) {
                 $where[] = 'r.status = ?';
                 $params[] = $_GET['status'];
-            }
-
-            // Sorting
-            $sort = 'r.created_at DESC'; // Default sort
-            if (!empty($_GET['sort'])) {
-                switch ($_GET['sort']) {
-                    case 'date':
-                        $sort = 'r.created_at DESC';
-                        break;
-                    case 'date_asc':
-                        $sort = 'r.created_at ASC';
-                        break;
-                    case 'priority':
-                        // Order by priority: critical > high > medium > low
-                        $sort = "CASE r.priority 
-                                    WHEN 'critical' THEN 1 
-                                    WHEN 'high' THEN 2 
-                                    WHEN 'medium' THEN 3 
-                                    WHEN 'low' THEN 4 
-                                    ELSE 5 
-                                END, r.created_at DESC";
-                        break;
-                    case 'votes':
-                        $sort = 'r.vote_count DESC, r.created_at DESC';
-                        break;
-                    default:
-                        $sort = 'r.created_at DESC';
-                        break;
-                }
-            }
-
-            $query = "
-                SELECT 
-                    r.*,
-                    a.name as app_name,
-                    u.username as creator_username,
-                    u.full_name as creator_name,
-                    (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count
-                FROM requests r
-                INNER JOIN apps a ON r.app_id = a.id
-                INNER JOIN users u ON r.created_by = u.id
-                WHERE " . implode(' AND ', $where) . "
-                ORDER BY {$sort}
-            ";
-
+        // Get all requests (or filtered)
+        $app_filter = $_GET['app'] ?? null;
+        $priority_filter = $_GET['priority'] ?? null;
+        $status_filter = $_GET['status'] ?? null;
+        $sort = $_GET['sort'] ?? 'date_desc';
+        
+        // Build query
+        $query = "
+            SELECT 
+                r.*,
+                a.name as app_name,
+                u.username as creator_username,
+                u.full_name as creator_name,
+                (SELECT COUNT(*) FROM votes WHERE request_id = r.id) as vote_count,
+                EXISTS(SELECT 1 FROM votes WHERE request_id = r.id AND user_id = ?) as user_voted
+            FROM requests r
+            LEFT JOIN apps a ON r.app_id = a.id
+            LEFT JOIN users u ON r.created_by = u.id
+            WHERE 1=1
+        ";
+        
+        $params = [$user['id']];
+        
+        // Company filter for non-superadmins
+        if (!has_role('superadmin')) {
+            $query .= " AND r.company_id = ?";
+            $params[] = $user['company_id'];
+        }
+        
+        // App filter
+        if ($app_filter) {
+            $query .= " AND r.app_id = ?";
+            $params[] = $app_filter;
+        }
+        
+        // Priority filter
+        if ($priority_filter) {
+            $query .= " AND r.priority = ?";
+            $params[] = $priority_filter;
+        }
+        
+        // Status filter
+        if ($status_filter) {
+            $query .= " AND r.status = ?";
+            $params[] = $status_filter;
+        }
+        
+        // Sorting
+        switch ($sort) {
+            case 'date_asc':
+                $query .= " ORDER BY r.created_at ASC";
+                break;
+            case 'priority':
+                $query .= " ORDER BY FIELD(r.priority, 'critical', 'high', 'medium', 'low')";
+                break;
+            case 'votes':
+                $query .= " ORDER BY vote_count DESC";
+                break;
+            default:
+                $query .= " ORDER BY r.created_at DESC";
+        }
+        
+        try {
             $stmt = $db->prepare($query);
             $stmt->execute($params);
-            $requests = $stmt->fetchAll();
-
-            success_response($requests);
+            $results = $stmt->fetchAll();
+            
+            success_response($results);
         } catch (Exception $e) {
             error_response('Failed to fetch requests: ' . $e->getMessage(), 500);
         }

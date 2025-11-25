@@ -275,7 +275,7 @@ function createRequestCard(request, isFinished = false) {
             <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
                     <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.875rem;"></i>
-                    <span class="text-small text-muted">${escapeHtml(request.created_by)}</span>
+                    <span class="text-small text-muted">${escapeHtml(request.creator_name || request.creator_username || 'Desconocido')}</span>
                 </div>
                 ${currentView === 'global' && request.app_name ? `
                     <span class="app-badge-footer">
