@@ -32,15 +32,24 @@ async function loadPendingApprovals() {
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     document.getElementById('pending-approvals-nav').classList.add('active');
 
+    console.log('Loading pending approvals...');
+
     try {
         const response = await fetch('/api/pending-approvals.php');
         const data = await response.json();
 
+        console.log('Pending approvals response:', data);
+        console.log('Number of pending requests:', data.data ? data.data.length : 0);
+
         if (data.success) {
             renderPendingRequests(data.data);
+        } else {
+            console.error('Error from API:', data.error);
+            alert('Error: ' + data.error);
         }
     } catch (error) {
         console.error('Error loading pending approvals:', error);
+        alert('Error cargando solicitudes pendientes');
     }
 }
 
