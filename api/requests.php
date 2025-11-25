@@ -81,29 +81,22 @@ switch ($method) {
                 }
             }
 
-            $whereClause = implode(' AND ', $where);
-
-            $stmt = $db->prepare("
+            $query = "
                 SELECT 
                     r.*,
                     a.name as app_name,
-                    u.full_name as creator_full_name,
-                    u.email as creator_email,
-                    u.username,
-                    COALESCE(u.full_name, u.email, u.username) as created_by,
-                    COUNT(DISTINCT v.id) as votes,
-                    MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
+                    u.username as creator_username,
+                    u.full_name as creator_name,
+                    (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count
                 FROM requests r
-                LEFT JOIN apps a ON r.app_id = a.id
-                LEFT JOIN users u ON r.user_id = u.id
-                LEFT JOIN votes v ON r.id = v.request_id
-                WHERE {$whereClause}
-                GROUP BY r.id
+                INNER JOIN apps a ON r.app_id = a.id
+                INNER JOIN users u ON r.created_by = u.id
+                WHERE " . implode(' AND ', $where) . "
                 ORDER BY {$sort}
-            ");
+            ";
 
-            $allParams = array_merge([$user['id']], $params);
-            $stmt->execute($allParams);
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
             $requests = $stmt->fetchAll();
 
             success_response($requests);
