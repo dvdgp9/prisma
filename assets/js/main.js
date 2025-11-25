@@ -182,7 +182,13 @@ function createRequestCard(request) {
             ` : ''}
         </div>
 
-        <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md);">
+        <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); flex-wrap: wrap;">
+            ${currentView === 'global' && request.app_name ? `
+                <span class="app-badge">
+                    <i class="iconoir-app-window"></i>
+                    ${escapeHtml(request.app_name)}
+                </span>
+            ` : ''}
             <div class="priority-badge priority-${request.priority}" 
                  ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
                 ${priorityLabels[request.priority] || request.priority.toUpperCase()}
