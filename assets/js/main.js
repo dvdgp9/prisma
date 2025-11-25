@@ -213,19 +213,42 @@ function createRequestCard(request, isFinished = false) {
             ` : ''}
         </div>
 
-        <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); flex-wrap: wrap;">
+        <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); flex-wrap: wrap; align-items: center;">
             <div class="priority-badge priority-${request.priority}" 
                  ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
                 ${priorityLabels[request.priority] || request.priority.toUpperCase()}
                 ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
                 ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
             </div>
-            <div class="status-badge status-${request.status}"
-                 ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'status')"` : ''}>
-                ${statusLabels[request.status] || request.status}
-                ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
-                ${isAdminOrSuperadmin ? createStatusDropdown(request.id, request.status) : ''}
-            </div>
+            
+            ${isAdminOrSuperadmin ? `
+                <div class="status-actions">
+                    <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
+                            title="Pausar">
+                        <i class="iconoir-pause"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
+                            title="En progreso">
+                        <i class="iconoir-play"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
+                            title="Completar">
+                        <i class="iconoir-check"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
+                            title="Descartar">
+                        <i class="iconoir-xmark"></i>
+                    </button>
+                </div>
+            ` : `
+                <div class="status-badge-display status-${request.status}">
+                    ${statusLabels[request.status] || request.status}
+                </div>
+            `}
         </div>
 
         <p class="card-description">${escapeHtml(request.description)}</p>
