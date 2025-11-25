@@ -19,24 +19,26 @@
             <?php
             require_once __DIR__ . '/includes/auth.php';
 
+            // Redirect if already logged in
+            if (is_logged_in()) {
+                header('Location: /index.php');
+                exit;
+            }
+
             $error = '';
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $username = $_POST['username'] ?? '';
                 $password = $_POST['password'] ?? '';
-
-                if (login($username, $password)) {
+                $remember = isset($_POST['remember']);
+                
+                if (login($username, $password, $remember)) {
                     header('Location: /index.php');
                     exit;
                 } else {
-                    $error = 'Usuario o contraseña incorrectos.';
+                    $error = 'Usuario o contraseña incorrectos';
                 }
             }
-
-            // Redirect if already logged in
-            if (is_logged_in()) {
-                header('Location: /index.php');
-                exit;
             }
             ?>
 
@@ -53,7 +55,14 @@
 
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" name="password" required placeholder="Introduce tu contraseña">
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <input type="checkbox" id="remember" name="remember" style="width: auto; margin: 0;">
+                    <label for="remember" style="margin: 0; font-weight: 500; cursor: pointer;">
+                        Recordarme durante 60 días
+                    </label>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">

@@ -1,57 +1,103 @@
 <?php
 /**
- * Authentication Helper Functions
+ * Authentication and authorization functions
  */
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/session.php';
+// Start session with secure settings
+if (session_status() === PHP_SESSION_NONE) {
+    session_start([
+        'cookie_httponly' => true,
+        'cookie_samesite' => 'Lax'
+    ]);
+}
+
+require_once __DIR__ . '/db.php';
 
 /**
- * Attempt to log in a user
+ * Login user
  */
-function login($username, $password)
+function login($username, $password, $remember = false)
 {
     $db = getDB();
 
-    $stmt = $db->prepare("
-        SELECT u.*, c.name as company_name 
-        FROM users u 
-        LEFT JOIN companies c ON u.company_id = c.id 
-        WHERE u.username = ? AND u.is_active = 1
-    ");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
+    try {
+        $stmt = $db->prepare("
+            SELECT u.id, u.username, u.password, u.role, u.company_id, u.full_name,
+                   c.name as company_name
+            FROM users u
+            LEFT JOIN companies c ON u.company_id = c.id
+            WHERE u.username = ?
+        ");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
-        // Regenerate session ID on login
-        session_regenerate_id(true);
+        if (!$user || !password_verify($password, $user['password'])) {
+            return false;
+        }
 
-        // Store user data in session
+        // Set session data
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['company_id'] = $user['company_id'];
-        $_SESSION['company_name'] = $user['company_name'];
         $_SESSION['full_name'] = $user['full_name'];
-        $_SESSION['logged_in'] = true;
+        $_SESSION['company_name'] = $user['company_name'];
+
+        // Set remember me cookie if requested
+        if ($remember) {
+            $token = bin2hex(random_bytes(32));
+            $expiry = time() + (60 * 24 * 60 * 60); // 60 days
+
+            // Store token in database
+            $stmt = $db->prepare("
+                UPDATE users 
+                SET remember_token = ?, remember_token_expiry = FROM_UNIXTIME(?)
+                WHERE id = ?
+            ");
+            $stmt->execute([$token, $expiry, $user['id']]);
+
+            // Set cookie
+            setcookie('remember_token', $token, $expiry, '/', '', false, true);
+        }
 
         return true;
+    } catch (Exception $e) {
+        error_log('Login error: ' . $e->getMessage());
+        return false;
     }
-
-    return false;
 }
 
 /**
- * Log out current user
+ * Logout user
  */
 function logout()
 {
+    $db = getDB();
+
+    // Clear remember token from database if exists
+    if (isset($_SESSION['user_id'])) {
+        $stmt = $db->prepare("
+            UPDATE users 
+            SET remember_token = NULL, remember_token_expiry = NULL
+            WHERE id = ?
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+    }
+
+    // Clear remember me cookie
+    if (isset($_COOKIE['remember_token'])) {
+        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+    }
+
+    // Clear session data
     $_SESSION = array();
 
+    // Clear session cookie
     if (isset($_COOKIE[session_name()])) {
         setcookie(session_name(), '', time() - 3600, '/');
     }
 
+    // Destroy session
     session_destroy();
 }
 
@@ -60,11 +106,44 @@ function logout()
  */
 function is_logged_in()
 {
-    return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+    if (isset($_SESSION['user_id'])) {
+        return true;
+    }
+
+    // Check remember me cookie
+    if (isset($_COOKIE['remember_token'])) {
+        $db = getDB();
+        $stmt = $db->prepare("
+            SELECT u.id, u.username, u.role, u.company_id, u.full_name,
+                   c.name as company_name
+            FROM users u
+            LEFT JOIN companies c ON u.company_id = c.id
+            WHERE u.remember_token = ? 
+            AND u.remember_token_expiry > NOW()
+        ");
+        $stmt->execute([$_COOKIE['remember_token']]);
+        $user = $stmt->fetch();
+
+        if ($user) {
+            // Restore session
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['company_id'] = $user['company_id'];
+            $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['company_name'] = $user['company_name'];
+            return true;
+        } else {
+            // Invalid/expired token, remove cookie
+            setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+        }
+    }
+
+    return false;
 }
 
 /**
- * Require login - redirect to login page if not authenticated
+ * Require user to be logged in
  */
 function require_login()
 {
