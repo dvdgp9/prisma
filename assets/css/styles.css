@@ -832,6 +832,18 @@ nav {
     min-width: 180px;
 }
 
+.badge-count {
+    margin-left: auto;
+    background: var(--secondary-color);
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-full);
+    min-width: 1.25rem;
+    text-align: center;
+}
+
 /* Cards Grid */
 .cards-grid {
     display: grid;

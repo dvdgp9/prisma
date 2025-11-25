@@ -62,6 +62,12 @@ $user = get_logged_user();
                 <?php if (has_role('admin')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Administración</div>
+                        <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item"
+                            id="pending-approvals-nav">
+                            <i class="iconoir-clock"></i>
+                            <span>Pendientes Aprobar</span>
+                            <span class="badge-count" id="pending-count" style="display: none;"></span>
+                        </a>
                         <?php if (has_role('superadmin')): ?>
                             <a href="/admin.php" class="nav-item">
                                 <i class="iconoir-shield-check"></i>
@@ -304,6 +310,9 @@ $user = get_logged_user();
     <div id="toast-container"></div>
 
     <script src="/assets/js/main.js"></script>
+    <?php if (has_role('admin')): ?>
+        <script src="/assets/js/pending-approvals.js"></script>
+    <?php endif; ?>
 </body>
 
 </html>

@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', function () {
     loadApps();
     loadRequests();
     setupFileUpload();
+
+    // Update pending count for admins
+    if (userRole === 'admin' || userRole === 'superadmin') {
+        updatePendingCount();
+    }
 });
 
 // Load all apps
