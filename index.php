@@ -300,6 +300,9 @@ $user = get_logged_user();
         </div>
     </div>
 
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
     <script src="/assets/js/main.js"></script>
 </body>
 
