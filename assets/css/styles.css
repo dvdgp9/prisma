@@ -1094,6 +1094,124 @@ nav {
     gap: var(--spacing-lg);
 }
 
+/* Toast Notifications */
+#toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: 0.875rem 1.25rem;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+    min-width: 280px;
+    max-width: 400px;
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease-out;
+    border-left: 4px solid;
+}
+
+.toast.toast-hide {
+    animation: toastSlideOut 0.3s ease-out forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+.toast-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.toast-pending .toast-icon {
+    background: rgba(240, 173, 78, 0.15);
+    color: #F0AD4E;
+}
+
+.toast-pending {
+    border-left-color: #F0AD4E;
+}
+
+.toast-in_progress .toast-icon {
+    background: rgba(91, 192, 222, 0.15);
+    color: #5BC0DE;
+}
+
+.toast-in_progress {
+    border-left-color: #5BC0DE;
+}
+
+.toast-completed .toast-icon {
+    background: rgba(92, 184, 92, 0.15);
+    color: #5CB85C;
+}
+
+.toast-completed {
+    border-left-color: #5CB85C;
+}
+
+.toast-discarded .toast-icon {
+    background: rgba(149, 165, 166, 0.15);
+    color: #95A5A6;
+}
+
+.toast-discarded {
+    border-left-color: #95A5A6;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.toast-message {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .cards-grid {

@@ -389,6 +389,17 @@ async function quickUpdateRequest(requestId, field, value, event) {
                 d.classList.remove('active');
             });
 
+            // Show toast notification for status changes
+            if (field === 'status') {
+                const statusMessages = {
+                    'pending': { title: 'Pausada', message: 'La mejora está en espera', icon: 'iconoir-pause' },
+                    'in_progress': { title: 'En progreso', message: 'Trabajando en la mejora', icon: 'iconoir-play' },
+                    'completed': { title: 'Completada', message: 'La mejora está finalizada', icon: 'iconoir-check' },
+                    'discarded': { title: 'Descartada', message: 'La mejora ha sido descartada', icon: 'iconoir-xmark' }
+                };
+                showToast(statusMessages[value], `toast-${value}`);
+            }
+
             // Reload requests to show updated state
             await loadRequests();
         } else {
@@ -398,6 +409,33 @@ async function quickUpdateRequest(requestId, field, value, event) {
         console.error('Error updating request:', error);
         alert('Error al actualizar');
     }
+}
+
+// Toast notification system
+function showToast(config, type = '') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="${config.icon}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">${config.title}</div>
+            <div class="toast-message">${config.message}</div>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('toast-hide');
+        setTimeout(() => {
+            container.removeChild(toast);
+        }, 300);
+    }, 3000);
 }
 
 // Close dropdowns when clicking outside
