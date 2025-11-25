@@ -106,6 +106,13 @@ try {
     }
 
     // Create request with "pending_approval" status
+    error_log('Creating public request with data: ' . json_encode([
+        'app_id' => $input['app_id'],
+        'title' => $input['title'],
+        'status' => 'pending_approval',
+        'is_public_request' => 1
+    ]));
+
     $stmt = $db->prepare("
         INSERT INTO requests (
             app_id, 
@@ -128,6 +135,7 @@ try {
     ]);
 
     $request_id = $db->lastInsertId();
+    error_log('Created request ID: ' . $request_id);
 
     $db->commit();
 
