@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/database.php';
 
 header('Content-Type: application/json');
 
+// Helper functions (since we can't use auth.php without session)
 function error_response($message, $code = 400)
 {
     http_response_code($code);
@@ -27,6 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $input = json_decode(file_get_contents('php://input'), true);
 
+if (!$input) {
+    error_response('Invalid JSON data');
+}
+
 // Validate required fields
 $required = ['company_id', 'app_id', 'title', 'description', 'requester_name', 'requester_email'];
 foreach ($required as $field) {
@@ -40,10 +45,17 @@ if (!filter_var($input['requester_email'], FILTER_VALIDATE_EMAIL)) {
     error_response('Formato de correo electrónico inválido');
 }
 
-$db = getDB();
+try {
+    $db = getDB();
+} catch (Exception $e) {
+    error_log('Database connection error: ' . $e->getMessage());
+    error_response('Error de conexión a la base de datos', 500);
+}
 
 // Get client IP
 $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'];
+// Clean IP if it contains multiple addresses
+$ip = explode(',', $ip)[0];
 
 // Rate limiting check (5 requests per hour)
 try {
@@ -123,7 +135,9 @@ try {
     success_response(['id' => $request_id], 'Solicitud enviada correctamente');
 
 } catch (Exception $e) {
-    $db->rollBack();
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     error_log('Public request error: ' . $e->getMessage());
-    error_response('Error al procesar la solicitud', 500);
+    error_response('Error al procesar la solicitud: ' . $e->getMessage(), 500);
 }
