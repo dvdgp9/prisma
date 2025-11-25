@@ -21,30 +21,30 @@ switch ($method) {
         // Get all requests with filters
         try {
             $where = ['1=1'];
-            $params = [];
+            $whereParams = [];
 
             // Filter by app
             if (!empty($_GET['app_id'])) {
                 $where[] = 'r.app_id = ?';
-                $params[] = $_GET['app_id'];
+                $whereParams[] = $_GET['app_id'];
             }
 
             // Filter by company (non-superadmins only see their company's requests)
             if ($user['role'] !== 'superadmin') {
                 $where[] = 'a.company_id = ?';
-                $params[] = $user['company_id'];
+                $whereParams[] = $user['company_id'];
             }
 
             // Filter by priority
             if (!empty($_GET['priority'])) {
                 $where[] = 'r.priority = ?';
-                $params[] = $_GET['priority'];
+                $whereParams[] = $_GET['priority'];
             }
 
             // Filter by status
             if (!empty($_GET['status'])) {
                 $where[] = 'r.status = ?';
-                $params[] = $_GET['status'];
+                $whereParams[] = $_GET['status'];
             }
 
             // Sorting
@@ -75,8 +75,8 @@ switch ($method) {
 
             $whereClause = implode(' AND ', $where);
 
-            // Add user ID at the end for the user_voted check
-            $params[] = $user['id'];
+            // Build params array: user_id FIRST (for SELECT), then WHERE params
+            $params = array_merge([$user['id']], $whereParams);
 
             $stmt = $db->prepare("
                 SELECT r.*, 
