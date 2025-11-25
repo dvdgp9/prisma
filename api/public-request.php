@@ -2,6 +2,7 @@
 /**
  * Public Request API - Handle external improvement requests
  * No authentication required - includes rate limiting
+ * Version: 2.0 - Status fix
  */
 
 require_once __DIR__ . '/../config/database.php';
