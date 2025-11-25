@@ -141,58 +141,66 @@ switch ($method) {
 
         if (empty($input['id'])) {
             error_response('Request ID is required');
+        
+        if (!isset($input['id'])) {
+            error_response('Request ID is required');
         }
-
+        
+        // Check if user has permission (must be admin/superadmin)
+        if (!has_role('admin') && !has_role('superadmin')) {
+            error_response('Unauthorized', 403);
+        }
+        
         try {
-            // Check if user can modify this request
-            $stmt = $db->prepare("SELECT created_by FROM requests WHERE id = ?");
-            $stmt->execute([$input['id']]);
-            $request = $stmt->fetch();
-
-            if (!$request) {
-                error_response('Request not found', 404);
-            }
-
-            if (!can_modify_request($request['created_by'])) {
-                error_response('You do not have permission to modify this request', 403);
-            }
-
             $updates = [];
             $values = [];
-
+            
+            // Title
             if (isset($input['title'])) {
                 $updates[] = 'title = ?';
                 $values[] = $input['title'];
             }
-
+            
+            // Description
             if (isset($input['description'])) {
                 $updates[] = 'description = ?';
                 $values[] = $input['description'];
             }
-
-            if (isset($input['priority']) && has_role('admin')) {
+            
+            // Priority
+            if (isset($input['priority'])) {
                 $updates[] = 'priority = ?';
                 $values[] = $input['priority'];
             }
-
-            if (isset($input['status']) && has_role('admin')) {
+            
+            // Status - Handle completed_at timestamp
+            if (isset($input['status'])) {
                 $updates[] = 'status = ?';
                 $values[] = $input['status'];
+                
+                // Set completed_at when marking as completed or discarded
+                if ($input['status'] === 'completed' || $input['status'] === 'discarded') {
+                    $updates[] = 'completed_at = NOW()';
+                }
+                // Reset completed_at when reopening task
+                else if ($input['status'] === 'pending' || $input['status'] === 'in_progress') {
+                    $updates[] = 'completed_at = NULL';
+                }
             }
-
+            
             if (empty($updates)) {
                 error_response('No fields to update');
             }
-
+            
             $values[] = $input['id'];
-
+            
             $stmt = $db->prepare("
                 UPDATE requests 
                 SET " . implode(', ', $updates) . "
                 WHERE id = ?
             ");
             $stmt->execute($values);
-
+            
             success_response([], 'Request updated successfully');
         } catch (Exception $e) {
             error_response('Failed to update request: ' . $e->getMessage(), 500);
