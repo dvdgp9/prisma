@@ -542,6 +542,11 @@ label {
     color: white;
 }
 
+.vote-btn.vote-down:hover {
+    background: var(--secondary-color);
+    color: white;
+}
+
 .vote-count {
     font-size: 1.125rem;
     font-weight: 700;

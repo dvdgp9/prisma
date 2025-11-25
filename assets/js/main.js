@@ -261,12 +261,19 @@ function createRequestCard(request, isFinished = false) {
                 ` : ''}
             </div>
             <div class="vote-section">
-                <button class="vote-btn ${request.user_voted ? 'voted' : ''}" 
-                        onclick="toggleVote(${request.id})"
-                        title="${request.user_voted ? 'Quitar voto' : 'Votar'}">
+                ${isAdminOrSuperadmin ? `
+                    <button class="vote-btn vote-down" 
+                            onclick="vote(${request.id}, 'down')"
+                            title="Reducir votos">
+                        <i class="iconoir-arrow-down"></i>
+                    </button>
+                ` : ''}
+                <span class="vote-count">${request.votes || 0}</span>
+                <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
+                        onclick="vote(${request.id}, 'up')"
+                        title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
                     <i class="iconoir-arrow-up"></i>
                 </button>
-                <span class="vote-count">${request.votes || 0}</span>
             </div>
         </div>
     `;
@@ -378,24 +385,28 @@ document.addEventListener('click', () => {
 });
 
 // Vote on a request
-async function toggleVote(requestId) {
+async function vote(requestId, action = 'up') {
     try {
         const response = await fetch('/api/votes.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ request_id: requestId, action: action })
+            body: JSON.stringify({
+                request_id: requestId,
+                action: action
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            loadRequests(); // Reload to show updated vote count
+            // Reload requests to update vote count
+            await loadRequests();
         } else {
-            alert(data.error || 'Error al votar');
+            alert(data.error || 'Error al procesar el voto');
         }
     } catch (error) {
         console.error('Error voting:', error);
-        alert('Error al votar');
+        alert('Error al procesar el voto');
     }
 }
 
