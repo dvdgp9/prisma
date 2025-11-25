@@ -113,6 +113,28 @@ switch ($method) {
         }
         
         try {
+            }
+            
+            $sort = $_GET['sort'] ?? 'date_desc';
+            $order_by = '';
+
+            // Sorting
+            switch ($sort) {
+                case 'date_asc':
+                    $order_by = " ORDER BY r.created_at ASC";
+                    break;
+                case 'priority':
+                    $order_by = " ORDER BY FIELD(r.priority, 'critical', 'high', 'medium', 'low')";
+                    break;
+                case 'votes':
+                    $order_by = " ORDER BY vote_count DESC";
+                    break;
+                default:
+                    $order_by = " ORDER BY r.created_at DESC";
+            }
+
+            $query = "SELECT {$select_fields} {$join_tables} WHERE " . implode(' AND ', $where_clauses) . $order_by;
+            
             $stmt = $db->prepare($query);
             $stmt->execute($params);
             $results = $stmt->fetchAll();
