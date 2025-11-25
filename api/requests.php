@@ -81,35 +81,29 @@ switch ($method) {
                 }
             }
 
-            $whereClause = count($where) > 0 ? "WHERE " . implode(' AND ', $where) : "";
-            $orderClause = "ORDER BY {$sort}";
+            $whereClause = implode(' AND ', $where);
 
-            $query = "
-                SELECT r.*,
-                       a.name as app_name,
-                       u.username as created_by,
-                       u.full_name as creator_full_name,
-                       u.email as creator_email,
-                       COALESCE(v.user_voted, 0) as user_voted,
-                       COALESCE(vote_counts.votes, 0) as votes
+            $stmt = $db->prepare("
+                SELECT 
+                    r.*,
+                    a.name as app_name,
+                    u.full_name as creator_full_name,
+                    u.email as creator_email,
+                    u.username,
+                    COALESCE(u.full_name, u.email, u.username) as created_by,
+                    COUNT(DISTINCT v.id) as votes,
+                    MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) as user_voted
                 FROM requests r
-                INNER JOIN apps a ON r.app_id = a.id
-                LEFT JOIN users u ON r.created_by = u.id
-                LEFT JOIN votes v ON r.id = v.request_id AND v.user_id = ?
-                LEFT JOIN (
-                    SELECT request_id, SUM(value) as votes
-                    FROM votes
-                    GROUP BY request_id
-                ) vote_counts ON r.id = vote_counts.request_id
-                {$whereClause}
-                {$orderClause}
-            ";
+                LEFT JOIN apps a ON r.app_id = a.id
+                LEFT JOIN users u ON r.user_id = u.id
+                LEFT JOIN votes v ON r.id = v.request_id
+                WHERE {$whereClause}
+                GROUP BY r.id
+                ORDER BY {$sort}
+            ");
 
-            // Add user ID at the beginning for the votes LEFT JOIN
-            array_unshift($params, $user['id']);
-
-            $stmt = $db->prepare($query);
-            $stmt->execute($params);
+            $allParams = array_merge([$user['id']], $params);
+            $stmt->execute($allParams);
             $requests = $stmt->fetchAll();
 
             success_response($requests);
