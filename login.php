@@ -31,14 +31,13 @@
                 $username = $_POST['username'] ?? '';
                 $password = $_POST['password'] ?? '';
                 $remember = isset($_POST['remember']);
-                
+
                 if (login($username, $password, $remember)) {
                     header('Location: /index.php');
                     exit;
                 } else {
                     $error = 'Usuario o contraseña incorrectos';
                 }
-            }
             }
             ?>
 
