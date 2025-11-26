@@ -124,15 +124,28 @@ $error = '';
                         <i class="iconoir-info-circle"
                             style="color: var(--primary-color); font-size: 1.5rem; flex-shrink: 0;"></i>
                         <div style="flex: 1;">
-                            <strong style="color: var(--text-primary); display: block; margin-bottom: 0.5rem;">¿Cómo
-                                funciona?</strong>
-                            <ol
-                                style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
-                                <li>Rellena el formulario con tu solicitud de mejora</li>
-                                <li>Nuestro equipo la revisará en 24-48 horas</li>
-                                <li>Te notificaremos por correo si es aprobada</li>
-                                <li>Te mantendremos informado del progreso</li>
-                            </ol>
+                            <strong style="color: var(--text-primary); display: block; margin-bottom: 0.5rem;">¿Cómo funciona esto?</strong>
+                            <p style="margin: 0 0 0.75rem 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+                                Es muy sencillo. Cuéntanos qué mejora necesitas y nosotros nos encargamos del resto:
+                            </p>
+                            <div style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.7;">
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">1.</span>
+                                    <span>Rellenas el formulario (2 minutos)</span>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">2.</span>
+                                    <span>Lo revisamos y te respondemos en 24-48h</span>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">3.</span>
+                                    <span>Si es aprobada, te avisamos por correo</span>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">4.</span>
+                                    <span>Te mantenemos al día del progreso hasta que esté lista</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
