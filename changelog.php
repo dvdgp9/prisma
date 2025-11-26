@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Changelog - Prisma</title>
+    <title>Changelog - Prisma Dashboard</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="icon" type="image/png" href="/favicon.png?v=2">
 
@@ -18,158 +18,6 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <style>
-        .changelog-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .timeline-item {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            position: relative;
-        }
-
-        .timeline-date {
-            flex-shrink: 0;
-            width: 120px;
-            text-align: right;
-            padding-top: 0.25rem;
-        }
-
-        .timeline-date-day {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1;
-        }
-
-        .timeline-date-month {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .timeline-content {
-            flex: 1;
-            position: relative;
-            padding-left: 2rem;
-        }
-
-        .timeline-content::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.5rem;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            border: 3px solid var(--bg-primary);
-            box-shadow: 0 0 0 2px var(--primary-color);
-        }
-
-        .timeline-content::after {
-            content: '';
-            position: absolute;
-            left: 5px;
-            top: 1.5rem;
-            bottom: -2rem;
-            width: 2px;
-            background: var(--border-color);
-        }
-
-        .timeline-item:last-child .timeline-content::after {
-            display: none;
-        }
-
-        .changelog-entry {
-            background: var(--bg-secondary);
-            padding: 1rem 1.25rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 0.75rem;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-        }
-
-        .changelog-entry:hover {
-            border-color: var(--primary-color);
-            transform: translateX(4px);
-        }
-
-        .changelog-entry-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .changelog-entry-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            flex: 1;
-            margin: 0;
-            font-size: 0.9375rem;
-        }
-
-        .changelog-entry-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .changelog-entry-description {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            margin: 0;
-            line-height: 1.5;
-        }
-
-        .export-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filters-section {
-            background: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .group-header {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-    </style>
 </head>
 
 <?php
@@ -177,9 +25,11 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 $user = get_logged_user();
+$company_name = $user['company_name'] ?? '';
 ?>
 
-<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
+<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>"
+    data-company-name="<?php echo htmlspecialchars($company_name); ?>">
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -188,7 +38,7 @@ $user = get_logged_user();
                     <img src="/assets/images/logo.png" alt="Prisma" style="height: 32px; width: auto;">
                     <div class="logo">Prisma</div>
                 </div>
-                <div class="user-info" onclick="window.location.href='/index.php'" style="cursor: pointer;" title="Ir al dashboard">
+                <div class="user-info" onclick="openProfileModal()" style="cursor: pointer;" title="Editar perfil">
                     <div class="user-avatar">
                         <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
                     </div>
@@ -198,20 +48,32 @@ $user = get_logged_user();
                         </div>
                         <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
                     </div>
+                    <i class="iconoir-edit user-info-edit-icon"></i>
                 </div>
             </div>
 
             <nav>
                 <div class="nav-section">
-                    <div class="nav-section-title">Vistas</div>
+                    <div class="nav-section-title">Vistas Generales</div>
                     <a href="/index.php" class="nav-item">
                         <i class="iconoir-globe"></i>
-                        <span>Dashboard</span>
+                        <span>Vista Global</span>
                     </a>
+                    <?php if (has_role('admin')): ?>
+                        <a href="#" onclick="window.location.href='/index.php#pending'; return false;" class="nav-item">
+                            <i class="iconoir-clock"></i>
+                            <span>Pendientes Aprobar</span>
+                        </a>
+                    <?php endif; ?>
                     <a href="/changelog.php" class="nav-item active">
-                        <i class="iconoir-journal-page"></i>
+                        <i class="iconoir-list"></i>
                         <span>Changelog</span>
                     </a>
+                </div>
+
+                <div class="nav-section" id="apps-nav">
+                    <div class="nav-section-title">Aplicaciones</div>
+                    <!-- Apps will be loaded dynamically -->
                 </div>
 
                 <?php if (has_role('admin')): ?>
@@ -242,57 +104,128 @@ $user = get_logged_user();
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-header">
-                <div>
-                    <h1 class="page-title">Changelog</h1>
-                    <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0;">Historial de mejoras completadas</p>
-                </div>
+                <h1 class="page-title">
+                    <i class="iconoir-list" style="font-size: 1.5rem;"></i>
+                    Changelog
+                </h1>
                 <div class="actions">
-                    <button class="btn btn-primary export-btn" onclick="exportToMarkdown()">
+                    <button class="btn btn-outline" onclick="exportToMarkdown()">
                         <i class="iconoir-download"></i>
                         Exportar Markdown
+                    </button>
+                    <button class="btn btn-primary" onclick="copyToClipboard()">
+                        <i class="iconoir-copy"></i>
+                        Copiar al Portapapeles
                     </button>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="filters-section">
-                <div class="filters-grid">
-                    <div class="form-group" style="margin: 0;">
-                        <label for="app-filter">Aplicación</label>
-                        <select id="app-filter" onchange="loadChangelog()">
-                            <option value="">Todas las apps</option>
-                        </select>
-                    </div>
+            <!-- Filters and Controls -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Aplicación</label>
+                    <select id="app-filter" onchange="loadChangelog()">
+                        <option value="">Todas las aplicaciones</option>
+                    </select>
+                </div>
 
-                    <div class="form-group" style="margin: 0;">
-                        <label for="period-filter">Período</label>
-                        <select id="period-filter" onchange="loadChangelog()">
-                            <option value="7">Última semana</option>
-                            <option value="30" selected>Último mes</option>
-                            <option value="90">Últimos 3 meses</option>
-                            <option value="180">Últimos 6 meses</option>
-                            <option value="365">Último año</option>
-                            <option value="all">Todo el tiempo</option>
-                        </select>
-                    </div>
+                <div class="filter-group">
+                    <label>Período</label>
+                    <select id="period-filter" onchange="handlePeriodChange()">
+                        <option value="7">Última semana</option>
+                        <option value="30" selected>Último mes</option>
+                        <option value="90">Último trimestre</option>
+                        <option value="365">Último año</option>
+                        <option value="custom">Personalizado...</option>
+                    </select>
+                </div>
 
-                    <div class="form-group" style="margin: 0;">
-                        <label for="search-filter">Buscar</label>
-                        <input type="text" id="search-filter" placeholder="Buscar en changelog..." 
-                               oninput="filterChangelog()">
-                    </div>
+                <div class="filter-group" id="custom-dates-group" style="display: none;">
+                    <label>Desde</label>
+                    <input type="date" id="date-from" onchange="loadChangelog()">
+                </div>
+
+                <div class="filter-group" id="custom-dates-group-to" style="display: none;">
+                    <label>Hasta</label>
+                    <input type="date" id="date-to" onchange="loadChangelog()">
+                </div>
+
+                <div class="filter-group">
+                    <label>Agrupar por</label>
+                    <select id="group-by" onchange="renderChangelog()">
+                        <option value="day">Día</option>
+                        <option value="week" selected>Semana</option>
+                        <option value="month">Mes</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" style="flex: 1; min-width: 200px;">
+                    <label>Buscar</label>
+                    <input type="text" id="search-input" placeholder="Buscar en changelog..."
+                        oninput="renderChangelog()">
                 </div>
             </div>
 
-            <!-- Changelog Timeline -->
-            <div class="changelog-container" id="changelog-content">
-                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                    <i class="iconoir-refresh-double" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
-                    <p>Cargando changelog...</p>
-                </div>
+            <!-- Changelog Content -->
+            <div id="changelog-container" style="margin-top: 2rem;">
+                <!-- Changelog will be loaded dynamically -->
             </div>
         </main>
     </div>
+
+    <!-- Profile Modal (reusing from index) -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Mi Perfil</h3>
+                <button class="close-modal" onclick="closeModal('profile-modal')">×</button>
+            </div>
+
+            <form id="profile-form" onsubmit="submitProfile(event)">
+                <div class="form-group">
+                    <label for="profile-username">Usuario *</label>
+                    <input type="text" id="profile-username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-fullname">Nombre Completo</label>
+                    <input type="text" id="profile-fullname" placeholder="Tu nombre completo">
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-email">Email</label>
+                    <input type="email" id="profile-email" placeholder="tu@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-password">Nueva Contraseña</label>
+                    <input type="password" id="profile-password" placeholder="Dejar vacío para no cambiar">
+                    <small class="text-muted">Solo completa este campo si quieres cambiar tu contraseña</small>
+                </div>
+
+                <div
+                    style="padding: var(--spacing-md); background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                        <span class="text-muted">Rol:</span>
+                        <span id="profile-role" style="font-weight: var(--font-weight-semibold);"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="text-muted">Empresa:</span>
+                        <span id="profile-company" style="font-weight: var(--font-weight-semibold);"></span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
+                    <button type="button" class="btn btn-outline"
+                        onclick="closeModal('profile-modal')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
 
     <script src="/assets/js/changelog.js"></script>
 </body>

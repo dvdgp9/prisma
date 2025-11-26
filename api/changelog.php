@@ -1,69 +1,104 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
+require_login();
 
 header('Content-Type: application/json');
 
-// Check authentication
-require_login();
-
-$db = getDB();
-$user = get_logged_user();
+$method = $_SERVER['REQUEST_METHOD'];
 
 try {
-    // Get filters
-    $app_id = isset($_GET['app_id']) ? intval($_GET['app_id']) : null;
-    $days = isset($_GET['days']) ? intval($_GET['days']) : 30;
+    $db = getDB();
+    $user = get_logged_user();
 
-    // Build query
-    $query = "
-        SELECT 
-            r.*,
-            a.name as app_name,
-            a.color as app_color,
-            u.username as creator_username,
-            u.full_name as creator_full_name,
-            r.requester_name,
-            r.requester_email,
-            DATE(COALESCE(r.completed_at, r.updated_at)) as completion_date
-        FROM requests r
-        LEFT JOIN apps a ON r.app_id = a.id
-        LEFT JOIN users u ON r.created_by = u.id
-        WHERE r.status = 'completed'
-    ";
+    if ($method === 'GET') {
+        // Get completed requests for changelog
+        $appId = $_GET['app_id'] ?? null;
+        $dateFrom = $_GET['date_from'] ?? null;
+        $dateTo = $_GET['date_to'] ?? null;
+        $days = $_GET['days'] ?? 30; // Default to last 30 days
 
-    $params = [];
+        // Build the query
+        $query = "
+            SELECT 
+                r.id,
+                r.app_id,
+                r.title,
+                r.description,
+                r.priority,
+                r.status,
+                r.completed_at,
+                r.created_at,
+                r.updated_at,
+                r.requester_name,
+                r.requester_email,
+                a.name as app_name,
+                u.username as creator_username,
+                u.full_name as creator_full_name
+            FROM requests r
+            INNER JOIN apps a ON r.app_id = a.id
+            LEFT JOIN users u ON r.created_by = u.id
+            WHERE r.status = 'completed'
+        ";
 
-    // Filter by app
-    if ($app_id) {
-        $query .= " AND r.app_id = ?";
-        $params[] = $app_id;
-    }
+        $params = [];
 
-    // Filter by date
-    if ($days !== 0 && $days !== null) {
-        $query .= " AND r.updated_at >= DATE_SUB(NOW(), INTERVAL ? DAY)";
-        $params[] = $days;
-    }
-
-    $query .= " ORDER BY r.updated_at DESC";
-
-    $stmt = $db->prepare($query);
-    $stmt->execute($params);
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Parse files JSON
-    foreach ($results as &$row) {
-        if (isset($row['files']) && !empty($row['files'])) {
-            $files = json_decode($row['files'], true);
-            $row['files'] = is_array($files) ? $files : [];
-        } else {
-            $row['files'] = [];
+        // Filter by app
+        if ($appId) {
+            $query .= " AND r.app_id = :app_id";
+            $params[':app_id'] = $appId;
         }
+
+        // Filter by date range
+        if ($dateFrom && $dateTo) {
+            $query .= " AND r.completed_at BETWEEN :date_from AND :date_to";
+            $params[':date_from'] = $dateFrom . ' 00:00:00';
+            $params[':date_to'] = $dateTo . ' 23:59:59';
+        } elseif ($days) {
+            $query .= " AND r.completed_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
+            $params[':days'] = (int) $days;
+        }
+
+        // Order by completion date (most recent first)
+        $query .= " ORDER BY r.completed_at DESC";
+
+        $stmt = $db->prepare($query);
+        $stmt->execute($params);
+        $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Format the data
+        foreach ($requests as &$request) {
+            $request['completed_at_formatted'] = $request['completed_at']
+                ? date('Y-m-d H:i:s', strtotime($request['completed_at']))
+                : null;
+
+            // Calculate days ago
+            if ($request['completed_at']) {
+                $completedDate = new DateTime($request['completed_at']);
+                $now = new DateTime();
+                $interval = $now->diff($completedDate);
+                $request['days_ago'] = $interval->days;
+            } else {
+                $request['days_ago'] = null;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $requests,
+            'count' => count($requests)
+        ]);
+    } else {
+        http_response_code(405);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Method not allowed'
+        ]);
     }
-
-    success_response($results);
-
 } catch (Exception $e) {
-    error_log("Database error in changelog.php: " . $e->getMessage());
-    error_response('Error al obtener el changelog: ' . $e->getMessage(), 500);
+    error_log("Changelog API Error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error: ' . $e->getMessage()
+    ]);
 }

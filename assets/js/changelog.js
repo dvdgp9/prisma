@@ -1,12 +1,18 @@
 // Global variables
-let apps = [];
 let changelogData = [];
-let filteredData = [];
+let apps = [];
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadApps();
-    loadChangelog();
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadApps();
+    await loadChangelog();
+
+    // Set default date range for custom filter
+    const today = new Date();
+    const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+    document.getElementById('date-from').value = monthAgo.toISOString().split('T')[0];
 });
 
 // Load apps for filter
@@ -17,7 +23,7 @@ async function loadApps() {
 
         if (data.success) {
             apps = data.data;
-            
+
             const appFilter = document.getElementById('app-filter');
             apps.forEach(app => {
                 const option = document.createElement('option');
@@ -31,7 +37,7 @@ async function loadApps() {
     }
 }
 
-// Load changelog
+// Load changelog data
 async function loadChangelog() {
     try {
         const appId = document.getElementById('app-filter').value;
@@ -40,8 +46,21 @@ async function loadChangelog() {
         let url = '/api/changelog.php?';
         const params = [];
 
-        if (appId) params.push(`app_id=${appId}`);
-        if (period !== 'all') params.push(`days=${period}`);
+        if (appId) {
+            params.push(`app_id=${appId}`);
+        }
+
+        if (period === 'custom') {
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+
+            if (dateFrom && dateTo) {
+                params.push(`date_from=${dateFrom}`);
+                params.push(`date_to=${dateTo}`);
+            }
+        } else {
+            params.push(`days=${period}`);
+        }
 
         url += params.join('&');
 
@@ -50,80 +69,66 @@ async function loadChangelog() {
 
         if (data.success) {
             changelogData = data.data;
-            filteredData = changelogData;
             renderChangelog();
+        } else {
+            showError(data.error || 'Error al cargar el changelog');
         }
     } catch (error) {
         console.error('Error loading changelog:', error);
-        showError();
+        showError('Error al cargar el changelog');
     }
-}
-
-// Filter changelog by search
-function filterChangelog() {
-    const searchTerm = document.getElementById('search-filter').value.toLowerCase();
-
-    if (!searchTerm) {
-        filteredData = changelogData;
-    } else {
-        filteredData = changelogData.filter(item => 
-            item.title.toLowerCase().includes(searchTerm) ||
-            (item.description && item.description.toLowerCase().includes(searchTerm)) ||
-            (item.app_name && item.app_name.toLowerCase().includes(searchTerm))
-        );
-    }
-
-    renderChangelog();
 }
 
 // Render changelog
 function renderChangelog() {
-    const container = document.getElementById('changelog-content');
+    const container = document.getElementById('changelog-container');
+    const groupBy = document.getElementById('group-by').value;
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+
+    // Filter by search
+    let filteredData = changelogData;
+    if (searchTerm) {
+        filteredData = changelogData.filter(item =>
+            item.title.toLowerCase().includes(searchTerm) ||
+            (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+            item.app_name.toLowerCase().includes(searchTerm)
+        );
+    }
 
     if (filteredData.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
-                <i class="iconoir-journal-page"></i>
-                <h3>No hay mejoras completadas</h3>
-                <p>No se encontraron mejoras completadas en el período seleccionado.</p>
+            <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                <i class="iconoir-info-circle" style="font-size: 3rem; opacity: 0.3;"></i>
+                <h3>No hay cambios completados en este período</h3>
+                <p>Cambia los filtros para ver más resultados.</p>
             </div>
         `;
         return;
     }
 
-    // Group by date
-    const grouped = {};
-    filteredData.forEach(item => {
-        const date = item.completion_date || item.updated_at.split(' ')[0];
-        if (!grouped[date]) {
-            grouped[date] = [];
-        }
-        grouped[date].push(item);
-    });
+    // Group data by period
+    const grouped = groupDataByPeriod(filteredData, groupBy);
 
-    // Sort dates descending
-    const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+    // Render HTML
+    let html = '<div class="changelog-timeline">';
 
-    // Render
-    let html = '';
-    sortedDates.forEach(date => {
-        const items = grouped[date];
-        const dateObj = new Date(date + 'T00:00:00');
-        const day = dateObj.getDate();
-        const month = dateObj.toLocaleDateString('es-ES', { month: 'short' });
-        const year = dateObj.getFullYear();
+    Object.keys(grouped).forEach(dateKey => {
+        const items = grouped[dateKey];
 
         html += `
-            <div class="timeline-item">
-                <div class="timeline-date">
-                    <div class="timeline-date-day">${day}</div>
-                    <div class="timeline-date-month">${month} ${year}</div>
+            <div class="changelog-group">
+                <div class="changelog-date-header">
+                    <div class="date-badge">
+                        <i class="iconoir-calendar"></i>
+                        ${formatGroupDate(dateKey, groupBy)}
+                    </div>
+                    <div class="changelog-count">${items.length} ${items.length === 1 ? 'cambio' : 'cambios'}</div>
                 </div>
-                <div class="timeline-content">
+                <div class="changelog-items">
         `;
 
         items.forEach(item => {
-            html += createChangelogEntry(item);
+            html += createChangelogItem(item);
         });
 
         html += `
@@ -132,11 +137,68 @@ function renderChangelog() {
         `;
     });
 
+    html += '</div>';
+
     container.innerHTML = html;
 }
 
-// Create changelog entry
-function createChangelogEntry(item) {
+// Group data by period
+function groupDataByPeriod(data, groupBy) {
+    const grouped = {};
+
+    data.forEach(item => {
+        if (!item.completed_at) return;
+
+        const date = new Date(item.completed_at);
+        let key;
+
+        if (groupBy === 'day') {
+            key = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        } else if (groupBy === 'week') {
+            const weekStart = getWeekStart(date);
+            key = weekStart.toISOString().split('T')[0];
+        } else if (groupBy === 'month') {
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        if (!grouped[key]) {
+            grouped[key] = [];
+        }
+        grouped[key].push(item);
+    });
+
+    return grouped;
+}
+
+// Get week start (Monday)
+function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    return new Date(d.setDate(diff));
+}
+
+// Format group date header
+function formatGroupDate(dateKey, groupBy) {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    if (groupBy === 'day') {
+        const date = new Date(dateKey);
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    } else if (groupBy === 'week') {
+        const weekStart = new Date(dateKey);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        return `Semana del ${weekStart.getDate()} ${months[weekStart.getMonth()]} - ${weekEnd.getDate()} ${months[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
+    } else if (groupBy === 'month') {
+        const [year, month] = dateKey.split('-');
+        return `${months[parseInt(month) - 1]} ${year}`;
+    }
+}
+
+// Create a single changelog item
+function createChangelogItem(item) {
     const priorityLabels = {
         'critical': 'CRÍTICA',
         'high': 'ALTA',
@@ -144,78 +206,162 @@ function createChangelogEntry(item) {
         'low': 'BAJA'
     };
 
+    const completedDate = new Date(item.completed_at);
+    const formattedDate = completedDate.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
     return `
-        <div class="changelog-entry">
-            <div class="changelog-entry-header">
-                <div class="priority-badge priority-${item.priority}" style="font-size: 0.75rem; padding: 2px 6px;">
-                    ${priorityLabels[item.priority] || item.priority}
+        <div class="changelog-item">
+            <div class="changelog-item-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                    <span class="priority-badge priority-${item.priority}">
+                        ${priorityLabels[item.priority]}
+                    </span>
+                    <h4 class="changelog-item-title">${escapeHtml(item.title)}</h4>
                 </div>
-                <h3 class="changelog-entry-title">${escapeHtml(item.title)}</h3>
+                <span class="app-badge-changelog">${escapeHtml(item.app_name)}</span>
             </div>
             ${item.description ? `
-                <p class="changelog-entry-description">${escapeHtml(item.description)}</p>
+                <p class="changelog-item-description">${escapeHtml(item.description)}</p>
             ` : ''}
-            <div class="changelog-entry-meta">
-                ${item.app_name ? `
-                    <span class="app-badge-footer" style="font-size: 0.75rem;">
-                        ${escapeHtml(item.app_name)}
+            <div class="changelog-item-meta">
+                <span class="text-small text-muted">
+                    <i class="iconoir-check-circle"></i>
+                    Completado: ${formattedDate}
+                </span>
+                ${item.requester_name ? `
+                    <span class="text-small text-muted">
+                        <i class="iconoir-user"></i>
+                        Solicitado por: ${escapeHtml(item.requester_name)}
                     </span>
                 ` : ''}
-                <span class="text-small text-muted">
-                    <i class="iconoir-user"></i>
-                    ${escapeHtml(item.creator_full_name || item.creator_username || 'Usuario')}
-                </span>
             </div>
         </div>
     `;
 }
 
+// Handle period filter change
+function handlePeriodChange() {
+    const period = document.getElementById('period-filter').value;
+    const customDatesGroup = document.getElementById('custom-dates-group');
+    const customDatesGroupTo = document.getElementById('custom-dates-group-to');
+
+    if (period === 'custom') {
+        customDatesGroup.style.display = 'block';
+        customDatesGroupTo.style.display = 'block';
+    } else {
+        customDatesGroup.style.display = 'none';
+        customDatesGroupTo.style.display = 'none';
+        loadChangelog();
+    }
+}
+
 // Export to Markdown
 function exportToMarkdown() {
-    if (filteredData.length === 0) {
-        alert('No hay datos para exportar');
-        return;
-    }
+    const markdown = generateMarkdown();
+
+    // Create download
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
 
     const appFilter = document.getElementById('app-filter');
-    const selectedApp = appFilter.options[appFilter.selectedIndex].text;
-    const periodFilter = document.getElementById('period-filter');
-    const selectedPeriod = periodFilter.options[periodFilter.selectedIndex].text;
+    const appName = appFilter.selectedIndex > 0
+        ? apps.find(a => a.id == appFilter.value)?.name
+        : 'Todas';
 
-    // Build markdown
-    let markdown = `# Changelog`;
-    
-    if (selectedApp !== 'Todas las apps') {
-        markdown += ` - ${selectedApp}`;
+    const today = new Date().toISOString().split('T')[0];
+    a.download = `changelog-${appName.replace(/\s+/g, '_')}-${today}.md`;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast({
+        title: 'Exportado',
+        message: 'Changelog descargado como Markdown',
+        icon: 'iconoir-check-circle'
+    }, 'toast-completed');
+}
+
+// Copy to clipboard
+async function copyToClipboard() {
+    const markdown = generateMarkdown();
+
+    try {
+        await navigator.clipboard.writeText(markdown);
+        showToast({
+            title: 'Copiado',
+            message: 'Changelog copiado al portapapeles',
+            icon: 'iconoir-check-circle'
+        }, 'toast-completed');
+    } catch (err) {
+        console.error('Error copying to clipboard:', err);
+        showToast({
+            title: 'Error',
+            message: 'No se pudo copiar al portapapeles',
+            icon: 'iconoir-xmark'
+        }, 'toast-discarded');
     }
-    
-    markdown += `\n## ${selectedPeriod}\n\n`;
+}
 
-    // Group by date
-    const grouped = {};
-    filteredData.forEach(item => {
-        const date = item.completion_date || item.updated_at.split(' ')[0];
-        if (!grouped[date]) {
-            grouped[date] = [];
-        }
-        grouped[date].push(item);
-    });
+// Generate Markdown content
+function generateMarkdown() {
+    const appFilter = document.getElementById('app-filter');
+    const appName = appFilter.selectedIndex > 0
+        ? apps.find(a => a.id == appFilter.value)?.name
+        : 'Todas las aplicaciones';
 
-    // Sort dates descending
-    const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+    const period = document.getElementById('period-filter').value;
+    const groupBy = document.getElementById('group-by').value;
+    const searchTerm = document.getElementById('search-input').value;
 
-    // Generate markdown
-    sortedDates.forEach(date => {
-        const dateObj = new Date(date + 'T00:00:00');
-        const formattedDate = dateObj.toLocaleDateString('es-ES', { 
-            day: '2-digit', 
-            month: 'long', 
-            year: 'numeric' 
-        });
+    // Filter data
+    let filteredData = changelogData;
+    if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        filteredData = changelogData.filter(item =>
+            item.title.toLowerCase().includes(searchLower) ||
+            (item.description && item.description.toLowerCase().includes(searchLower)) ||
+            item.app_name.toLowerCase().includes(searchLower)
+        );
+    }
 
-        markdown += `### ${formattedDate}\n\n`;
+    // Generate header
+    let markdown = `# Changelog - ${appName}\n\n`;
 
-        const items = grouped[date];
+    if (period === 'custom') {
+        const dateFrom = document.getElementById('date-from').value;
+        const dateTo = document.getElementById('date-to').value;
+        markdown += `**Período:** ${formatDate(dateFrom)} - ${formatDate(dateTo)}\n\n`;
+    } else {
+        const periodLabels = {
+            '7': 'Última semana',
+            '30': 'Último mes',
+            '90': 'Último trimestre',
+            '365': 'Último año'
+        };
+        markdown += `**Período:** ${periodLabels[period]}\n\n`;
+    }
+
+    markdown += `**Total de cambios:** ${filteredData.length}\n\n`;
+    markdown += `---\n\n`;
+
+    // Group and format data
+    const grouped = groupDataByPeriod(filteredData, groupBy);
+
+    Object.keys(grouped).forEach(dateKey => {
+        const items = grouped[dateKey];
+
+        markdown += `## ${formatGroupDate(dateKey, groupBy)}\n\n`;
+
         items.forEach(item => {
             const priorityLabels = {
                 'critical': 'CRÍTICA',
@@ -224,124 +370,36 @@ function exportToMarkdown() {
                 'low': 'BAJA'
             };
 
-            const priority = priorityLabels[item.priority] || item.priority.toUpperCase();
-            markdown += `- **[${priority}]** ${item.title}`;
-            
-            if (item.app_name && selectedApp === 'Todas las apps') {
+            markdown += `- **[${priorityLabels[item.priority]}]** ${item.title}`;
+
+            if (appFilter.value === '') {
                 markdown += ` _(${item.app_name})_`;
             }
-            
-            markdown += '\n';
-            
+
+            markdown += `\n`;
+
             if (item.description) {
-                // Indent description
-                const description = item.description.trim().replace(/\n/g, '\n  ');
-                markdown += `  - ${description}\n`;
+                markdown += `  - ${item.description.replace(/\n/g, '\n  ')}\n`;
             }
-            
-            markdown += '\n';
+
+            if (item.requester_name) {
+                markdown += `  - Solicitado por: ${item.requester_name}\n`;
+            }
+
+            markdown += `\n`;
         });
+
+        markdown += `\n`;
     });
 
-    // Add footer
-    markdown += `\n---\n`;
-    markdown += `_Generado el ${new Date().toLocaleDateString('es-ES', { 
-        day: '2-digit', 
-        month: 'long', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    })}_\n`;
-    markdown += `_Total de mejoras: ${filteredData.length}_\n`;
-
-    // Download file
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    
-    const filename = `changelog_${selectedApp.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.md`;
-    link.href = url;
-    link.download = filename;
-    link.click();
-    
-    URL.revokeObjectURL(url);
-
-    // Show toast notification
-    showToast({
-        title: 'Exportado correctamente',
-        message: `Se ha descargado ${filename}`,
-        icon: 'iconoir-check'
-    });
+    return markdown;
 }
 
-// Show error
-function showError() {
-    const container = document.getElementById('changelog-content');
-    container.innerHTML = `
-        <div class="empty-state">
-            <i class="iconoir-warning-triangle"></i>
-            <h3>Error al cargar</h3>
-            <p>No se pudo cargar el changelog. Por favor, intenta de nuevo.</p>
-            <button class="btn btn-primary" onclick="loadChangelog()">Reintentar</button>
-        </div>
-    `;
-}
-
-// Toast notification
-function showToast(config, type = '') {
-    // Create container if it doesn't exist
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        `;
-        document.body.appendChild(container);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.style.cssText = `
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        display: flex;
-        gap: 0.75rem;
-        align-items: center;
-        min-width: 300px;
-        animation: slideIn 0.3s ease;
-    `;
-
-    toast.innerHTML = `
-        <div style="color: var(--primary-color); font-size: 1.25rem;">
-            <i class="${config.icon}"></i>
-        </div>
-        <div style="flex: 1;">
-            <div style="font-weight: 600; margin-bottom: 0.25rem;">${config.title}</div>
-            <div style="font-size: 0.875rem; color: var(--text-secondary);">${config.message}</div>
-        </div>
-    `;
-
-    container.appendChild(toast);
-
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (container.contains(toast)) {
-                container.removeChild(toast);
-            }
-        }, 300);
-    }, 3000);
+// Format date for display
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 // Escape HTML
@@ -352,38 +410,111 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
+// Show error
+function showError(message) {
+    const container = document.getElementById('changelog-container');
+    container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--error-color);">
+            <i class="iconoir-warning-circle" style="font-size: 3rem;"></i>
+            <h3>Error</h3>
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+}
+
+// Toast notification system (reused from main.js)
+function showToast(config, type = '') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="${config.icon}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">${config.title}</div>
+            <div class="toast-message">${config.message}</div>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-hide');
+        setTimeout(() => {
+            container.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+// Profile modal functions (reused from main.js)
+function openProfileModal() {
+    fetch('/api/profile.php')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const profile = data.data;
+                document.getElementById('profile-username').value = profile.username;
+                document.getElementById('profile-fullname').value = profile.full_name || '';
+                document.getElementById('profile-email').value = profile.email || '';
+                document.getElementById('profile-password').value = '';
+
+                const roleLabels = {
+                    'superadmin': 'Superadministrador',
+                    'admin': 'Administrador',
+                    'user': 'Usuario'
+                };
+                document.getElementById('profile-role').textContent = roleLabels[profile.role] || profile.role;
+                document.getElementById('profile-company').textContent = profile.company_name || 'Sin asignar';
+
+                document.getElementById('profile-modal').classList.add('active');
+            }
+        })
+        .catch(err => console.error('Error loading profile:', err));
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function submitProfile(event) {
+    event.preventDefault();
+
+    const data = {
+        username: document.getElementById('profile-username').value,
+        full_name: document.getElementById('profile-fullname').value,
+        email: document.getElementById('profile-email').value
+    };
+
+    const password = document.getElementById('profile-password').value;
+    if (password) {
+        data.password = password;
     }
 
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
+    fetch('/api/profile.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                closeModal('profile-modal');
+                location.reload();
+            } else {
+                alert(result.error || 'Error al actualizar el perfil');
+            }
+        })
+        .catch(err => {
+            console.error('Error updating profile:', err);
+            alert('Error al actualizar el perfil');
+        });
+}
 
-    @keyframes spin {
-        from {
-            transform: rotate(0deg);
-        }
-        to {
-            transform: rotate(360deg);
-        }
+// Close modal on outside click
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('active');
     }
-`;
-document.head.appendChild(style);
+});

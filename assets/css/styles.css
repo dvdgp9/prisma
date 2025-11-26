@@ -1260,3 +1260,146 @@ nav {
         gap: var(--spacing-md);
     }
 }
+
+/* ========== CHANGELOG STYLES ========== */
+
+/* Changelog Timeline */
+.changelog-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.changelog-group {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.changelog-date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 8px rgba(0, 201, 183, 0.3);
+}
+
+.changelog-count {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* Changelog Items */
+.changelog-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.changelog-item {
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.changelog-item:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(4px);
+    border-left-color: var(--primary-color);
+}
+
+.changelog-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.changelog-item-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.changelog-item-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: var(--spacing-sm) 0;
+    line-height: 1.5;
+}
+
+.changelog-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+/* App Badge for Changelog */
+.app-badge-changelog {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    background: rgba(0, 201, 183, 0.1);
+    color: var(--primary-color);
+    border: 1px solid rgba(0, 201, 183, 0.3);
+    white-space: nowrap;
+}
+
+/* Badge Count in nav */
+.badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.375rem;
+    background: var(--secondary-color);
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    margin-left: auto;
+}
+
+/* Responsive Changelog */
+@media (max-width: 768px) {
+    .changelog-date-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .changelog-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-badge {
+        font-size: 0.875rem;
+    }
+}

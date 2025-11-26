@@ -61,10 +61,6 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-globe"></i>
                         <span>Vista Global</span>
                     </a>
-                    <a href="/changelog.php" class="nav-item">
-                        <i class="iconoir-journal-page"></i>
-                        <span>Changelog</span>
-                    </a>
                     <?php if (has_role('admin')): ?>
                         <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item"
                             id="pending-approvals-nav">
@@ -73,6 +69,10 @@ $company_name = $user['company_name'] ?? '';
                             <span class="badge-count" id="pending-count" style="display: none;"></span>
                         </a>
                     <?php endif; ?>
+                    <a href="/changelog.php" class="nav-item">
+                        <i class="iconoir-list"></i>
+                        <span>Changelog</span>
+                    </a>
                 </div>
 
                 <div class="nav-section" id="apps-nav">
