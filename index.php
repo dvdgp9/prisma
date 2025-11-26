@@ -111,10 +111,11 @@ $company_name = $user['company_name'] ?? '';
                 <div class="filter-group">
                     <label>Ordenar por</label>
                     <select id="sort-select" onchange="loadRequests()">
+                        <option value="votes">Más votadas</option>
+                        <option value="status">Estado</option>
+                        <option value="priority">Prioridad</option>
                         <option value="date">Más reciente</option>
                         <option value="date_asc">Más antigua</option>
-                        <option value="priority">Prioridad</option>
-                        <option value="votes">Más votadas</option>
                     </select>
                 </div>
 
