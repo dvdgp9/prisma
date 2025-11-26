@@ -2,7 +2,6 @@
 /**
  * Public Request API - Handle external improvement requests
  * No authentication required - includes rate limiting
- * Version: 2.0 - Status fix
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -107,13 +106,6 @@ try {
     }
 
     // Create request with "pending_approval" status
-    error_log('Creating public request with data: ' . json_encode([
-        'app_id' => $input['app_id'],
-        'title' => $input['title'],
-        'status' => 'pending_approval',
-        'is_public_request' => 1
-    ]));
-
     $stmt = $db->prepare("
         INSERT INTO requests (
             app_id, 
@@ -123,8 +115,9 @@ try {
             status, 
             requester_name, 
             requester_email, 
-            is_public_request
-        ) VALUES (?, ?, ?, 'medium', 'pending_approval', ?, ?, 1)
+            is_public_request,
+            created_by
+        ) VALUES (?, ?, ?, 'medium', 'pending_approval', ?, ?, 1, NULL)
     ");
 
     $stmt->execute([
@@ -136,7 +129,6 @@ try {
     ]);
 
     $request_id = $db->lastInsertId();
-    error_log('Created request ID: ' . $request_id);
 
     $db->commit();
 

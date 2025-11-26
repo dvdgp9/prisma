@@ -23,9 +23,13 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 $user = get_logged_user();
+
+// Get company name for public form link
+$company_name = $user['company_name'] ?? '';
 ?>
 
-<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
+<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>"
+    data-company-name="<?php echo htmlspecialchars($company_name); ?>">
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
