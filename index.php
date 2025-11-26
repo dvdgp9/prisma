@@ -195,6 +195,25 @@ $company_name = $user['company_name'] ?? '';
                     <div id="file-list" style="margin-top: 1rem;"></div>
                 </div>
 
+                <!-- Optional requester info -->
+                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                        <strong>Opcional:</strong> Si alguien te solicitó esta mejora, añade sus datos para notificarle:
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="request-requester-name">Nombre del solicitante</label>
+                            <input type="text" id="request-requester-name" placeholder="Ej: Juan Pérez">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="request-requester-email">Email del solicitante</label>
+                            <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com">
+                        </div>
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Crear Petición</button>
                     <button type="button" class="btn btn-outline"

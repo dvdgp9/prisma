@@ -115,8 +115,11 @@ switch ($method) {
 
         try {
             $stmt = $db->prepare("
-                INSERT INTO requests (app_id, title, description, priority, status, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO requests (
+                    app_id, title, description, priority, status, created_by,
+                    requester_name, requester_email
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $input['app_id'],
@@ -124,7 +127,9 @@ switch ($method) {
                 $input['description'] ?? null,
                 $input['priority'] ?? 'medium',
                 $input['status'] ?? 'pending',
-                $user['id']
+                $user['id'],
+                $input['requester_name'] ?? null,
+                $input['requester_email'] ?? null
             ]);
 
             $request_id = $db->lastInsertId();
@@ -153,7 +158,7 @@ switch ($method) {
             $values = [];
 
             // Get current request state for email notifications
-            $stmt = $db->prepare("SELECT status, is_public_request FROM requests WHERE id = ?");
+            $stmt = $db->prepare("SELECT status, is_public_request, requester_email FROM requests WHERE id = ?");
             $stmt->execute([$input['id']]);
             $old_request = $stmt->fetch();
             $old_status = $old_request['status'] ?? null;
@@ -209,8 +214,10 @@ switch ($method) {
 
             $stmt->execute($values);
 
-            // Send email notifications for public requests on status change
-            if ($is_public && isset($input['status']) && $old_status !== $input['status']) {
+            // Send email notifications if requester has email and status changed to completed
+            $has_requester_email = !empty($old_request['requester_email']);
+
+            if ($has_requester_email && isset($input['status']) && $old_status !== $input['status']) {
                 try {
                     require_once __DIR__ . '/../includes/email.php';
 

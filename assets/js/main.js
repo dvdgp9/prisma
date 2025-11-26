@@ -516,18 +516,30 @@ async function submitNewRequest(event) {
     const title = document.getElementById('request-title').value;
     const description = document.getElementById('request-description').value;
     const priority = document.getElementById('request-priority').value;
+    const requesterName = document.getElementById('request-requester-name').value;
+    const requesterEmail = document.getElementById('request-requester-email').value;
 
     try {
         // Create request
+        const requestData = {
+            app_id: appId,
+            title: title,
+            description: description,
+            priority: priority
+        };
+
+        // Add optional requester info if provided
+        if (requesterName) {
+            requestData.requester_name = requesterName;
+        }
+        if (requesterEmail) {
+            requestData.requester_email = requesterEmail;
+        }
+
         const response = await fetch('/api/requests.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                app_id: appId,
-                title: title,
-                description: description,
-                priority: priority
-            })
+            body: JSON.stringify(requestData)
         });
 
         const data = await response.json();
