@@ -202,9 +202,9 @@ function createRequestCard(request, isFinished = false) {
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
 
     card.innerHTML = `
-        <div class="card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: var(--spacing-sm);">
-            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
-                <h3 class="card-title" style="margin: 0; max-width: none;">${escapeHtml(request.title)}</h3>
+        <div class="card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: var(--spacing-sm); flex-wrap: nowrap;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; max-width: calc(100% - 120px);">
+                <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(request.title)}</h3>
                 <div class="priority-badge priority-${request.priority}" 
                      style="flex-shrink: 0;"
                      ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
@@ -215,7 +215,7 @@ function createRequestCard(request, isFinished = false) {
             </div>
             
             ${isAdminOrSuperadmin ? `
-                <div class="card-quick-actions" style="flex-shrink: 0;">
+                <div class="card-quick-actions" style="flex-shrink: 0; display: flex; gap: 0.5rem;">
                     <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                         <i class="iconoir-edit"></i>
                     </button>
