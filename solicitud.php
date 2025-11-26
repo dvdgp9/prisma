@@ -124,8 +124,8 @@ $error = '';
                         <i class="iconoir-info-circle"
                             style="color: var(--primary-color); font-size: 1.25rem; flex-shrink: 0;"></i>
                         <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
-                            Cuéntanos qué mejora necesitas rellenando el formulario (2 min). Lo revisaremos en 24-48h y te
-                            avisaremos por correo cuando sea aprobada y esté lista.
+                            Cuéntanos qué mejora necesitas rellenando el formulario, lo revisaremos (máx 24-48h) y te
+                            avisaremos por correo cuando la mejora sea aprobada/descartada y, si procede, cuando esté lista.
                         </p>
                     </div>
                 </div>
