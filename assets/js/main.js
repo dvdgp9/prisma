@@ -215,47 +215,34 @@ function createRequestCard(request, isFinished = false) {
                 <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">${escapeHtml(request.title)}</h3>
             </div>
             
-            <div style="display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0;">
-                ${isAdminOrSuperadmin ? `
-                    <div class="status-actions">
-                        <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
-                                title="Pausar">
-                            <i class="iconoir-pause"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
-                                title="En progreso">
-                            <i class="iconoir-play"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
-                                title="Completar">
-                            <i class="iconoir-check"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
-                                title="Descartar">
-                            <i class="iconoir-xmark"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="card-quick-actions">
-                        <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
-                            <i class="iconoir-edit"></i>
-                        </button>
-                        ${userRole === 'superadmin' ? `
-                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                ` : `
-                    <div class="status-badge-display status-${request.status}">
-                        ${statusLabels[request.status] || request.status}
-                    </div>
-                `}
-            </div>
+            ${isAdminOrSuperadmin ? `
+                <div class="status-actions" style="flex-shrink: 0;">
+                    <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
+                            title="Pausar">
+                        <i class="iconoir-pause"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
+                            title="En progreso">
+                        <i class="iconoir-play"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
+                            title="Completar">
+                        <i class="iconoir-check"></i>
+                    </button>
+                    <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
+                            onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
+                            title="Descartar">
+                        <i class="iconoir-xmark"></i>
+                    </button>
+                </div>
+            ` : `
+                <div class="status-badge-display status-${request.status}" style="flex-shrink: 0;">
+                    ${statusLabels[request.status] || request.status}
+                </div>
+            `}
         </div>
 
         <p class="card-description">${escapeHtml(request.description)}</p>
@@ -288,6 +275,18 @@ function createRequestCard(request, isFinished = false) {
                     <span class="app-badge-footer">
                         ${escapeHtml(request.app_name)}
                     </span>
+                ` : ''}
+                ${isAdminOrSuperadmin ? `
+                    <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-left: auto;">
+                        <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
+                            <i class="iconoir-edit"></i>
+                        </button>
+                        ${userRole === 'superadmin' ? `
+                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 ` : ''}
             </div>
             <div class="vote-section">
