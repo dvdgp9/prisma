@@ -214,9 +214,8 @@ switch ($method) {
                 try {
                     require_once __DIR__ . '/../includes/email.php';
 
-                    if ($input['status'] === 'in_progress') {
-                        sendRequestInProgressEmail($input['id']);
-                    } elseif ($input['status'] === 'completed') {
+                    // Only send email when completed
+                    if ($input['status'] === 'completed') {
                         sendRequestCompletedEmail($input['id']);
                     }
                 } catch (Exception $e) {

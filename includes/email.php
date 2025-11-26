@@ -167,10 +167,10 @@ function sendRequestApprovedEmail($request_id)
         <div style='background: #f8fafc; border-left: 4px solid #00C9B7; padding: 20px; margin: 25px 0; border-radius: 4px;'>
             <h3 style='margin: 0 0 12px 0; font-size: 16px; color: #2c3e50;'>{$request['title']}</h3>
             <p style='margin: 0 0 8px 0; color: #64748b; font-size: 14px;'><strong>Aplicación:</strong> {$request['app_name']}</p>
-            <p style='margin: 0; color: #64748b; font-size: 14px;'>{$request['description']}</p>
+            <p style='margin: 0; color: #64748b; font-size: 14px; line-height: 1.6;'><strong>Descripción:</strong><br>{$request['description']}</p>
         </div>
         
-        <p style='margin: 0 0 20px 0;'>Te mantendremos informado cuando empecemos a trabajar en ella y cuando esté lista para usar.</p>
+        <p style='margin: 0 0 20px 0;'>Te avisaremos cuando la mejora esté completada y lista para usar.</p>
         
         <p style='margin: 0; color: #64748b;'>Gracias por ayudarnos a mejorar,<br><strong>El equipo de Prisma</strong></p>
     ";
@@ -258,8 +258,9 @@ function sendRequestCompletedEmail($request_id)
         <p style='margin: 0 0 20px 0;'>¡Tenemos excelentes noticias! La mejora que solicitaste ya está <strong style='color: #10b981;'>completada y disponible</strong>:</p>
         
         <div style='background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 25px 0; border-radius: 4px;'>
-            <h3 style='margin: 0 0 8px 0; font-size: 16px; color: #2c3e50;'>{$request['title']}</h3>
-            <p style='margin: 0; color: #64748b; font-size: 14px;'><strong>Aplicación:</strong> {$request['app_name']}</p>
+            <h3 style='margin: 0 0 12px 0; font-size: 16px; color: #2c3e50;'>{$request['title']}</h3>
+            <p style='margin: 0 0 8px 0; color: #64748b; font-size: 14px;'><strong>Aplicación:</strong> {$request['app_name']}</p>
+            <p style='margin: 0; color: #64748b; font-size: 14px; line-height: 1.6;'><strong>Descripción:</strong><br>{$request['description']}</p>
         </div>
         
         <p style='margin: 0 0 20px 0;'>Ya puedes empezar a usar esta nueva funcionalidad. Esperamos que te sea de utilidad.</p>
@@ -304,8 +305,9 @@ function sendRequestRejectedEmail($request_id)
         <p style='margin: 0 0 20px 0;'>Gracias por enviarnos tu solicitud de mejora. Tras revisarla, hemos decidido no proceder con su implementación en este momento:</p>
         
         <div style='background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 25px 0; border-radius: 4px;'>
-            <h3 style='margin: 0 0 8px 0; font-size: 16px; color: #2c3e50;'>{$request['title']}</h3>
-            <p style='margin: 0; color: #64748b; font-size: 14px;'><strong>Aplicación:</strong> {$request['app_name']}</p>
+            <h3 style='margin: 0 0 12px 0; font-size: 16px; color: #2c3e50;'>{$request['title']}</h3>
+            <p style='margin: 0 0 8px 0; color: #64748b; font-size: 14px;'><strong>Aplicación:</strong> {$request['app_name']}</p>
+            <p style='margin: 0; color: #64748b; font-size: 14px; line-height: 1.6;'><strong>Descripción:</strong><br>{$request['description']}</p>
         </div>
         
         <p style='margin: 0 0 20px 0;'>Esto puede deberse a varias razones: prioridades actuales del proyecto, viabilidad técnica, o porque ya estamos trabajando en una solución similar.</p>
