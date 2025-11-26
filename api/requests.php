@@ -158,7 +158,7 @@ switch ($method) {
             $values = [];
 
             // Get current request state for email notifications
-            $stmt = $db->prepare("SELECT status, is_public_request, requester_email FROM requests WHERE id = ?");
+            $stmt = $db->prepare("SELECT status, is_public_request, requester_email, requester_name FROM requests WHERE id = ?");
             $stmt->execute([$input['id']]);
             $old_request = $stmt->fetch();
             $old_status = $old_request['status'] ?? null;
@@ -214,10 +214,10 @@ switch ($method) {
 
             $stmt->execute($values);
 
-            // Send email notifications if requester has email and status changed to completed
-            $has_requester_email = !empty($old_request['requester_email']);
+            // Send email notifications if requester has both email AND name, and status changed to completed
+            $has_requester_info = !empty($old_request['requester_email']) && !empty($old_request['requester_name']);
 
-            if ($has_requester_email && isset($input['status']) && $old_status !== $input['status']) {
+            if ($has_requester_info && isset($input['status']) && $old_status !== $input['status']) {
                 try {
                     require_once __DIR__ . '/../includes/email.php';
 
