@@ -119,34 +119,14 @@ $error = '';
             <?php else: ?>
                 <!-- Info box -->
                 <div
-                    style="background: linear-gradient(135deg, rgba(0, 201, 183, 0.05), rgba(0, 201, 183, 0.02)); border-left: 4px solid var(--primary-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
-                    <div style="display: flex; gap: 1rem;">
+                    style="background: linear-gradient(135deg, rgba(0, 201, 183, 0.05), rgba(0, 201, 183, 0.02)); border-left: 4px solid var(--primary-color); border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; gap: 0.875rem; align-items: center;">
                         <i class="iconoir-info-circle"
-                            style="color: var(--primary-color); font-size: 1.5rem; flex-shrink: 0;"></i>
-                        <div style="flex: 1;">
-                            <strong style="color: var(--text-primary); display: block; margin-bottom: 0.5rem;">¿Cómo funciona esto?</strong>
-                            <p style="margin: 0 0 0.75rem 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
-                                Es muy sencillo. Cuéntanos qué mejora necesitas y nosotros nos encargamos del resto:
-                            </p>
-                            <div style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.7;">
-                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">1.</span>
-                                    <span>Rellenas el formulario (2 minutos)</span>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">2.</span>
-                                    <span>Lo revisamos y te respondemos en 24-48h</span>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">3.</span>
-                                    <span>Si es aprobada, te avisamos por correo</span>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <span style="color: var(--primary-color); font-weight: 600; flex-shrink: 0;">4.</span>
-                                    <span>Te mantenemos al día del progreso hasta que esté lista</span>
-                                </div>
-                            </div>
-                        </div>
+                            style="color: var(--primary-color); font-size: 1.25rem; flex-shrink: 0;"></i>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+                            Cuéntanos qué mejora necesitas rellenando el formulario (2 min). Lo revisaremos en 24-48h y te
+                            avisaremos por correo cuando sea aprobada y esté lista.
+                        </p>
                     </div>
                 </div>
 
@@ -214,27 +194,27 @@ $error = '';
     <script>
         document.getElementById('public-request-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="iconoir-refresh"></i> Enviando...';
-            
+
             const formData = new FormData(e.target);
-            
+
             try {
                 const response = await fetch('/api/public-request.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(Object.fromEntries(formData))
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Show success toast
                     showSuccessToast();
-                    
+
                     // Redirect after short delay
                     setTimeout(() => {
                         window.location.href = '?empresa=<?php echo urlencode($company_slug); ?>&success=1';
@@ -269,7 +249,7 @@ $error = '';
                 z-index: 9999;
                 animation: slideIn 0.3s ease-out;
             `;
-            
+
             toast.innerHTML = `
                 <div style="width: 2.5rem; height: 2.5rem; background: rgba(92, 184, 92, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <i class="iconoir-check-circle" style="font-size: 1.5rem; color: #5CB85C;"></i>
@@ -283,7 +263,7 @@ $error = '';
                     </div>
                 </div>
             `;
-            
+
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes slideIn {
@@ -306,5 +286,6 @@ $error = '';
         <?php endif; ?>
     </script>
 </body>
+
 </html>
 ```
