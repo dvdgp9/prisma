@@ -41,7 +41,7 @@ try {
 
     // Filter by date
     if ($days !== 0 && $days !== null) {
-        $query .= " AND r.updated_at >= datetime('now', '-' || ? || ' days')";
+        $query .= " AND r.updated_at >= DATE_SUB(NOW(), INTERVAL ? DAY)";
         $params[] = $days;
     }
 
