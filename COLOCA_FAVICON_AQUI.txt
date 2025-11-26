@@ -1,4 +1,0 @@
-# Placeholder - Reemplaza con tu favicon
-# Nombre: favicon.ico  
-# Ubicación: Raíz del proyecto (/Users/dvdgp/Documents/Code/prisma/)
-# Formato: ICO (o PNG 32x32)
