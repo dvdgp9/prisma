@@ -61,6 +61,10 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-globe"></i>
                         <span>Vista Global</span>
                     </a>
+                    <a href="/changelog.php" class="nav-item">
+                        <i class="iconoir-journal-page"></i>
+                        <span>Changelog</span>
+                    </a>
                     <?php if (has_role('admin')): ?>
                         <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item"
                             id="pending-approvals-nav">
