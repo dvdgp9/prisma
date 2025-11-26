@@ -149,19 +149,50 @@ switch ($method) {
         }
 
         try {
-            $updates = [];
+            $fields = [];
             $values = [];
+
+            // Get current request state for email notifications
+            $stmt = $db->prepare("SELECT status, is_public_request FROM requests WHERE id = ?");
+            $stmt->execute([$input['id']]);
+            $old_request = $stmt->fetch();
+            $old_status = $old_request['status'] ?? null;
+            $is_public = $old_request['is_public_request'] ?? 0;
 
             // Title
             if (isset($input['title'])) {
-                $updates[] = 'title = ?';
                 $fields[] = 'title = ?';
                 $values[] = $input['title'];
             }
 
+            // Description
             if (isset($input['description'])) {
                 $fields[] = 'description = ?';
                 $values[] = $input['description'];
+            }
+
+            // Priority
+            if (isset($input['priority'])) {
+                $fields[] = 'priority = ?';
+                $values[] = $input['priority'];
+            }
+
+            // Status with completed_at handling
+            if (isset($input['status'])) {
+                $fields[] = 'status = ?';
+                $values[] = $input['status'];
+
+                // Set completed_at when marking as completed or discarded
+                if (in_array($input['status'], ['completed', 'discarded'])) {
+                    $fields[] = 'completed_at = NOW()';
+                }
+                // Reset completed_at when reopening
+                elseif (
+                    in_array($input['status'], ['pending', 'in_progress']) &&
+                    in_array($old_status, ['completed', 'discarded'])
+                ) {
+                    $fields[] = 'completed_at = NULL';
+                }
             }
 
             if (empty($fields)) {
@@ -178,14 +209,18 @@ switch ($method) {
 
             $stmt->execute($values);
 
-            // Send email notifications for public requests
-            if (isset($is_public) && $is_public && isset($input['status']) && $old_status !== $input['status']) {
-                require_once __DIR__ . '/../includes/email.php';
+            // Send email notifications for public requests on status change
+            if ($is_public && isset($input['status']) && $old_status !== $input['status']) {
+                try {
+                    require_once __DIR__ . '/../includes/email.php';
 
-                if ($input['status'] === 'in_progress') {
-                    sendRequestInProgressEmail($input['id']);
-                } elseif ($input['status'] === 'completed') {
-                    sendRequestCompletedEmail($input['id']);
+                    if ($input['status'] === 'in_progress') {
+                        sendRequestInProgressEmail($input['id']);
+                    } elseif ($input['status'] === 'completed') {
+                        sendRequestCompletedEmail($input['id']);
+                    }
+                } catch (Exception $e) {
+                    error_log('Failed to send status change email: ' . $e->getMessage());
                 }
             }
 
