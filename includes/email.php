@@ -30,7 +30,7 @@ function sendCompanyEmail($company_id, $to, $subject, $body, $to_name = '')
                 smtp_host,
                 smtp_port,
                 smtp_username,
-                AES_DECRYPT(smtp_password, 'prisma_smtp_key_2024') as smtp_password,
+                smtp_password,
                 smtp_from_email,
                 smtp_from_name,
                 smtp_encryption,
@@ -46,6 +46,10 @@ function sendCompanyEmail($company_id, $to, $subject, $body, $to_name = '')
             return false;
         }
 
+        // Decrypt password
+        require_once __DIR__ . '/encryption.php';
+        $smtp_password = decrypt($config['smtp_password']);
+
         // Create PHPMailer instance
         $mail = new PHPMailer(true);
 
@@ -54,7 +58,7 @@ function sendCompanyEmail($company_id, $to, $subject, $body, $to_name = '')
         $mail->Host = $config['smtp_host'];
         $mail->SMTPAuth = true;
         $mail->Username = $config['smtp_username'];
-        $mail->Password = $config['smtp_password'];
+        $mail->Password = $smtp_password;
         $mail->SMTPSecure = $config['smtp_encryption'] === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = $config['smtp_port'];
         $mail->CharSet = 'UTF-8';
