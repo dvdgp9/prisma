@@ -39,7 +39,8 @@ $error = '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitar Mejora - <?php echo htmlspecialchars($company['name']); ?></title>
+    <title>Sugerir Mejora - Prisma</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="/assets/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
 </head>
@@ -47,8 +48,8 @@ $error = '';
 <body>
     <div class="login-container">
         <div class="login-card" style="max-width: 600px;">
-            <div class="login-header" style="margin-bottom: 1.5rem;">
-                <div class="login-logo">Prisma</div>
+            <div class="login-header">
+                <img src="/assets/images/logo.png" alt="Prisma" class="login-logo" style="height: 48px; width: auto;">
                 <h2 style="margin: 0.5rem 0 0 0; font-size: 1.5rem; color: var(--text-primary);">
                     Solicitar Mejora
                 </h2>

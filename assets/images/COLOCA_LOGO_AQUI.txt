@@ -1,0 +1,4 @@
+# Placeholder - Reemplaza con tu logo
+# Formato recomendado: PNG o SVG
+# Dimensiones: Alto ~200px, ancho proporcional al diseño
+# Fondo transparente preferible
