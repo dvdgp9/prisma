@@ -554,8 +554,19 @@ async function submitNewRequest(event) {
                 }
             }
 
+            // Reset form
+            document.getElementById('new-request-form').reset();
+            selectedFiles = [];
+            document.getElementById('file-list').innerHTML = '';
+
             closeModal('new-request-modal');
             loadRequests();
+
+            showToast({
+                title: 'Mejora creada',
+                message: 'La solicitud se ha creado correctamente',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
         } else {
             alert(data.error || 'Error al crear la petición');
         }

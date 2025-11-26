@@ -114,6 +114,10 @@ switch ($method) {
         }
 
         try {
+            // Debug log for requester fields
+            error_log('Creating request with requester_name: ' . ($input['requester_name'] ?? 'NULL') .
+                ', requester_email: ' . ($input['requester_email'] ?? 'NULL'));
+
             $stmt = $db->prepare("
                 INSERT INTO requests (
                     app_id, title, description, priority, status, created_by,
