@@ -272,6 +272,25 @@ $company_name = $user['company_name'] ?? '';
                     </div>
                 <?php endif; ?>
 
+                <!-- Optional requester info -->
+                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                        <strong>Opcional:</strong> Si alguien te solicitó esta mejora, añade sus datos para notificarle:
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="edit-request-requester-name">Nombre del solicitante</label>
+                            <input type="text" id="edit-request-requester-name" placeholder="Ej: Juan Pérez">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="edit-request-requester-email">Email del solicitante</label>
+                            <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com">
+                        </div>
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
                     <?php if (has_role('superadmin')): ?>

@@ -700,6 +700,12 @@ async function openEditRequestModal(requestId) {
             if (priorityField) priorityField.value = request.priority;
             if (statusField) statusField.value = request.status;
 
+            // Set requester info if available
+            const requesterNameField = document.getElementById('edit-request-requester-name');
+            const requesterEmailField = document.getElementById('edit-request-requester-email');
+            if (requesterNameField) requesterNameField.value = request.requester_name || '';
+            if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
+
             // Open modal
             document.getElementById('edit-request-modal').classList.add('active');
         }
@@ -728,6 +734,16 @@ async function submitEditRequest(event) {
     const statusField = document.getElementById('edit-request-status');
     if (priorityField) payload.priority = priorityField.value;
     if (statusField) payload.status = statusField.value;
+
+    // Add requester info if provided
+    const requesterNameField = document.getElementById('edit-request-requester-name');
+    const requesterEmailField = document.getElementById('edit-request-requester-email');
+    if (requesterNameField && requesterNameField.value) {
+        payload.requester_name = requesterNameField.value;
+    }
+    if (requesterEmailField && requesterEmailField.value) {
+        payload.requester_email = requesterEmailField.value;
+    }
 
     try {
         const response = await fetch('/api/requests.php', {
