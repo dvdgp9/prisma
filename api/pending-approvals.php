@@ -104,9 +104,17 @@ switch ($method) {
                 ");
                 $stmt->execute([$user['id'], $input['request_id']]);
 
+                // Send approval email
+                require_once __DIR__ . '/../includes/email.php';
+                sendRequestApprovedEmail($input['request_id']);
+
                 $message = 'Request approved successfully';
             } else {
-                // Reject: Delete the request
+                // Reject: Send rejection email before deleting
+                require_once __DIR__ . '/../includes/email.php';
+                sendRequestRejectedEmail($input['request_id']);
+
+                // Delete the request
                 $stmt = $db->prepare("DELETE FROM requests WHERE id = ?");
                 $stmt->execute([$input['request_id']]);
 

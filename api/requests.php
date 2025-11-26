@@ -155,37 +155,16 @@ switch ($method) {
             // Title
             if (isset($input['title'])) {
                 $updates[] = 'title = ?';
+                $fields[] = 'title = ?';
                 $values[] = $input['title'];
             }
 
-            // Description
             if (isset($input['description'])) {
-                $updates[] = 'description = ?';
+                $fields[] = 'description = ?';
                 $values[] = $input['description'];
             }
 
-            // Priority
-            if (isset($input['priority'])) {
-                $updates[] = 'priority = ?';
-                $values[] = $input['priority'];
-            }
-
-            // Status - Handle completed_at timestamp
-            if (isset($input['status'])) {
-                $updates[] = 'status = ?';
-                $values[] = $input['status'];
-
-                // Set completed_at when marking as completed or discarded
-                if ($input['status'] === 'completed' || $input['status'] === 'discarded') {
-                    $updates[] = 'completed_at = NOW()';
-                }
-                // Reset completed_at when reopening task
-                else if ($input['status'] === 'pending' || $input['status'] === 'in_progress') {
-                    $updates[] = 'completed_at = NULL';
-                }
-            }
-
-            if (empty($updates)) {
+            if (empty($fields)) {
                 error_response('No fields to update');
             }
 
@@ -193,12 +172,24 @@ switch ($method) {
 
             $stmt = $db->prepare("
                 UPDATE requests 
-                SET " . implode(', ', $updates) . "
+                SET " . implode(', ', $fields) . "
                 WHERE id = ?
             ");
+
             $stmt->execute($values);
 
-            success_response([], 'Request updated successfully');
+            // Send email notifications for public requests
+            if (isset($is_public) && $is_public && isset($input['status']) && $old_status !== $input['status']) {
+                require_once __DIR__ . '/../includes/email.php';
+
+                if ($input['status'] === 'in_progress') {
+                    sendRequestInProgressEmail($input['id']);
+                } elseif ($input['status'] === 'completed') {
+                    sendRequestCompletedEmail($input['id']);
+                }
+            }
+
+            success_response(['id' => $input['id']]);
         } catch (Exception $e) {
             error_response('Failed to update request: ' . $e->getMessage(), 500);
         }
