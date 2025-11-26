@@ -571,14 +571,18 @@ label {
 
 /* Quick Actions */
 .card-quick-actions {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
     display: flex;
     gap: var(--spacing-xs);
-    /* opacity: 0; Removed to make them always visible in the new layout, or keep it? 
-       Let's keep them visible as it's a list view now and actions are important. 
-       Also avoids confusion with empty space. */
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
-/* .card:hover .card-quick-actions { opacity: 1; } Removed */
+.card:hover .card-quick-actions {
+    opacity: 1;
+}
 
 .quick-action-btn {
     width: 2rem;
@@ -842,8 +846,8 @@ nav {
 
 /* Cards Grid */
 .cards-grid {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-md);
 }
 
