@@ -85,12 +85,12 @@ switch ($method) {
                 SELECT 
                     r.*,
                     a.name as app_name,
-                    u.username as creator_username,
-                    u.full_name as creator_name,
+                    COALESCE(u.username, r.requester_name, 'Anónimo') as creator_username,
+                    COALESCE(u.full_name, r.requester_name, 'Anónimo') as creator_name,
                     (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count
                 FROM requests r
                 INNER JOIN apps a ON r.app_id = a.id
-                INNER JOIN users u ON r.created_by = u.id
+                LEFT JOIN users u ON r.created_by = u.id
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY {$sort}
             ";
