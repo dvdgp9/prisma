@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-card">
             <div class="login-header">
                 <div
-                    style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.75rem;">
+                    style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                     <img src="/assets/images/logo.png" alt="Prisma" style="height: 48px; width: auto;">
                     <div class="login-logo">Prisma</div>
                 </div>

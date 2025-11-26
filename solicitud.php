@@ -51,7 +51,7 @@ $error = '';
         <div class="login-card" style="max-width: 600px;">
             <div class="login-header">
                 <div
-                    style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                    style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                     <img src="/assets/images/logo.png" alt="Prisma" style="height: 48px; width: auto;">
                     <div class="login-logo">Prisma</div>
                 </div>
@@ -288,7 +288,7 @@ $error = '';
         }
 
         <?php if (isset($_GET['success'])): ?>
-                window.history.replaceState({}, '', '?empresa=<?php echo urlencode($company_slug); ?>');
+            window.history.replaceState({}, '', '?empresa=<?php echo urlencode($company_slug); ?>');
         <?php endif; ?>
     </script>
 </body>
