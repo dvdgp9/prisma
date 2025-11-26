@@ -104,15 +104,23 @@ switch ($method) {
                 ");
                 $stmt->execute([$user['id'], $input['request_id']]);
 
-                // Send approval email
-                require_once __DIR__ . '/../includes/email.php';
-                sendRequestApprovedEmail($input['request_id']);
+                // Send approval email (don't fail if email fails)
+                try {
+                    require_once __DIR__ . '/../includes/email.php';
+                    sendRequestApprovedEmail($input['request_id']);
+                } catch (Exception $e) {
+                    error_log('Failed to send approval email: ' . $e->getMessage());
+                }
 
                 $message = 'Request approved successfully';
             } else {
-                // Reject: Send rejection email before deleting
-                require_once __DIR__ . '/../includes/email.php';
-                sendRequestRejectedEmail($input['request_id']);
+                // Reject: Send rejection email before deleting (don't fail if email fails)
+                try {
+                    require_once __DIR__ . '/../includes/email.php';
+                    sendRequestRejectedEmail($input['request_id']);
+                } catch (Exception $e) {
+                    error_log('Failed to send rejection email: ' . $e->getMessage());
+                }
 
                 // Delete the request
                 $stmt = $db->prepare("DELETE FROM requests WHERE id = ?");
@@ -125,7 +133,10 @@ switch ($method) {
             success_response([], $message);
 
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Error in pending-approvals.php: ' . $e->getMessage());
             error_response('Error processing request: ' . $e->getMessage(), 500);
         }
         break;
