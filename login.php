@@ -29,7 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Prisma</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="icon" type="image/png" href="/favicon.png?v=2">
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
@@ -37,7 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <img src="/assets/images/logo.png" alt="Prisma" class="login-logo" style="height: 48px; width: auto;">
+                <div
+                    style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.75rem;">
+                    <img src="/assets/images/logo.png" alt="Prisma" style="height: 48px; width: auto;">
+                    <div class="login-logo">Prisma</div>
+                </div>
                 <p class="text-muted">Dashboard centralizado de desarrollo</p>
             </div>
 

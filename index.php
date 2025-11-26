@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prisma Dashboard</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="icon" type="image/png" href="/favicon.png?v=2">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,7 +36,10 @@ $company_name = $user['company_name'] ?? '';
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="/assets/images/logo.png" alt="Prisma" class="logo" style="height: 32px; width: auto;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="/assets/images/logo.png" alt="Prisma" style="height: 32px; width: auto;">
+                    <div class="logo">Prisma</div>
+                </div>
                 <div class="user-info" onclick="openProfileModal()" style="cursor: pointer;" title="Editar perfil">
                     <div class="user-avatar">
                         <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
