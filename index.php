@@ -61,6 +61,14 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-globe"></i>
                         <span>Vista Global</span>
                     </a>
+                    <?php if (has_role('admin')): ?>
+                        <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item"
+                            id="pending-approvals-nav">
+                            <i class="iconoir-clock"></i>
+                            <span>Pendientes Aprobar</span>
+                            <span class="badge-count" id="pending-count" style="display: none;"></span>
+                        </a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="nav-section" id="apps-nav">
@@ -71,12 +79,6 @@ $company_name = $user['company_name'] ?? '';
                 <?php if (has_role('admin')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Administración</div>
-                        <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item"
-                            id="pending-approvals-nav">
-                            <i class="iconoir-clock"></i>
-                            <span>Pendientes Aprobar</span>
-                            <span class="badge-count" id="pending-count" style="display: none;"></span>
-                        </a>
                         <?php if (has_role('superadmin')): ?>
                             <a href="/admin.php" class="nav-item">
                                 <i class="iconoir-shield-check"></i>
