@@ -202,10 +202,20 @@ function createRequestCard(request, isFinished = false) {
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
 
     card.innerHTML = `
-        <div class="card-header">
-            <h3 class="card-title" style="max-width: 70%;">${escapeHtml(request.title)}</h3>
+        <div class="card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: var(--spacing-sm);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
+                <h3 class="card-title" style="margin: 0; max-width: none;">${escapeHtml(request.title)}</h3>
+                <div class="priority-badge priority-${request.priority}" 
+                     style="flex-shrink: 0;"
+                     ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
+                    ${priorityLabels[request.priority] || request.priority.toUpperCase()}
+                    ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
+                    ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
+                </div>
+            </div>
+            
             ${isAdminOrSuperadmin ? `
-                <div class="card-quick-actions">
+                <div class="card-quick-actions" style="flex-shrink: 0;">
                     <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                         <i class="iconoir-edit"></i>
                     </button>
@@ -219,13 +229,6 @@ function createRequestCard(request, isFinished = false) {
         </div>
 
         <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); flex-wrap: wrap; align-items: center;">
-            <div class="priority-badge priority-${request.priority}" 
-                 ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
-                ${priorityLabels[request.priority] || request.priority.toUpperCase()}
-                ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
-                ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
-            </div>
-            
             ${isAdminOrSuperadmin ? `
                 <div class="status-actions">
                     <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
