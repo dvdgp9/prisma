@@ -201,25 +201,31 @@ $error = '';
     <script>
         document.getElementById('public-request-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-
+            
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="iconoir-refresh"></i> Enviando...';
-
+            
             const formData = new FormData(e.target);
-
+            
             try {
                 const response = await fetch('/api/public-request.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(Object.fromEntries(formData))
                 });
-
+                
                 const data = await response.json();
-
+                
                 if (data.success) {
-                    window.location.href = '?empresa=<?php echo urlencode($company_slug); ?>&success=1';
+                    // Show success toast
+                    showSuccessToast();
+                    
+                    // Redirect after short delay
+                    setTimeout(() => {
+                        window.location.href = '?empresa=<?php echo urlencode($company_slug); ?>&success=1';
+                    }, 1500);
                 } else {
                     alert(data.error || 'Error al enviar la solicitud');
                     submitBtn.disabled = false;
@@ -232,10 +238,60 @@ $error = '';
             }
         });
 
+        function showSuccessToast() {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 2rem;
+                right: 2rem;
+                background: white;
+                padding: 1.25rem 1.5rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+                border-left: 4px solid #5CB85C;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                max-width: 400px;
+                z-index: 9999;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            toast.innerHTML = `
+                <div style="width: 2.5rem; height: 2.5rem; background: rgba(92, 184, 92, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="iconoir-check-circle" style="font-size: 1.5rem; color: #5CB85C;"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.9375rem; color: #2c3e50; margin-bottom: 0.25rem;">
+                        ¡Genial! Ya la tenemos
+                    </div>
+                    <div style="font-size: 0.8125rem; color: #64748b; line-height: 1.4;">
+                        Revisaremos tu solicitud y te avisaremos pronto por email
+                    </div>
+                </div>
+            `;
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(120%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(toast);
+        }
+
         <?php if (isset($_GET['success'])): ?>
             window.history.replaceState({}, '', '?empresa=<?php echo urlencode($company_slug); ?>');
         <?php endif; ?>
     </script>
 </body>
-
 </html>
+```
