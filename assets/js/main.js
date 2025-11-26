@@ -202,9 +202,9 @@ function createRequestCard(request, isFinished = false) {
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
 
     card.innerHTML = `
-        <div class="card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: var(--spacing-sm); flex-wrap: nowrap;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; max-width: calc(100% - 120px);">
-                <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(request.title)}</h3>
+        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: var(--spacing-sm); flex-wrap: nowrap;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; overflow: hidden;">
+                <h3 class="card-title" style="margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(request.title)}</h3>
                 <div class="priority-badge priority-${request.priority}" 
                      style="flex-shrink: 0;"
                      ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
