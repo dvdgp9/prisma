@@ -2,20 +2,25 @@
 
 /* ========== CSS Variables ========== */
 :root {
-    /* Primary Colors - Teal/Turquoise */
-    --primary-color: #00C9B7;
-    --primary-dark: #00A89A;
-    --primary-light: #33D4C4;
+    /* Prisma Colors - From Logo */
+    --prisma-red: #ed6f66;
+    --prisma-yellow: #f9af51;
+    --prisma-blue: #42a0d1;
 
-    /* Secondary Colors - Coral/Orange */
-    --secondary-color: #FF6B6B;
-    --secondary-dark: #EE5A52;
-    --secondary-light: #FF8787;
+    /* Primary Colors - Prisma Blue */
+    --primary-color: #42a0d1;
+    --primary-dark: #3689b8;
+    --primary-light: #66b3dc;
 
-    /* Accent - Sunny Yellow */
-    --accent-color: #FFD93D;
-    --accent-dark: #F5C518;
-    --accent-light: #FFE066;
+    /* Secondary Colors - Prisma Red */
+    --secondary-color: #ed6f66;
+    --secondary-dark: #e45a50;
+    --secondary-light: #f18a82;
+
+    /* Accent - Prisma Yellow */
+    --accent-color: #f9af51;
+    --accent-dark: #f09a35;
+    --accent-light: #fbc270;
 
     /* Success - Fresh Green */
     --success-color: #6BCF7F;
@@ -164,7 +169,7 @@ a:hover {
 
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 201, 183, 0.3);
+    box-shadow: 0 4px 12px rgba(66, 160, 209, 0.3);
 }
 
 .btn-secondary {
@@ -174,7 +179,7 @@ a:hover {
 
 .btn-secondary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    box-shadow: 0 4px 12px rgba(237, 111, 102, 0.3);
 }
 
 .btn-success {
@@ -228,7 +233,7 @@ textarea:focus,
 select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 201, 183, 0.1);
+    box-shadow: 0 0 0 3px rgba(66, 160, 209, 0.1);
 }
 
 label {
@@ -312,17 +317,17 @@ label {
 }
 
 .priority-high {
-    background: linear-gradient(135deg, #FF8C42, #FF6B35);
+    background: linear-gradient(135deg, var(--prisma-red), var(--prisma-yellow));
 }
 
 .priority-medium {
-    background: linear-gradient(135deg, #FFD93D, #F5C518);
+    background: linear-gradient(135deg, var(--prisma-yellow), var(--prisma-blue));
     color: #2C3E50;
 }
 
 .priority-low {
-    background: linear-gradient(135deg, #95E1D3, #6FCDBE);
-    color: #2C3E50;
+    background: linear-gradient(135deg, var(--prisma-blue), var(--primary-dark));
+    color: white;
 }
 
 @keyframes pulse-critical {
@@ -506,7 +511,7 @@ label {
     font-size: 0.6875rem;
     font-weight: 600;
     border-radius: var(--radius-sm);
-    background: rgba(0, 201, 183, 0.08);
+    background: rgba(66, 160, 209, 0.08);
     color: var(--primary-color);
     letter-spacing: 0.01em;
 }
@@ -684,7 +689,7 @@ label {
 .logo {
     font-size: 2rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    background: linear-gradient(135deg, var(--prisma-red) 0%, var(--prisma-yellow) 50%, var(--prisma-blue) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -718,7 +723,7 @@ label {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, var(--prisma-red) 0%, var(--prisma-yellow) 50%, var(--prisma-blue) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -899,7 +904,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-light) 100%);
+    background: linear-gradient(135deg, var(--prisma-red) 0%, var(--prisma-yellow) 50%, var(--prisma-blue) 100%);
     padding: var(--spacing-xl);
 }
 
@@ -920,7 +925,7 @@ nav {
 .login-logo {
     font-size: 3rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    background: linear-gradient(135deg, var(--prisma-red) 0%, var(--prisma-yellow) 50%, var(--prisma-blue) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1393,12 +1398,12 @@ nav {
         align-items: flex-start;
         gap: var(--spacing-sm);
     }
-    
+
     .changelog-item-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .date-badge {
         font-size: 0.875rem;
     }
