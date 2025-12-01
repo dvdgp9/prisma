@@ -222,9 +222,8 @@ function createChangelogItem(item) {
                     <span class="priority-badge priority-${item.priority}">
                         ${priorityLabels[item.priority]}
                     </span>
-                    <h4 class="changelog-item-title">${escapeHtml(item.title)}</h4>
+                    <h4 class="changelog-item-title">${escapeHtml(item.app_name)} - ${escapeHtml(item.title)}</h4>
                 </div>
-                <span class="app-badge-changelog">${escapeHtml(item.app_name)}</span>
             </div>
             ${item.description ? `
                 <p class="changelog-item-description">${escapeHtml(item.description)}</p>

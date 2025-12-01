@@ -212,7 +212,9 @@ function createRequestCard(request, isFinished = false) {
                     ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
                 </div>
                 
-                <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">${escapeHtml(request.title)}</h3>
+                <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">
+                    ${(currentView === 'global' && request.app_name) ? escapeHtml(request.app_name) + ' - ' : ''}${escapeHtml(request.title)}
+                </h3>
             </div>
             
             ${isAdminOrSuperadmin ? `
@@ -271,11 +273,7 @@ function createRequestCard(request, isFinished = false) {
                     <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.875rem;"></i>
                     <span class="text-small text-muted">${escapeHtml(request.creator_username || request.created_by)}</span>
                 </div>
-                ${currentView === 'global' && request.app_name ? `
-                    <span class="app-badge-footer">
-                        ${escapeHtml(request.app_name)}
-                    </span>
-                ` : ''}
+
                 ${isAdminOrSuperadmin ? `
                     <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-left: auto;">
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
