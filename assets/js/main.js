@@ -288,6 +288,12 @@ function createRequestCard(request, isFinished = false) {
                 ` : ''}
             </div>
             <div class="vote-section">
+                <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
+                        onclick="vote(${request.id}, 'up')"
+                        title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
+                    <i class="iconoir-arrow-up"></i>
+                </button>
+                <span class="vote-count">${request.vote_count || 0}</span>
                 ${isAdminOrSuperadmin ? `
                     <button class="vote-btn vote-down" 
                             onclick="vote(${request.id}, 'down')"
@@ -295,12 +301,6 @@ function createRequestCard(request, isFinished = false) {
                         <i class="iconoir-arrow-down"></i>
                     </button>
                 ` : ''}
-                <span class="vote-count">${request.vote_count || 0}</span>
-                <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
-                        onclick="vote(${request.id}, 'up')"
-                        title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
-                    <i class="iconoir-arrow-up"></i>
-                </button>
             </div>
         </div>
     `;
