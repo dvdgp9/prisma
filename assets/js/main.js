@@ -11,7 +11,37 @@ const userRole = document.body.dataset.userRole;
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
     loadApps();
-    loadRequests();
+    loadApps();
+
+    // Check for app_id in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const appIdParam = urlParams.get('app_id');
+
+    if (appIdParam) {
+        // We need to wait for apps to load to get the app name, 
+        // but we can start loading requests immediately
+        currentView = 'app';
+        currentAppId = appIdParam;
+        loadRequests();
+
+        // Update UI once apps are loaded
+        // This is handled in loadApps -> renderAppsNav -> but we need to set active state
+        // We'll add a small check in renderAppsNav or just wait a bit
+        setTimeout(() => {
+            const navItem = document.querySelector(`a[onclick*="loadView('app', ${appIdParam})"]`);
+            if (navItem) {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                navItem.classList.add('active');
+
+                const app = apps.find(a => a.id == appIdParam);
+                if (app) {
+                    document.getElementById('page-title').textContent = app.name;
+                }
+            }
+        }, 500); // Small delay to ensure apps are rendered
+    } else {
+        loadRequests();
+    }
     setupFileUpload();
 
     // Update pending count for admins
