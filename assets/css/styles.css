@@ -317,16 +317,17 @@ label {
 }
 
 .priority-high {
-    background: linear-gradient(135deg, var(--prisma-red), var(--prisma-yellow));
+    background: var(--prisma-red);
+    color: white;
 }
 
 .priority-medium {
-    background: linear-gradient(135deg, var(--prisma-yellow), var(--prisma-blue));
-    color: #2C3E50;
+    background: var(--prisma-yellow);
+    color: var(--text-primary);
 }
 
 .priority-low {
-    background: linear-gradient(135deg, var(--prisma-blue), var(--primary-dark));
+    background: var(--prisma-blue);
     color: white;
 }
 
