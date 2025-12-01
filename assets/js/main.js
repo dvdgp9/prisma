@@ -44,6 +44,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     setupFileUpload();
 
+    // Cmd/Ctrl + Enter to submit new request form
+    const newRequestForm = document.getElementById('new-request-form');
+    if (newRequestForm) {
+        newRequestForm.addEventListener('keydown', function (e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                newRequestForm.requestSubmit();
+            }
+        });
+    }
+
     // Update pending count for admins
     if (userRole === 'admin' || userRole === 'superadmin') {
         updatePendingCount();
