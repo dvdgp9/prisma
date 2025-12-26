@@ -241,7 +241,7 @@ $error = '';
             const toast = document.createElement('div');
             toast.style.cssText = `
                 position: fixed;
-                top: 2rem;
+                bottom: 2rem;
                 right: 2rem;
                 background: white;
                 padding: 1.25rem 1.5rem;
