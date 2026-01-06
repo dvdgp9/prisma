@@ -117,19 +117,60 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- Filters and Sorting -->
-            <div class="filters-bar">
-                <div class="filter-group">
-                    <label>Ordenar por</label>
-                    <select id="sort-select" onchange="loadRequests()">
-                        <option value="votes">Más votadas</option>
-                        <option value="status">Estado</option>
-                        <option value="priority">Prioridad</option>
-                        <option value="date">Más reciente</option>
-                        <option value="date_asc">Más antigua</option>
-                    </select>
+            <!-- Multi-level Sorting Bar -->
+            <div class="sorting-bar">
+                <div class="sorting-controls">
+                    <div class="sort-group">
+                        <label class="sort-label">Ordenar por</label>
+                        <select id="sort-primary" onchange="loadRequests()" class="sort-select">
+                            <option value="votes">Votos</option>
+                            <option value="priority">Prioridad</option>
+                            <option value="difficulty">Dificultad</option>
+                            <option value="status">Estado</option>
+                            <option value="date">Fecha (nueva)</option>
+                            <option value="date_asc">Fecha (antigua)</option>
+                        </select>
+                    </div>
+                    
+                    <span class="sort-separator">→</span>
+                    
+                    <div class="sort-group">
+                        <label class="sort-label">Luego por</label>
+                        <select id="sort-secondary" onchange="loadRequests()" class="sort-select">
+                            <option value="">Ninguno</option>
+                            <option value="votes">Votos</option>
+                            <option value="priority" selected>Prioridad</option>
+                            <option value="difficulty">Dificultad</option>
+                            <option value="status">Estado</option>
+                            <option value="date">Fecha (nueva)</option>
+                            <option value="date_asc">Fecha (antigua)</option>
+                        </select>
+                    </div>
+                    
+                    <span class="sort-separator">→</span>
+                    
+                    <div class="sort-group">
+                        <label class="sort-label">Finalmente por</label>
+                        <select id="sort-tertiary" onchange="loadRequests()" class="sort-select">
+                            <option value="">Ninguno</option>
+                            <option value="votes">Votos</option>
+                            <option value="priority">Prioridad</option>
+                            <option value="difficulty">Dificultad</option>
+                            <option value="status">Estado</option>
+                            <option value="date" selected>Fecha (nueva)</option>
+                            <option value="date_asc">Fecha (antigua)</option>
+                        </select>
+                    </div>
                 </div>
-
+                
+                <button class="btn-filters-toggle" onclick="toggleAdvancedFilters()" id="filters-toggle-btn">
+                    <i class="iconoir-filter"></i>
+                    Filtros
+                </button>
+            </div>
+            
+            <!-- Advanced Filters (Collapsible) -->
+            <div class="advanced-filters" id="advanced-filters" style="display: none;">
                 <div class="filter-group">
                     <label>Prioridad</label>
                     <select id="priority-filter" onchange="loadRequests()">
@@ -149,6 +190,16 @@ $company_name = $user['company_name'] ?? '';
                         <option value="in_progress">En Progreso</option>
                         <option value="completed">Completado</option>
                         <option value="discarded">Descartado</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Dificultad</label>
+                    <select id="difficulty-filter" onchange="loadRequests()">
+                        <option value="">Todas</option>
+                        <option value="low">Baja</option>
+                        <option value="medium">Media</option>
+                        <option value="high">Alta</option>
                     </select>
                 </div>
             </div>

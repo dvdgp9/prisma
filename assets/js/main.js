@@ -127,12 +127,15 @@ function loadView(type, appId = null) {
     loadRequests();
 }
 
-// Load requests with filters
+// Load requests with multi-level sorting and filters
 async function loadRequests() {
     try {
-        const sortBy = document.getElementById('sort-select')?.value || 'date_desc';
-        const priority = document.getElementById('priority-filter')?.value || 'all';
-        const status = document.getElementById('status-filter')?.value || 'all';
+        const sortPrimary = document.getElementById('sort-primary')?.value || 'votes';
+        const sortSecondary = document.getElementById('sort-secondary')?.value || '';
+        const sortTertiary = document.getElementById('sort-tertiary')?.value || '';
+        const priority = document.getElementById('priority-filter')?.value || '';
+        const status = document.getElementById('status-filter')?.value || '';
+        const difficulty = document.getElementById('difficulty-filter')?.value || '';
 
         let url = '/api/requests.php?';
         const params = [];
@@ -141,9 +144,15 @@ async function loadRequests() {
             params.push(`app_id=${currentAppId}`);
         }
 
-        if (priority !== 'all') params.push(`priority=${priority}`);
-        if (status !== 'all') params.push(`status=${status}`);
-        params.push(`sort=${sortBy}`);
+        // Multi-level sorting
+        params.push(`sort_primary=${sortPrimary}`);
+        if (sortSecondary) params.push(`sort_secondary=${sortSecondary}`);
+        if (sortTertiary) params.push(`sort_tertiary=${sortTertiary}`);
+
+        // Filters
+        if (priority) params.push(`priority=${priority}`);
+        if (status) params.push(`status=${status}`);
+        if (difficulty) params.push(`difficulty=${difficulty}`);
 
         url += params.join('&');
 
@@ -156,6 +165,22 @@ async function loadRequests() {
         }
     } catch (error) {
         console.error('Error loading requests:', error);
+    }
+}
+
+// Toggle advanced filters visibility
+function toggleAdvancedFilters() {
+    const filtersDiv = document.getElementById('advanced-filters');
+    const toggleBtn = document.getElementById('filters-toggle-btn');
+    
+    if (filtersDiv.style.display === 'none') {
+        filtersDiv.style.display = 'flex';
+        filtersDiv.classList.add('show');
+        toggleBtn.classList.add('active');
+    } else {
+        filtersDiv.style.display = 'none';
+        filtersDiv.classList.remove('show');
+        toggleBtn.classList.remove('active');
     }
 }
 

@@ -52,45 +52,79 @@ switch ($method) {
                 $params[] = $_GET['status'];
             }
 
-            // Sorting - votes as primary sort, then priority
-            $priority_order = "CASE r.priority 
+            // Filter by difficulty
+            if (!empty($_GET['difficulty'])) {
+                $where[] = 'r.difficulty = ?';
+                $params[] = $_GET['difficulty'];
+            }
+
+            // Multi-level sorting
+            $getSortClause = function($sortType) {
+                switch($sortType) {
+                    case 'votes':
+                        return 'r.vote_count DESC';
+                    case 'priority':
+                        return "CASE r.priority 
                                     WHEN 'critical' THEN 1 
                                     WHEN 'high' THEN 2 
                                     WHEN 'medium' THEN 3 
                                     WHEN 'low' THEN 4 
                                     ELSE 5 
                                 END";
-            
-            $sort = "r.vote_count DESC, $priority_order, r.created_at DESC"; // Default: most voted, then priority
-            if (!empty($_GET['sort'])) {
-                switch ($_GET['sort']) {
-                    case 'date':
-                        $sort = "r.created_at DESC, r.vote_count DESC, $priority_order";
-                        break;
-                    case 'date_asc':
-                        $sort = "r.created_at ASC, r.vote_count DESC, $priority_order";
-                        break;
-                    case 'priority':
-                        $sort = "$priority_order, r.vote_count DESC, r.created_at DESC";
-                        break;
+                    case 'difficulty':
+                        return "CASE r.difficulty 
+                                    WHEN 'high' THEN 1 
+                                    WHEN 'medium' THEN 2 
+                                    WHEN 'low' THEN 3 
+                                    ELSE 4 
+                                END";
                     case 'status':
-                        // Order by status: in_progress > pending > completed/discarded
-                        $sort = "CASE r.status
+                        return "CASE r.status
                                     WHEN 'in_progress' THEN 1
                                     WHEN 'pending' THEN 2
                                     WHEN 'completed' THEN 3
                                     WHEN 'discarded' THEN 4
                                     ELSE 5
-                                END, r.vote_count DESC, $priority_order, r.created_at DESC";
-                        break;
-                    case 'votes':
-                        $sort = "r.vote_count DESC, $priority_order, r.created_at DESC";
-                        break;
+                                END";
+                    case 'date':
+                        return 'r.created_at DESC';
+                    case 'date_asc':
+                        return 'r.created_at ASC';
                     default:
-                        $sort = "r.vote_count DESC, $priority_order, r.created_at DESC";
-                        break;
+                        return '';
+                }
+            };
+
+            $sortParts = [];
+            
+            // Primary sort
+            $sortPrimary = $_GET['sort_primary'] ?? 'votes';
+            if ($clause = $getSortClause($sortPrimary)) {
+                $sortParts[] = $clause;
+            }
+            
+            // Secondary sort
+            if (!empty($_GET['sort_secondary'])) {
+                if ($clause = $getSortClause($_GET['sort_secondary'])) {
+                    $sortParts[] = $clause;
                 }
             }
+            
+            // Tertiary sort
+            if (!empty($_GET['sort_tertiary'])) {
+                if ($clause = $getSortClause($_GET['sort_tertiary'])) {
+                    $sortParts[] = $clause;
+                }
+            }
+            
+            // Always add created_at as final tiebreaker if not already included
+            $hasDateSort = in_array('date', [$sortPrimary, $_GET['sort_secondary'] ?? '', $_GET['sort_tertiary'] ?? '']) ||
+                          in_array('date_asc', [$sortPrimary, $_GET['sort_secondary'] ?? '', $_GET['sort_tertiary'] ?? '']);
+            if (!$hasDateSort) {
+                $sortParts[] = 'r.created_at DESC';
+            }
+            
+            $sort = implode(', ', $sortParts);
 
             $query = "
                 SELECT 
