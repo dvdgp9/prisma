@@ -592,6 +592,7 @@ async function submitNewRequest(event) {
     const title = document.getElementById('request-title').value;
     const description = document.getElementById('request-description').value;
     const priority = document.getElementById('request-priority').value;
+    const difficulty = document.getElementById('request-difficulty').value;
     const requesterName = document.getElementById('request-requester-name').value;
     const requesterEmail = document.getElementById('request-requester-email').value;
 
@@ -601,7 +602,8 @@ async function submitNewRequest(event) {
             app_id: appId,
             title: title,
             description: description,
-            priority: priority
+            priority: priority,
+            difficulty: difficulty || null
         };
 
         // Add optional requester info if provided
@@ -816,8 +818,10 @@ async function openEditRequestModal(requestId) {
             // Set priority and status if fields exist (admin only)
             const priorityField = document.getElementById('edit-request-priority');
             const statusField = document.getElementById('edit-request-status');
+            const difficultyField = document.getElementById('edit-request-difficulty');
             if (priorityField) priorityField.value = request.priority;
             if (statusField) statusField.value = request.status;
+            if (difficultyField) difficultyField.value = request.difficulty || '';
 
             // Set requester info if available
             const requesterNameField = document.getElementById('edit-request-requester-name');
@@ -851,8 +855,10 @@ async function submitEditRequest(event) {
     // Add priority and status if user is admin
     const priorityField = document.getElementById('edit-request-priority');
     const statusField = document.getElementById('edit-request-status');
+    const difficultyField = document.getElementById('edit-request-difficulty');
     if (priorityField) payload.priority = priorityField.value;
     if (statusField) payload.status = statusField.value;
+    if (difficultyField) payload.difficulty = difficultyField.value || null;
 
     // Add requester info if provided
     const requesterNameField = document.getElementById('edit-request-requester-name');

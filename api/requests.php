@@ -127,16 +127,17 @@ switch ($method) {
         try {
             $stmt = $db->prepare("
                 INSERT INTO requests (
-                    app_id, title, description, priority, status, created_by,
+                    app_id, title, description, priority, difficulty, status, created_by,
                     requester_name, requester_email
                 ) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $input['app_id'],
                 $input['title'],
                 $input['description'] ?? null,
                 $input['priority'] ?? 'medium',
+                $input['difficulty'] ?? null,
                 $input['status'] ?? 'pending',
                 $user['id'],
                 $input['requester_name'] ?? null,

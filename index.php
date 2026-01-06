@@ -198,6 +198,16 @@ $company_name = $user['company_name'] ?? '';
                 </div>
 
                 <div class="form-group">
+                    <label for="request-difficulty">Dificultad</label>
+                    <select id="request-difficulty">
+                        <option value="" selected>Sin definir</option>
+                        <option value="low">Baja</option>
+                        <option value="medium">Media</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Adjuntos (opcional)</label>
                     <div class="file-upload-area" id="file-upload-area">
                         <p>📎 Arrastra archivos aquí o haz clic para seleccionar</p>
@@ -274,6 +284,16 @@ $company_name = $user['company_name'] ?? '';
                             <option value="in_progress">En Progreso</option>
                             <option value="completed">Completado</option>
                             <option value="discarded">Descartado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-request-difficulty">Dificultad</label>
+                        <select id="edit-request-difficulty">
+                            <option value="">Sin definir</option>
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
                         </select>
                     </div>
                 <?php endif; ?>
