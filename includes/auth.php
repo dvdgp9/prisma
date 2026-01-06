@@ -282,8 +282,8 @@ function get_user_apps()
         return $stmt->fetchAll();
     }
 
-    // Admins see all apps in their company
-    if ($user['role'] === 'admin') {
+    // Admins and regular users see all apps in their company
+    if ($user['role'] === 'admin' || $user['role'] === 'user') {
         $stmt = $db->prepare("
             SELECT * FROM apps 
             WHERE is_active = 1 AND company_id = ?
@@ -293,19 +293,7 @@ function get_user_apps()
         return $stmt->fetchAll();
     }
 
-    // Regular users only see apps they have permissions for IN their company
-    $stmt = $db->prepare("
-        SELECT DISTINCT a.* 
-        FROM apps a
-        INNER JOIN user_app_permissions uap ON a.id = uap.app_id
-        WHERE uap.user_id = ? 
-            AND uap.can_view = 1 
-            AND a.is_active = 1
-            AND a.company_id = ?
-        ORDER BY a.name
-    ");
-    $stmt->execute([$user['id'], $user['company_id']]);
-    return $stmt->fetchAll();
+    return [];
 }
 
 /**
@@ -318,18 +306,10 @@ function can_access_app($app_id)
         return false;
     }
 
-    // Superadmins and Admins can access all apps
-    if (in_array($user['role'], ['superadmin', 'admin'])) {
+    // Superadmins, Admins and Users can access all apps in their company
+    if (in_array($user['role'], ['superadmin', 'admin', 'user'])) {
         return true;
     }
 
-    // Check if user has permission
-    $db = getDB();
-    $stmt = $db->prepare("
-        SELECT can_view 
-        FROM user_app_permissions 
-        WHERE user_id = ? AND app_id = ? AND can_view = 1
-    ");
-    $stmt->execute([$user['id'], $app_id]);
-    return $stmt->fetch() !== false;
+    return false;
 }
