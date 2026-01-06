@@ -52,8 +52,16 @@ switch ($method) {
                 $params[] = $_GET['status'];
             }
 
-            // Sorting - votes as secondary sort for all options
-            $sort = 'r.vote_count DESC, r.created_at DESC'; // Default: most voted
+            // Default sorting: Priority first (Critical > High > Medium > Low), then votes
+            $priority_order = "CASE r.priority 
+                                    WHEN 'critical' THEN 1 
+                                    WHEN 'high' THEN 2 
+                                    WHEN 'medium' THEN 3 
+                                    WHEN 'low' THEN 4 
+                                    ELSE 5 
+                                END";
+            $sort = "$priority_order, r.vote_count DESC, r.created_at DESC";
+
             if (!empty($_GET['sort'])) {
                 switch ($_GET['sort']) {
                     case 'date':
@@ -63,29 +71,19 @@ switch ($method) {
                         $sort = 'r.created_at ASC, r.vote_count DESC';
                         break;
                     case 'priority':
-                        // Order by priority: critical > high > medium > low, then by votes
-                        $sort = "CASE r.priority 
-                                    WHEN 'critical' THEN 1 
-                                    WHEN 'high' THEN 2 
-                                    WHEN 'medium' THEN 3 
-                                    WHEN 'low' THEN 4 
-                                    ELSE 5 
-                                END, r.vote_count DESC, r.created_at DESC";
+                        $sort = "$priority_order, r.vote_count DESC, r.created_at DESC";
                         break;
                     case 'status':
-                        // Order by status: in_progress > pending > completed/discarded, then by votes
+                        // Order by status: in_progress > pending > completed/discarded, then by priority, then by votes
                         $sort = "CASE r.status
                                     WHEN 'in_progress' THEN 1
                                     WHEN 'pending' THEN 2
                                     WHEN 'completed' THEN 3
                                     WHEN 'discarded' THEN 4
                                     ELSE 5
-                                END, r.vote_count DESC, r.created_at DESC";
+                                END, $priority_order, r.vote_count DESC, r.created_at DESC";
                         break;
                     case 'votes':
-                        $sort = 'r.vote_count DESC, r.created_at DESC';
-                        break;
-                    default:
                         $sort = 'r.vote_count DESC, r.created_at DESC';
                         break;
                 }
