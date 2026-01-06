@@ -280,35 +280,37 @@ function createRequestCard(request, isFinished = false) {
             </div>
             
             ${isAdminOrSuperadmin ? `
-                <div class="difficulty-indicator" style="flex-shrink: 0;" title="Dificultad">
-                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
-                            onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
-                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
-                            onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
-                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
-                            onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
-                </div>
-                <div class="status-actions" style="flex-shrink: 0;">
-                    <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
-                            onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
-                            title="Pausar">
-                        <i class="iconoir-pause"></i>
-                    </button>
-                    <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
-                            onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
-                            title="En progreso">
-                        <i class="iconoir-play"></i>
-                    </button>
-                    <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
-                            onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
-                            title="Completar">
-                        <i class="iconoir-check"></i>
-                    </button>
-                    <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
-                            onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
-                            title="Descartar">
-                        <i class="iconoir-xmark"></i>
-                    </button>
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0;">
+                    <div class="difficulty-indicator" title="Dificultad">
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
+                    </div>
+                    <div class="status-actions">
+                        <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
+                                title="Pausar">
+                            <i class="iconoir-pause"></i>
+                        </button>
+                        <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
+                                title="En progreso">
+                            <i class="iconoir-play"></i>
+                        </button>
+                        <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
+                                title="Completar">
+                            <i class="iconoir-check"></i>
+                        </button>
+                        <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
+                                title="Descartar">
+                            <i class="iconoir-xmark"></i>
+                        </button>
+                    </div>
                 </div>
             ` : `
                 ${request.difficulty ? `
