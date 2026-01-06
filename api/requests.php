@@ -247,8 +247,10 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        // Delete request (superadmin only)
-        require_role('superadmin');
+        // Delete request (admin and superadmin)
+        if (!has_role('admin') && !has_role('superadmin')) {
+            error_response('Unauthorized', 403);
+        }
 
         $input = get_json_input();
 

@@ -320,11 +320,9 @@ function createRequestCard(request, isFinished = false) {
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                             <i class="iconoir-edit"></i>
                         </button>
-                        ${userRole === 'superadmin' ? `
-                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        ` : ''}
+                        <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar" style="color: var(--color-red);">
+                            <i class="iconoir-xmark"></i>
+                        </button>
                     </div>
                 ` : ''}
             </div>
@@ -805,9 +803,11 @@ async function submitEditRequest(event) {
     }
 }
 
-// Delete request (superadmin only)
-async function deleteRequest() {
-    const requestId = document.getElementById('edit-request-id').value;
+// Delete request
+async function deleteRequest(requestId) {
+    if (!requestId) {
+        requestId = document.getElementById('edit-request-id').value;
+    }
 
     if (!confirm('¿Estás seguro de que quieres eliminar esta petición?')) {
         return;
@@ -823,8 +823,18 @@ async function deleteRequest() {
         const data = await response.json();
 
         if (data.success) {
-            closeModal('edit-request-modal');
+            // If we are in the edit modal, close it
+            const editModal = document.getElementById('edit-request-modal');
+            if (editModal && editModal.classList.contains('active')) {
+                closeModal('edit-request-modal');
+            }
             loadRequests();
+            
+            showToast({
+                title: 'Mejora eliminada',
+                message: 'La solicitud se ha eliminado correctamente',
+                icon: 'iconoir-trash'
+            }, 'toast-discarded');
         } else {
             alert(data.error || 'Error al eliminar la petición');
         }
