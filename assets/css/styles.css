@@ -511,9 +511,9 @@ label {
     align-items: flex-end;
     gap: 2px;
     padding: 6px 10px;
-    background: rgba(155, 89, 182, 0.05);
+    background: rgba(182, 89, 89, 0.05);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(155, 89, 182, 0.1);
+    border: 1px solid rgba(182, 89, 89, 0.1);
     height: 32px;
 }
 
@@ -532,13 +532,13 @@ label {
 .difficulty-bar:nth-child(3) { height: 20px; }
 
 .difficulty-bar:hover {
-    background: rgba(155, 89, 182, 0.4);
+    background: rgba(182, 89, 89, 0.4);
     transform: scaleY(1.1);
 }
 
 .difficulty-bar.active {
-    background: #9B59B6;
-    box-shadow: 0 0 8px rgba(155, 89, 182, 0.3);
+    background: #b65959;
+    box-shadow: 0 0 8px rgba(182, 89, 89, 0.3);
 }
 
 /* Difficulty display for non-admins */
@@ -547,7 +547,7 @@ label {
     align-items: flex-end;
     gap: 2px;
     padding: 4px 8px;
-    background: rgba(155, 89, 182, 0.03);
+    background: rgba(182, 89, 89, 0.03);
     border-radius: var(--radius-sm);
     height: 28px;
 }
