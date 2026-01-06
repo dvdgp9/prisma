@@ -1311,6 +1311,107 @@ nav {
     gap: var(--spacing-lg);
 }
 
+/* Premium Permissions Selector */
+.permissions-container-premium {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.perms-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-sm) var(--spacing-sm);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--spacing-sm);
+}
+
+.btn-text-action {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-text-action:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.permissions-grid-premium {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+/* Custom Checkbox Pill */
+.perm-item-premium {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.perm-item-premium:hover {
+    border-color: var(--primary-color);
+    background: rgba(66, 160, 209, 0.05);
+}
+
+.perm-item-premium input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.perm-item-premium.checked {
+    border-color: var(--primary-color);
+    background: rgba(66, 160, 209, 0.08);
+}
+
+.perm-item-premium span {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.perms-footer-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 4px 8px;
+    color: var(--text-muted);
+}
+
+.perms-footer-hint i {
+    font-size: 0.875rem;
+    margin-top: 2px;
+}
+
+.perms-footer-hint span {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
 /* Toast Notifications */
 #toast-container {
     position: fixed;

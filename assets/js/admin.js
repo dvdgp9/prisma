@@ -288,26 +288,59 @@ function editUser(id) {
 function updateAppPermissionsList(selectedAppIds = []) {
     const companyId = document.getElementById('user-company').value;
     const permissionsList = document.getElementById('user-app-permissions-list');
+    const permsActions = document.getElementById('perms-actions');
+    const searchContainer = document.getElementById('perms-search-container');
+    const searchInput = document.getElementById('perms-search');
     
     if (!companyId) {
-        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem;">Selecciona una empresa primero</p>';
+        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Selecciona una empresa primero</p>';
+        permsActions.style.display = 'none';
+        searchContainer.style.display = 'none';
         return;
     }
 
     const companyApps = apps.filter(a => a.company_id == companyId);
     
     if (companyApps.length === 0) {
-        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem;">Esta empresa no tiene aplicaciones</p>';
+        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Esta empresa no tiene aplicaciones</p>';
+        permsActions.style.display = 'none';
+        searchContainer.style.display = 'none';
         return;
     }
 
-    permissionsList.innerHTML = companyApps.map(app => `
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
-            <input type="checkbox" name="app_permissions[]" value="${app.id}" 
-                ${selectedAppIds.includes(app.id.toString()) || selectedAppIds.includes(parseInt(app.id)) ? 'checked' : ''}>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(app.name)}</span>
-        </label>
-    `).join('');
+    permsActions.style.display = 'flex';
+    searchContainer.style.display = 'block';
+
+    const renderItems = (filteredApps) => {
+        permissionsList.innerHTML = filteredApps.map(app => {
+            const isChecked = selectedAppIds.includes(app.id.toString()) || selectedAppIds.includes(parseInt(app.id));
+            return `
+                <label class="perm-item-premium ${isChecked ? 'checked' : ''}">
+                    <input type="checkbox" name="app_permissions[]" value="${app.id}" 
+                        ${isChecked ? 'checked' : ''} onchange="this.parentElement.classList.toggle('checked', this.checked)">
+                    <span title="${escapeHtml(app.name)}">${escapeHtml(app.name)}</span>
+                </label>
+            `;
+        }).join('');
+    };
+
+    renderItems(companyApps);
+
+    // Search functionality
+    searchInput.oninput = (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = companyApps.filter(a => a.name.toLowerCase().includes(term));
+        renderItems(filtered);
+    };
+    searchInput.value = ''; // Reset search
+}
+
+function toggleAllPerms(check) {
+    const checkboxes = document.querySelectorAll('#user-app-permissions-list input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = check;
+        cb.parentElement.classList.toggle('checked', check);
+    });
 }
 
 async function submitUser(event) {

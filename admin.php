@@ -379,11 +379,30 @@ $user = get_logged_user();
                 </div>
 
                 <div class="form-group" id="user-app-permissions-group">
-                    <label>Permisos de Aplicaciones</label>
-                    <div id="user-app-permissions-list" style="max-height: 200px; overflow-y: auto; padding: var(--spacing-sm); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-light); display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--spacing-xs);">
-                        <!-- Apps checkboxes will be loaded dynamically here -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                        <label style="margin-bottom: 0;">Permisos de Aplicaciones</label>
+                        <div id="perms-search-container" style="display: none; position: relative; width: 200px;">
+                            <i class="iconoir-search" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: var(--text-muted);"></i>
+                            <input type="text" id="perms-search" placeholder="Buscar app..." 
+                                style="padding: 4px 8px 4px 28px; font-size: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light); width: 100%;">
+                        </div>
                     </div>
-                    <small class="text-muted">Si no marcas ninguna, tendrá acceso a todas por defecto.</small>
+                    
+                    <div class="permissions-container-premium">
+                        <div class="perms-header-actions" id="perms-actions" style="display: none;">
+                            <button type="button" class="btn-text-action" onclick="toggleAllPerms(true)">Marcar todas</button>
+                            <span style="color: var(--border-light);">|</span>
+                            <button type="button" class="btn-text-action" onclick="toggleAllPerms(false)">Desmarcar todas</button>
+                        </div>
+                        
+                        <div id="user-app-permissions-list" class="permissions-grid-premium">
+                            <!-- Apps will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="perms-footer-hint">
+                        <i class="iconoir-info-empty"></i>
+                        <span>Si no marcas ninguna, el usuario tendrá acceso a todas las apps de su empresa.</span>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
