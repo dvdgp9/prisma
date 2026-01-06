@@ -195,7 +195,7 @@ switch ($method) {
             }
 
             // Difficulty
-            if (isset($input['difficulty'])) {
+            if (array_key_exists('difficulty', $input)) {
                 $fields[] = 'difficulty = ?';
                 $values[] = $input['difficulty'];
             }
