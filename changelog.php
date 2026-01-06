@@ -121,48 +121,50 @@ $company_name = $user['company_name'] ?? '';
             </div>
 
             <!-- Filters and Controls -->
-            <div class="filters-bar">
-                <div class="filter-group">
-                    <label>Aplicación</label>
-                    <select id="app-filter" onchange="loadChangelog()">
-                        <option value="">Todas las aplicaciones</option>
-                    </select>
-                </div>
+            <div class="sorting-bar">
+                <div class="sorting-controls">
+                    <div class="filter-group">
+                        <label class="sort-label">Aplicación</label>
+                        <select id="app-filter" onchange="loadChangelog()" class="sort-select">
+                            <option value="">Todas las aplicaciones</option>
+                        </select>
+                    </div>
 
-                <div class="filter-group">
-                    <label>Período</label>
-                    <select id="period-filter" onchange="handlePeriodChange()">
-                        <option value="7">Última semana</option>
-                        <option value="30" selected>Último mes</option>
-                        <option value="90">Último trimestre</option>
-                        <option value="365">Último año</option>
-                        <option value="custom">Personalizado...</option>
-                    </select>
-                </div>
+                    <div class="filter-group">
+                        <label class="sort-label">Período</label>
+                        <select id="period-filter" onchange="handlePeriodChange()" class="sort-select">
+                            <option value="7">Última semana</option>
+                            <option value="30" selected>Último mes</option>
+                            <option value="90">Último trimestre</option>
+                            <option value="365">Último año</option>
+                            <option value="custom">Personalizado...</option>
+                        </select>
+                    </div>
 
-                <div class="filter-group" id="custom-dates-group" style="display: none;">
-                    <label>Desde</label>
-                    <input type="date" id="date-from" onchange="loadChangelog()">
-                </div>
+                    <div class="filter-group" id="custom-dates-group" style="display: none;">
+                        <label class="sort-label">Desde</label>
+                        <input type="date" id="date-from" onchange="loadChangelog()" class="sort-select">
+                    </div>
 
-                <div class="filter-group" id="custom-dates-group-to" style="display: none;">
-                    <label>Hasta</label>
-                    <input type="date" id="date-to" onchange="loadChangelog()">
-                </div>
+                    <div class="filter-group" id="custom-dates-group-to" style="display: none;">
+                        <label class="sort-label">Hasta</label>
+                        <input type="date" id="date-to" onchange="loadChangelog()" class="sort-select">
+                    </div>
 
-                <div class="filter-group">
-                    <label>Agrupar por</label>
-                    <select id="group-by" onchange="renderChangelog()">
-                        <option value="day">Día</option>
-                        <option value="week" selected>Semana</option>
-                        <option value="month">Mes</option>
-                    </select>
-                </div>
+                    <div class="filter-group">
+                        <label class="sort-label">Agrupar por</label>
+                        <select id="group-by" onchange="renderChangelog()" class="sort-select">
+                            <option value="day">Día</option>
+                            <option value="week" selected>Semana</option>
+                            <option value="month">Mes</option>
+                        </select>
+                    </div>
 
-                <div class="filter-group" style="flex: 1; min-width: 200px;">
-                    <label>Buscar</label>
-                    <input type="text" id="search-input" placeholder="Buscar en changelog..."
-                        oninput="renderChangelog()">
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label class="sort-label">Buscar</label>
+                        <input type="text" id="search-input" placeholder="Buscar en changelog..."
+                            oninput="renderChangelog()" class="sort-select" style="width: 100%;">
+                    </div>
                 </div>
             </div>
 
