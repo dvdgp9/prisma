@@ -251,6 +251,12 @@ function openNewUserModal() {
     document.getElementById('user-id').value = '';
     document.getElementById('user-password').required = true;
     document.getElementById('password-optional').style.display = 'none';
+    
+    // Update app permissions list when company is selected
+    const companySelect = document.getElementById('user-company');
+    companySelect.onchange = () => updateAppPermissionsList();
+    updateAppPermissionsList();
+
     document.getElementById('user-modal').classList.add('active');
 }
 
@@ -270,20 +276,57 @@ function editUser(id) {
     document.getElementById('user-password').value = '';
     document.getElementById('user-password').required = false;
     document.getElementById('password-optional').style.display = 'inline';
+
+    // Update app permissions list and check assigned ones
+    const companySelect = document.getElementById('user-company');
+    companySelect.onchange = () => updateAppPermissionsList();
+    updateAppPermissionsList(user.app_permissions);
+
     document.getElementById('user-modal').classList.add('active');
+}
+
+function updateAppPermissionsList(selectedAppIds = []) {
+    const companyId = document.getElementById('user-company').value;
+    const permissionsList = document.getElementById('user-app-permissions-list');
+    
+    if (!companyId) {
+        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem;">Selecciona una empresa primero</p>';
+        return;
+    }
+
+    const companyApps = apps.filter(a => a.company_id == companyId);
+    
+    if (companyApps.length === 0) {
+        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem;">Esta empresa no tiene aplicaciones</p>';
+        return;
+    }
+
+    permissionsList.innerHTML = companyApps.map(app => `
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
+            <input type="checkbox" name="app_permissions[]" value="${app.id}" 
+                ${selectedAppIds.includes(app.id.toString()) || selectedAppIds.includes(parseInt(app.id)) ? 'checked' : ''}>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(app.name)}</span>
+        </label>
+    `).join('');
 }
 
 async function submitUser(event) {
     event.preventDefault();
 
     const id = document.getElementById('user-id').value;
+    
+    // Get checked permissions
+    const appPermissions = Array.from(document.querySelectorAll('input[name="app_permissions[]"]:checked'))
+        .map(cb => parseInt(cb.value));
+
     const data = {
         username: document.getElementById('user-username').value,
         full_name: document.getElementById('user-fullname').value,
         email: document.getElementById('user-email').value,
         company_id: parseInt(document.getElementById('user-company').value),
         role: document.getElementById('user-role').value,
-        is_active: document.getElementById('user-active').checked
+        is_active: document.getElementById('user-active').checked,
+        app_permissions: appPermissions
     };
 
     const password = document.getElementById('user-password').value;

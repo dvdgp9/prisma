@@ -44,6 +44,13 @@ switch ($method) {
 
             $users = $stmt->fetchAll();
 
+            // Add app permissions to each user
+            foreach ($users as &$u) {
+                $stmtPerms = $db->prepare("SELECT app_id FROM user_app_permissions WHERE user_id = ? AND can_view = 1");
+                $stmtPerms->execute([$u['id']]);
+                $u['app_permissions'] = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
+            }
+
             success_response($users);
         } catch (Exception $e) {
             error_response('Failed to fetch users: ' . $e->getMessage(), 500);
@@ -79,6 +86,14 @@ switch ($method) {
             ]);
 
             $user_id = $db->lastInsertId();
+
+            // Save app permissions
+            if (isset($input['app_permissions']) && is_array($input['app_permissions'])) {
+                foreach ($input['app_permissions'] as $app_id) {
+                    $stmtPerms = $db->prepare("INSERT INTO user_app_permissions (user_id, app_id, can_view) VALUES (?, ?, 1)");
+                    $stmtPerms->execute([$user_id, $app_id]);
+                }
+            }
 
             success_response(['id' => $user_id], 'User created successfully');
         } catch (Exception $e) {
@@ -156,6 +171,19 @@ switch ($method) {
                 WHERE id = ?
             ");
             $stmt->execute($values);
+
+            // Update app permissions
+            if (isset($input['app_permissions']) && is_array($input['app_permissions'])) {
+                // Remove existing permissions
+                $stmtDel = $db->prepare("DELETE FROM user_app_permissions WHERE user_id = ?");
+                $stmtDel->execute([$input['id']]);
+
+                // Add new permissions
+                foreach ($input['app_permissions'] as $app_id) {
+                    $stmtIns = $db->prepare("INSERT INTO user_app_permissions (user_id, app_id, can_view) VALUES (?, ?, 1)");
+                    $stmtIns->execute([$input['id'], $app_id]);
+                }
+            }
 
             success_response([], 'User updated successfully');
         } catch (Exception $e) {

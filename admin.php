@@ -378,6 +378,14 @@ $user = get_logged_user();
                     </label>
                 </div>
 
+                <div class="form-group" id="user-app-permissions-group">
+                    <label>Permisos de Aplicaciones</label>
+                    <div id="user-app-permissions-list" style="max-height: 200px; overflow-y: auto; padding: var(--spacing-sm); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-light); display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--spacing-xs);">
+                        <!-- Apps checkboxes will be loaded dynamically here -->
+                    </div>
+                    <small class="text-muted">Si no marcas ninguna, tendrá acceso a todas por defecto.</small>
+                </div>
+
                 <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
                     <button type="button" class="btn btn-outline" onclick="closeModal('user-modal')">Cancelar</button>

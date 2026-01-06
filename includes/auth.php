@@ -282,15 +282,33 @@ function get_user_apps()
         return $stmt->fetchAll();
     }
 
-    // Admins and regular users see all apps in their company
+    // Admins and regular users see apps in their company
     if ($user['role'] === 'admin' || $user['role'] === 'user') {
-        $stmt = $db->prepare("
-            SELECT * FROM apps 
-            WHERE is_active = 1 AND company_id = ?
-            ORDER BY name
-        ");
-        $stmt->execute([$user['company_id']]);
-        return $stmt->fetchAll();
+        // Check if user has specific app permissions
+        $stmtPerms = $db->prepare("SELECT app_id FROM user_app_permissions WHERE user_id = ? AND can_view = 1");
+        $stmtPerms->execute([$user['id']]);
+        $allowed_app_ids = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($allowed_app_ids)) {
+            // No specific permissions defined: see all apps in company
+            $stmt = $db->prepare("
+                SELECT * FROM apps 
+                WHERE is_active = 1 AND company_id = ?
+                ORDER BY name
+            ");
+            $stmt->execute([$user['company_id']]);
+            return $stmt->fetchAll();
+        } else {
+            // Specific permissions defined: filter apps
+            $placeholders = implode(',', array_fill(0, count($allowed_app_ids), '?'));
+            $stmt = $db->prepare("
+                SELECT * FROM apps 
+                WHERE is_active = 1 AND id IN ($placeholders)
+                ORDER BY name
+            ");
+            $stmt->execute($allowed_app_ids);
+            return $stmt->fetchAll();
+        }
     }
 
     return [];
@@ -306,10 +324,33 @@ function can_access_app($app_id)
         return false;
     }
 
-    // Superadmins, Admins and Users can access all apps in their company
-    if (in_array($user['role'], ['superadmin', 'admin', 'user'])) {
+    // Superadmins and Admins can access all apps in their company
+    if (in_array($user['role'], ['superadmin', 'admin'])) {
         return true;
     }
 
-    return false;
+    // For regular users, check if they have specific permissions
+    $db = getDB();
+    
+    // Check if any permissions are defined for this user
+    $stmtCheck = $db->prepare("SELECT COUNT(*) FROM user_app_permissions WHERE user_id = ?");
+    $stmtCheck->execute([$user['id']]);
+    $has_specific_perms = $stmtCheck->fetchColumn() > 0;
+
+    if (!$has_specific_perms) {
+        // No permissions defined: can access any app in their company
+        $stmtApp = $db->prepare("SELECT company_id FROM apps WHERE id = ?");
+        $stmtApp->execute([$app_id]);
+        $app = $stmtApp->fetch();
+        return $app && $app['company_id'] == $user['company_id'];
+    }
+
+    // Specific permissions defined: check if this app is allowed
+    $stmt = $db->prepare("
+        SELECT can_view 
+        FROM user_app_permissions 
+        WHERE user_id = ? AND app_id = ? AND can_view = 1
+    ");
+    $stmt->execute([$user['id'], $app_id]);
+    return $stmt->fetch() !== false;
 }
