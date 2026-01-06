@@ -280,6 +280,14 @@ function createRequestCard(request, isFinished = false) {
             </div>
             
             ${isAdminOrSuperadmin ? `
+                <div class="difficulty-indicator" style="flex-shrink: 0;" title="Dificultad">
+                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
+                            onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
+                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
+                            onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
+                    <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
+                            onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
+                </div>
                 <div class="status-actions" style="flex-shrink: 0;">
                     <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
                             onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
@@ -303,6 +311,13 @@ function createRequestCard(request, isFinished = false) {
                     </button>
                 </div>
             ` : `
+                ${request.difficulty ? `
+                    <div class="difficulty-display" style="flex-shrink: 0;" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
+                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
+                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
+                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
+                    </div>
+                ` : ''}
                 <div class="status-badge-display status-${request.status}" style="flex-shrink: 0;">
                     ${statusLabels[request.status] || request.status}
                 </div>
@@ -728,6 +743,50 @@ function getStatusLabel(status) {
         'discarded': 'Descartado'
     };
     return labels[status] || status;
+}
+
+// Get difficulty level (1, 2, 3) for bar display
+function getDifficultyLevel(difficulty) {
+    const levels = {
+        'low': 1,
+        'medium': 2,
+        'high': 3
+    };
+    return levels[difficulty] || 0;
+}
+
+// Get difficulty label
+function getDifficultyLabel(difficulty) {
+    const labels = {
+        'low': 'Baja',
+        'medium': 'Media',
+        'high': 'Alta'
+    };
+    return labels[difficulty] || 'Sin definir';
+}
+
+// Set difficulty for a request
+async function setDifficulty(requestId, difficulty, event) {
+    event.stopPropagation();
+    
+    try {
+        const response = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: requestId, difficulty: difficulty })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            await loadRequests();
+        } else {
+            alert(result.error || 'Error al actualizar la dificultad');
+        }
+    } catch (error) {
+        console.error('Error updating difficulty:', error);
+        alert('Error al actualizar la dificultad');
+    }
 }
 
 // Escape HTML to prevent XSS

@@ -193,6 +193,12 @@ switch ($method) {
                 $values[] = $input['priority'];
             }
 
+            // Difficulty
+            if (isset($input['difficulty'])) {
+                $fields[] = 'difficulty = ?';
+                $values[] = $input['difficulty'];
+            }
+
             // Status with completed_at handling
             if (isset($input['status'])) {
                 $fields[] = 'status = ?';

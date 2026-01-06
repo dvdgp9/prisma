@@ -23,6 +23,7 @@ The user wants to add a "delete improvement" button (eliminar mejora) next to th
 - [x] Frontend: Hide finished requests by default and add a toggle button <!-- id: 4 -->
 - [x] Frontend: Add smooth transition/animation for showing finished requests <!-- id: 5 -->
 - [x] Backend: Update default sorting logic (votes first, then priority) <!-- id: 6 -->
+- [x] Add difficulty field: SQL, API, CSS, JS <!-- id: 7 -->
 
 ## Executor's Feedback or Assistance Requests
 - Waiting for Planner's analysis after research.
