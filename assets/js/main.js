@@ -5,6 +5,7 @@ let requests = [];
 let currentView = 'global';
 let currentAppId = null;
 let selectedFiles = [];
+let showFinished = false;
 
 const userRole = document.body.dataset.userRole;
 
@@ -191,22 +192,42 @@ function renderRequests() {
     // Add separator if there are finished requests
     if (finishedRequests.length > 0) {
         const separator = document.createElement('div');
-        separator.className = 'requests-separator';
+        separator.className = `requests-separator ${showFinished ? 'active' : ''}`;
+        separator.onclick = toggleFinishedRequests;
         separator.innerHTML = `
             <div class="separator-line"></div>
             <span class="separator-text">
                 <i class="iconoir-check-circle"></i>
                 Finalizadas (${finishedRequests.length})
+                <i class="iconoir-nav-arrow-down toggle-icon" style="margin-left: 4px;"></i>
             </span>
             <div class="separator-line"></div>
         `;
         grid.appendChild(separator);
 
+        const finishedWrapper = document.createElement('div');
+        finishedWrapper.className = `finished-requests-wrapper ${showFinished ? 'show' : ''}`;
+        
         // Render finished requests with subtle style
         finishedRequests.forEach(request => {
             const card = createRequestCard(request, true);
-            grid.appendChild(card);
+            card.classList.add('card-finished');
+            finishedWrapper.appendChild(card);
         });
+        
+        grid.appendChild(finishedWrapper);
+    }
+}
+
+// Toggle visibility of finished requests
+function toggleFinishedRequests() {
+    showFinished = !showFinished;
+    const separator = document.querySelector('.requests-separator');
+    const wrapper = document.querySelector('.finished-requests-wrapper');
+    
+    if (separator && wrapper) {
+        separator.classList.toggle('active');
+        wrapper.classList.toggle('show');
     }
 }
 

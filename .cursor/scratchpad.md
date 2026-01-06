@@ -20,6 +20,8 @@ The user wants to add a "delete improvement" button (eliminar mejora) next to th
 - [x] Backend: Create/update API to handle improvement deletion <!-- id: 1 -->
 - [x] Frontend: Add the `xmark` button next to the edit button <!-- id: 2 -->
 - [x] Frontend: Implement the delete confirmation and API call in JS <!-- id: 3 -->
+- [x] Frontend: Hide finished requests by default and add a toggle button <!-- id: 4 -->
+- [x] Frontend: Add smooth transition/animation for showing finished requests <!-- id: 5 -->
 
 ## Executor's Feedback or Assistance Requests
 - Waiting for Planner's analysis after research.
