@@ -70,28 +70,56 @@ function renderApps() {
         return;
     }
 
-    grid.innerHTML = apps.map(app => `
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">${escapeHtml(app.name)}</h3>
-                <button class="btn btn-sm btn-outline" onclick="openEditAppModal(${app.id})">
-                    Editar
-                </button>
+    const companyName = document.body.dataset.companyName || 'tu-empresa';
+
+    grid.innerHTML = apps.map(app => {
+        const appUrl = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app_id=${app.id}`;
+        
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">${escapeHtml(app.name)}</h3>
+                    <div style="display: flex; gap: var(--spacing-xs);">
+                        <button class="btn btn-sm btn-outline" onclick="copyAppUrl('${appUrl}')" title="Copiar enlace público">
+                            <i class="iconoir-share-ios"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="openEditAppModal(${app.id})">
+                            Editar
+                        </button>
+                    </div>
+                </div>
+                
+                ${app.description ? `
+                    <p class="card-description">${escapeHtml(app.description)}</p>
+                ` : `
+                    <p class="card-description text-muted">Sin descripción</p>
+                `}
+                
+                <div class="card-footer">
+                    <span class="text-small text-muted">
+                        Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}
+                    </span>
+                </div>
             </div>
-            
-            ${app.description ? `
-                <p class="card-description">${escapeHtml(app.description)}</p>
-            ` : `
-                <p class="card-description text-muted">Sin descripción</p>
-            `}
-            
-            <div class="card-footer">
-                <span class="text-small text-muted">
-                    Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}
-                </span>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function copyAppUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') {
+            showToast({
+                title: 'Enlace copiado',
+                message: 'El enlace específico de la aplicación se ha copiado al portapapeles',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert('Enlace copiado al portapapeles');
+        }
+    }).catch(err => {
+        console.error('Error copying:', err);
+        alert('No se pudo copiar el enlace.');
+    });
 }
 
 // Open new app modal
