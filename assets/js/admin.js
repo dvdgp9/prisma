@@ -301,10 +301,6 @@ function updateAppPermissionsList(selectedAppIds = []) {
 
     const companyApps = apps.filter(a => a.company_id == companyId);
     
-    // Get company name for links
-    const company = companies.find(c => c.id == companyId);
-    const companyName = company ? company.name : 'tu-empresa';
-    
     if (companyApps.length === 0) {
         permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Esta empresa no tiene aplicaciones</p>';
         permsActions.style.display = 'none';
@@ -318,18 +314,12 @@ function updateAppPermissionsList(selectedAppIds = []) {
     const renderItems = (filteredApps) => {
         permissionsList.innerHTML = filteredApps.map(app => {
             const isChecked = selectedAppIds.includes(app.id.toString()) || selectedAppIds.includes(parseInt(app.id));
-            const appUrl = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app_id=${app.id}`;
             return `
-                <div class="perm-item-premium ${isChecked ? 'checked' : ''}" style="display: flex; align-items: center; justify-content: space-between; padding-right: 8px;">
-                    <label style="display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; margin: 0; padding: 8px 0;">
-                        <input type="checkbox" name="app_permissions[]" value="${app.id}" 
-                            ${isChecked ? 'checked' : ''} onchange="this.parentElement.parentElement.classList.toggle('checked', this.checked)">
-                        <span title="${escapeHtml(app.name)}">${escapeHtml(app.name)}</span>
-                    </label>
-                    <button type="button" class="btn-text-action" onclick="copyAppUrl('${appUrl}')" title="Copiar enlace de esta app">
-                        <i class="iconoir-copy"></i>
-                    </button>
-                </div>
+                <label class="perm-item-premium ${isChecked ? 'checked' : ''}">
+                    <input type="checkbox" name="app_permissions[]" value="${app.id}" 
+                        ${isChecked ? 'checked' : ''} onchange="this.parentElement.classList.toggle('checked', this.checked)">
+                    <span title="${escapeHtml(app.name)}">${escapeHtml(app.name)}</span>
+                </label>
             `;
         }).join('');
     };
@@ -456,9 +446,6 @@ function renderApps() {
 
     tbody.innerHTML = apps.map(app => {
         const company = companies.find(c => c.id == app.company_id);
-        const companyName = company ? company.name : 'tu-empresa';
-        const appUrl = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app_id=${app.id}`;
-        
         return `
             <tr>
                 <td style="font-weight: var(--font-weight-semibold); color: var(--text-primary);">
@@ -477,9 +464,6 @@ function renderApps() {
                 <td>${new Date(app.created_at).toLocaleDateString('es-ES')}</td>
                 <td>
                     <div class="actions-cell">
-                        <button class="btn btn-sm btn-outline" onclick="copyAppUrl('${appUrl}')" title="Copiar enlace">
-                            <i class="iconoir-share-ios"></i>
-                        </button>
                         <button class="btn btn-sm btn-outline" onclick="editApp(${app.id})" title="Editar">
                             <i class="iconoir-edit"></i>
                         </button>
@@ -612,23 +596,6 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-function copyAppUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        if (typeof showToast === 'function') {
-            showToast({
-                title: 'Enlace copiado',
-                message: 'El enlace específico de la aplicación se ha copiado al portapapeles',
-                icon: 'iconoir-check'
-            }, 'toast-completed');
-        } else {
-            alert('Enlace copiado al portapapeles');
-        }
-    }).catch(err => {
-        console.error('Error copying:', err);
-        alert('No se pudo copiar el enlace.');
-    });
 }
 
 function closeModal(modalId) {

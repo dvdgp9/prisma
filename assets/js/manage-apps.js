@@ -70,56 +70,38 @@ function renderApps() {
         return;
     }
 
-    const companyName = document.body.dataset.companyName || 'tu-empresa';
+    const companyName = document.body.dataset.companyName || '';
 
     grid.innerHTML = apps.map(app => {
-        const appUrl = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app_id=${app.id}`;
-        
+        const shareLink = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app=${encodeURIComponent(app.name)}`;
         return `
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">${escapeHtml(app.name)}</h3>
-                    <div style="display: flex; gap: var(--spacing-xs);">
-                        <button class="btn btn-sm btn-outline" onclick="copyAppUrl('${appUrl}')" title="Copiar enlace público">
-                            <i class="iconoir-share-ios"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline" onclick="openEditAppModal(${app.id})">
-                            Editar
-                        </button>
-                    </div>
-                </div>
-                
-                ${app.description ? `
-                    <p class="card-description">${escapeHtml(app.description)}</p>
-                ` : `
-                    <p class="card-description text-muted">Sin descripción</p>
-                `}
-                
-                <div class="card-footer">
-                    <span class="text-small text-muted">
-                        Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}
-                    </span>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">${escapeHtml(app.name)}</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-outline" onclick="copyAppLink('${shareLink}')" title="Copiar enlace de compartir">
+                        <i class="iconoir-share-ios"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="openEditAppModal(${app.id})">
+                        <i class="iconoir-edit-pencil"></i>
+                    </button>
                 </div>
             </div>
-        `;
-    }).join('');
-}
 
-function copyAppUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        if (typeof showToast === 'function') {
-            showToast({
-                title: 'Enlace copiado',
-                message: 'El enlace específico de la aplicación se ha copiado al portapapeles',
-                icon: 'iconoir-check'
-            }, 'toast-completed');
-        } else {
-            alert('Enlace copiado al portapapeles');
-        }
-    }).catch(err => {
-        console.error('Error copying:', err);
-        alert('No se pudo copiar el enlace.');
-    });
+            ${app.description ? `
+                <p class="card-description">${escapeHtml(app.description)}</p>
+            ` : `
+                <p class="card-description text-muted">Sin descripción</p>
+            `}
+
+            <div class="card-footer">
+                <span class="text-small text-muted">
+                    Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}
+                </span>
+            </div>
+        </div>
+    `;
+    }).join('');
 }
 
 // Open new app modal
@@ -245,6 +227,45 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Copy app share link to clipboard
+function copyAppLink(link) {
+    navigator.clipboard.writeText(link).then(() => {
+        showToast({
+            title: 'Enlace copiado',
+            message: 'El enlace de compartir se ha copiado al portapapeles',
+            icon: 'iconoir-check'
+        }, 'toast-completed');
+    }).catch(err => {
+        console.error('Error copying:', err);
+        alert('No se pudo copiar el enlace. Por favor, cópialo manualmente:\n\n' + link);
+    });
+}
+
+// Show toast notification
+function showToast(toastData, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="${toastData.icon}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">${toastData.title}</div>
+            <div class="toast-message">${toastData.message}</div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 // Close modal on outside click

@@ -18,16 +18,12 @@
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
-<body data-user-role="<?php echo htmlspecialchars($user['role']); ?>"
-    data-company-name="<?php echo htmlspecialchars($company_name); ?>">
+<body data-company-name="<?php echo htmlspecialchars($user['company_name'] ?? ''); ?>">
     <?php
     require_once __DIR__ . '/includes/auth.php';
     require_role('admin');
 
     $user = get_logged_user();
-    
-    // Get company name for links
-    $company_name = $user['company_name'] ?? '';
     ?>
 
     <div class="dashboard-container">

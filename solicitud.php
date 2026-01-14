@@ -25,9 +25,22 @@ if (!$company) {
 }
 
 // Get apps for this company
-$stmt = $db->prepare("SELECT id, name FROM apps WHERE company_id = ? ORDER BY name");
+$stmt = $db->prepare("SELECT id, name FROM apps WHERE company_id = ? AND is_active = 1 ORDER BY name");
 $stmt->execute([$company['id']]);
 $apps = $stmt->fetchAll();
+
+// Get app slug from URL and find matching app
+$app_slug = $_GET['app'] ?? '';
+$selected_app_id = null;
+
+if (!empty($app_slug)) {
+    foreach ($apps as $app) {
+        if (strtolower($app['name']) === strtolower($app_slug)) {
+            $selected_app_id = $app['id'];
+            break;
+        }
+    }
+}
 
 $success = false;
 $error = '';
@@ -161,7 +174,7 @@ $error = '';
                         <select id="app_id" name="app_id" required>
                             <option value="">Selecciona una aplicación</option>
                             <?php foreach ($apps as $app): ?>
-                                <option value="<?php echo $app['id']; ?>">
+                                <option value="<?php echo $app['id']; ?>" <?php echo $selected_app_id === $app['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($app['name']); ?>
                                 </option>
                             <?php endforeach; ?>
