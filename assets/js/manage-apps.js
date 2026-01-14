@@ -70,7 +70,7 @@ function renderApps() {
         return;
     }
 
-    const companyName = document.body.dataset.companyName || '';
+    const companyName = document.querySelector('.dashboard-container')?.dataset.companyName || '';
 
     grid.innerHTML = apps.map(app => {
         const shareLink = `${window.location.origin}/solicitud.php?empresa=${encodeURIComponent(companyName)}&app=${encodeURIComponent(app.name)}`;

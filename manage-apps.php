@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 
-<body data-company-name="<?php echo htmlspecialchars($user['company_name'] ?? ''); ?>">
+<body>
     <?php
     require_once __DIR__ . '/includes/auth.php';
     require_role('admin');
@@ -26,7 +26,7 @@
     $user = get_logged_user();
     ?>
 
-    <div class="dashboard-container">
+    <div class="dashboard-container" data-company-name="<?php echo htmlspecialchars($user['company_name'] ?? ''); ?>">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
