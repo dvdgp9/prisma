@@ -1709,3 +1709,168 @@ nav {
         font-size: 0.875rem;
     }
 }
+
+/* ========== App Files Section ========== */
+.app-files-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-lg);
+    overflow: hidden;
+}
+
+.app-files-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.app-files-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.app-files-title i {
+    color: var(--primary-color);
+}
+
+.app-files-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.app-files-content {
+    padding: var(--spacing-md);
+}
+
+.app-files-content.collapsed {
+    display: none;
+}
+
+.app-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: var(--spacing-md);
+}
+
+.app-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.app-file-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.app-file-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.app-file-info:hover {
+    color: var(--primary-color);
+}
+
+.app-file-icon {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.app-file-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.app-file-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-file-meta {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.app-file-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.app-file-item:hover .app-file-actions {
+    opacity: 1;
+}
+
+.app-file-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.app-file-btn:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.app-file-btn.delete:hover {
+    color: var(--danger-color);
+}
+
+.app-files-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-lg);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.app-files-upload:hover {
+    border-color: var(--primary-color);
+    background: rgba(66, 160, 209, 0.02);
+    color: var(--primary-color);
+}
+
+.app-files-upload i {
+    font-size: 1.5rem;
+}
+
+.app-files-empty {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--text-muted);
+}

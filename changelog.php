@@ -69,6 +69,10 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-list"></i>
                         <span>Changelog</span>
                     </a>
+                    <a href="/tasks.php" class="nav-item">
+                        <i class="iconoir-check-circle"></i>
+                        <span>Mis Tareas</span>
+                    </a>
                 </div>
 
                 <div class="nav-section" id="apps-nav">

@@ -135,30 +135,43 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 ## Project Status Board
 
 ### Fase A: Zona de Tareas Rápidas
-- [ ] A.1: DB - Crear tablas `tasks` y `task_attachments`
-- [ ] A.2: API - `/api/tasks.php` CRUD
-- [ ] A.3: UI - Botón flotante + Quick Add inline
-- [ ] A.4: UI - Sección "Mis Tareas" en sidebar + vista
-- [ ] A.5: Adjuntos en tareas
+- [x] A.1: DB - Crear tablas `tasks` y `task_attachments`
+- [x] A.2: API - `/api/tasks.php` CRUD
+- [x] A.3: UI - Quick Add inline en página de tareas
+- [x] A.4: UI - Sección "Mis Tareas" en sidebar + vista completa
+- [x] A.5: Adjuntos en tareas
 
 ### Fase B: Archivos por Aplicación
-- [ ] B.1: DB - Crear tabla `app_files`
-- [ ] B.2: API - `/api/app-files.php` CRUD
-- [ ] B.3: UI - Sección archivos en vista de app
+- [x] B.1: DB - Crear tabla `app_files`
+- [x] B.2: API - `/api/app-files.php` CRUD
+- [x] B.3: UI - Sección archivos en vista de app (lista colapsable)
 
 ### Tareas completadas hoy (20 Enero 2026)
 - [x] Archivos adjuntos visibles en mejoras (api/attachments.php + UI)
 - [x] Changelog restringido a apps del usuario
+- [x] Zona de tareas rápidas completa
+- [x] Archivos por aplicación completo
 
 ---
 
 ## Executor's Feedback or Assistance Requests
 
-**Plan listo para revisión**. Puntos a confirmar antes de ejecutar:
+**✅ Implementación completada**. 
 
-1. **Tareas**: ¿Las tareas son personales (solo del usuario) o compartidas (visibles para el equipo)?
-2. **Tareas**: ¿Quieres que estén asociadas a una app específica o sean generales del usuario?
-3. **Archivos de app**: ¿Solo admins pueden subir o cualquier usuario con acceso a la app?
+Archivos creados/modificados:
+- `api/tasks.php` - CRUD de tareas
+- `api/task-attachments.php` - Adjuntos de tareas
+- `api/app-files.php` - Archivos de aplicación
+- `api/attachments.php` - Adjuntos de mejoras (nuevo)
+- `tasks.php` - Página de tareas
+- `assets/js/tasks.js` - Lógica de tareas
+- `assets/css/tasks.css` - Estilos de tareas
+- `index.php` - Añadida sección archivos de app + link tareas en sidebar
+- `changelog.php` - Añadido link tareas en sidebar
+- `assets/js/main.js` - Funciones de archivos de app
+- `assets/css/styles.css` - Estilos de archivos de app
+
+**Pendiente de verificación por el usuario**.
 
 ---
 

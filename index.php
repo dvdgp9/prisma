@@ -73,6 +73,11 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-list"></i>
                         <span>Changelog</span>
                     </a>
+                    <a href="/tasks.php" class="nav-item">
+                        <i class="iconoir-check-circle"></i>
+                        <span>Mis Tareas</span>
+                        <span class="badge-count" id="tasks-count" style="display: none;"></span>
+                    </a>
                 </div>
 
                 <div class="nav-section" id="apps-nav">
@@ -201,6 +206,31 @@ $company_name = $user['company_name'] ?? '';
                         <option value="medium">Media</option>
                         <option value="high">Alta</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- App Files Section (visible only when viewing specific app) -->
+            <div class="app-files-section" id="app-files-section" style="display: none;">
+                <div class="app-files-header">
+                    <div class="app-files-title">
+                        <i class="iconoir-folder"></i>
+                        <span>Archivos del proyecto</span>
+                        <span class="app-files-count" id="app-files-count"></span>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="toggleAppFiles()">
+                        <i class="iconoir-nav-arrow-down" id="app-files-toggle-icon"></i>
+                    </button>
+                </div>
+                <div class="app-files-content" id="app-files-content">
+                    <div class="app-files-list" id="app-files-list">
+                        <!-- Files will be loaded here -->
+                    </div>
+                    <div class="app-files-upload" id="app-files-upload">
+                        <i class="iconoir-cloud-upload"></i>
+                        <span>Arrastra archivos aquí o haz clic para subir</span>
+                        <span class="text-small text-muted">Máximo 10MB por archivo</span>
+                        <input type="file" id="app-file-input" style="display: none;" multiple>
+                    </div>
                 </div>
             </div>
 

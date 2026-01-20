@@ -12,7 +12,6 @@ const userRole = document.body.dataset.userRole;
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
     loadApps();
-    loadApps();
 
     // Check for app_id in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -24,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentView = 'app';
         currentAppId = appIdParam;
         loadRequests();
+        loadAppFiles();
 
         // Update UI once apps are loaded
         // This is handled in loadApps -> renderAppsNav -> but we need to set active state
@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadRequests();
     }
     setupFileUpload();
+    setupAppFilesUpload();
 
     // Cmd/Ctrl + Enter to submit new request form
     const newRequestForm = document.getElementById('new-request-form');
@@ -122,6 +123,16 @@ function loadView(type, appId = null) {
         item.classList.remove('active');
     });
     event.target.closest('.nav-item').classList.add('active');
+
+    // Show/hide app files section
+    const appFilesSection = document.getElementById('app-files-section');
+    if (appFilesSection) {
+        if (type === 'app' && appId) {
+            loadAppFiles();
+        } else {
+            appFilesSection.style.display = 'none';
+        }
+    }
 
     // Reload requests
     loadRequests();
@@ -1117,3 +1128,191 @@ window.addEventListener('click', (e) => {
         e.target.classList.remove('active');
     }
 });
+
+// ========== App Files Functions ==========
+
+// Setup app files upload
+function setupAppFilesUpload() {
+    const uploadArea = document.getElementById('app-files-upload');
+    const fileInput = document.getElementById('app-file-input');
+    
+    if (!uploadArea || !fileInput) return;
+    
+    uploadArea.addEventListener('click', () => fileInput.click());
+    
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--primary-color)';
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = 'var(--border-color)';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--border-color)';
+        handleAppFileUpload(e.dataTransfer.files);
+    });
+    
+    fileInput.addEventListener('change', () => {
+        handleAppFileUpload(fileInput.files);
+        fileInput.value = '';
+    });
+}
+
+// Handle app file upload
+async function handleAppFileUpload(files) {
+    if (!currentAppId) return;
+    
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('app_id', currentAppId);
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/app-files.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast({
+                    title: 'Archivo subido',
+                    message: file.name,
+                    icon: 'iconoir-check'
+                }, 'toast-completed');
+            } else {
+                showToast({
+                    title: 'Error',
+                    message: data.error || 'No se pudo subir el archivo',
+                    icon: 'iconoir-warning-circle'
+                }, 'toast-error');
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+        }
+    }
+    
+    await loadAppFiles();
+}
+
+// Load app files
+async function loadAppFiles() {
+    const section = document.getElementById('app-files-section');
+    const list = document.getElementById('app-files-list');
+    const countEl = document.getElementById('app-files-count');
+    
+    if (!currentAppId) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    
+    try {
+        const response = await fetch(`/api/app-files.php?app_id=${currentAppId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const files = data.data;
+            
+            countEl.textContent = files.length > 0 ? `(${files.length})` : '';
+            
+            if (files.length === 0) {
+                list.innerHTML = '<div class="app-files-empty">No hay archivos todavía</div>';
+            } else {
+                list.innerHTML = files.map(file => `
+                    <div class="app-file-item">
+                        <a href="/${file.file_path}" target="_blank" class="app-file-info">
+                            <i class="${getFileIconClass(file.mime_type)} app-file-icon"></i>
+                            <div class="app-file-details">
+                                <div class="app-file-name" title="${escapeHtml(file.original_filename)}">${escapeHtml(file.original_filename)}</div>
+                                <div class="app-file-meta">
+                                    <span>${formatFileSize(file.file_size)}</span>
+                                    <span>${file.uploaded_by_name || file.uploaded_by_username || 'Usuario'}</span>
+                                    <span>${formatDate(file.created_at)}</span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="app-file-actions">
+                            <button class="app-file-btn delete" onclick="deleteAppFile(${file.id})" title="Eliminar">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading app files:', error);
+        list.innerHTML = '<div class="app-files-empty">Error al cargar archivos</div>';
+    }
+}
+
+// Delete app file
+async function deleteAppFile(fileId) {
+    if (!confirm('¿Eliminar este archivo?')) return;
+    
+    try {
+        const response = await fetch('/api/app-files.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: fileId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadAppFiles();
+            showToast({
+                title: 'Eliminado',
+                message: 'Archivo eliminado',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al eliminar');
+        }
+    } catch (error) {
+        console.error('Error deleting file:', error);
+    }
+}
+
+// Toggle app files section
+function toggleAppFiles() {
+    const content = document.getElementById('app-files-content');
+    const icon = document.getElementById('app-files-toggle-icon');
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('iconoir-nav-arrow-down');
+    icon.classList.toggle('iconoir-nav-arrow-right');
+}
+
+// Get file icon class based on mime type
+function getFileIconClass(mimeType) {
+    if (!mimeType) return 'iconoir-file';
+    if (mimeType.startsWith('image/')) return 'iconoir-media-image';
+    if (mimeType === 'application/pdf') return 'iconoir-page';
+    if (mimeType.includes('word')) return 'iconoir-page';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'iconoir-table-2-columns';
+    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar')) return 'iconoir-archive';
+    if (mimeType.startsWith('video/')) return 'iconoir-media-video';
+    if (mimeType.startsWith('audio/')) return 'iconoir-music-double-note';
+    return 'iconoir-file';
+}
+
+// Format date
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
