@@ -1874,3 +1874,98 @@ nav {
     padding: var(--spacing-lg);
     color: var(--text-muted);
 }
+
+/* ========== Floating Task Button ========== */
+.floating-task-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    width: 56px;
+    height: 56px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(66, 160, 209, 0.4);
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+
+.floating-task-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(66, 160, 209, 0.5);
+}
+
+.floating-task-btn.active {
+    transform: rotate(45deg);
+    background: var(--text-muted);
+}
+
+.floating-task-btn i {
+    font-size: 1.5rem;
+}
+
+.floating-task-input {
+    position: fixed;
+    bottom: 90px;
+    left: 24px;
+    display: none;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-primary);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideUp 0.2s ease;
+}
+
+.floating-task-input.active {
+    display: flex;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.floating-task-input input {
+    width: 280px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.floating-task-input input:focus {
+    border-color: var(--primary-color);
+}
+
+.floating-task-submit {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+.floating-task-submit:hover {
+    background: var(--primary-dark);
+}

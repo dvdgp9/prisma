@@ -1316,3 +1316,62 @@ function formatDate(dateString) {
     
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
+
+// ========== Floating Task Button ==========
+
+function toggleFloatingTaskInput() {
+    const btn = document.getElementById('floating-task-btn');
+    const input = document.getElementById('floating-task-input');
+    const titleInput = document.getElementById('floating-task-title');
+    
+    btn.classList.toggle('active');
+    input.classList.toggle('active');
+    
+    if (input.classList.contains('active')) {
+        titleInput.focus();
+    }
+}
+
+function handleFloatingTaskKeydown(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitFloatingTask();
+    } else if (e.key === 'Escape') {
+        toggleFloatingTaskInput();
+    }
+}
+
+async function submitFloatingTask() {
+    const titleInput = document.getElementById('floating-task-title');
+    const title = titleInput.value.trim();
+    
+    if (!title) return;
+    
+    try {
+        const response = await fetch('/api/tasks.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            titleInput.value = '';
+            toggleFloatingTaskInput();
+            showToast({
+                title: 'Tarea creada',
+                message: title,
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            showToast({
+                title: 'Error',
+                message: data.error || 'No se pudo crear la tarea',
+                icon: 'iconoir-warning-circle'
+            }, 'toast-error');
+        }
+    } catch (error) {
+        console.error('Error creating task:', error);
+    }
+}

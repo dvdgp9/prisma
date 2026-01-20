@@ -218,10 +218,10 @@ $company_name = $user['company_name'] ?? '';
                         <span class="app-files-count" id="app-files-count"></span>
                     </div>
                     <button class="btn btn-sm btn-outline" onclick="toggleAppFiles()">
-                        <i class="iconoir-nav-arrow-down" id="app-files-toggle-icon"></i>
+                        <i class="iconoir-nav-arrow-right" id="app-files-toggle-icon"></i>
                     </button>
                 </div>
-                <div class="app-files-content" id="app-files-content">
+                <div class="app-files-content collapsed" id="app-files-content">
                     <div class="app-files-list" id="app-files-list">
                         <!-- Files will be loaded here -->
                     </div>
@@ -472,6 +472,17 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </form>
         </div>
+    </div>
+
+    <!-- Floating Task Button -->
+    <div class="floating-task-btn" id="floating-task-btn" onclick="toggleFloatingTaskInput()">
+        <i class="iconoir-plus"></i>
+    </div>
+    <div class="floating-task-input" id="floating-task-input">
+        <input type="text" id="floating-task-title" placeholder="Nueva tarea rápida..." onkeydown="handleFloatingTaskKeydown(event)">
+        <button class="floating-task-submit" onclick="submitFloatingTask()">
+            <i class="iconoir-send"></i>
+        </button>
     </div>
 
     <!-- Toast Notifications -->
