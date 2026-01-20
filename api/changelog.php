@@ -17,6 +17,20 @@ try {
         $dateTo = $_GET['date_to'] ?? null;
         $days = $_GET['days'] ?? 30; // Default to last 30 days
 
+        // Get user's allowed apps
+        $userApps = get_user_apps();
+        $allowedAppIds = array_column($userApps, 'id');
+        
+        if (empty($allowedAppIds)) {
+            // User has no apps, return empty
+            echo json_encode([
+                'success' => true,
+                'data' => [],
+                'count' => 0
+            ]);
+            exit;
+        }
+
         // Build the query
         $query = "
             SELECT 
@@ -42,10 +56,21 @@ try {
 
         $params = [];
 
-        // Filter by app
+        // Restrict to user's allowed apps
+        $placeholders = [];
+        foreach ($allowedAppIds as $i => $id) {
+            $key = ":allowed_app_$i";
+            $placeholders[] = $key;
+            $params[$key] = $id;
+        }
+        $query .= " AND r.app_id IN (" . implode(',', $placeholders) . ")";
+
+        // Filter by specific app (must be in allowed list)
         if ($appId) {
-            $query .= " AND r.app_id = :app_id";
-            $params[':app_id'] = $appId;
+            if (in_array($appId, $allowedAppIds)) {
+                $query .= " AND r.app_id = :app_id";
+                $params[':app_id'] = $appId;
+            }
         }
 
         // Filter by date range

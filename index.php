@@ -368,6 +368,19 @@ $company_name = $user['company_name'] ?? '';
                     </div>
                 </div>
 
+                <!-- Attachments section -->
+                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <label style="margin: 0; font-weight: 500;">
+                            <i class="iconoir-attachment"></i> Archivos adjuntos
+                        </label>
+                        <span id="edit-attachment-count" class="text-muted text-small"></span>
+                    </div>
+                    <div id="edit-attachments-list" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Attachments will be loaded here -->
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
                     <?php if (has_role('superadmin')): ?>

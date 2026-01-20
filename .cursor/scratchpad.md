@@ -11,186 +11,213 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 
 **Objetivo**: Convertir esto en una herramienta donde equipos puedan colaborar activamente en la gestión de mejoras/tareas.
 
+### Nuevas Funcionalidades Solicitadas (20 Enero 2026)
+
+1. ✅ **Archivos adjuntos visibles** - Ahora se pueden ver y eliminar los adjuntos de cada mejora
+2. ✅ **Changelog restringido** - Solo muestra apps a las que el usuario tiene acceso
+3. **Zona de Tareas Rápidas** - Sistema de notas/tareas ultrarrápido tipo "Notas de iPhone"
+4. **Archivos por Aplicación** - Repositorio de archivos importantes accesibles desde cada app
+
 ---
 
 ## Key Challenges and Analysis
 
-### Estado Actual
-| Componente | Estado | Notas |
-|------------|--------|-------|
-| Multi-tenancy | ✅ Existe | Empresas y usuarios por empresa |
-| Roles | ✅ Existe | superadmin, admin, user |
-| Permisos por App | ✅ Existe | user_app_permissions |
-| Requests/Mejoras | ✅ Existe | CRUD completo con votos |
-| **Colaboración** | ❌ Falta | No hay forma de discutir/asignar |
+### Análisis: Zona de Tareas Rápidas
 
-### Funcionalidades Necesarias para Trabajo en Equipo
+**Objetivo del usuario**: Crear tareas lo más rápido posible, con el menor número de clics. Similar a "Notas del iPhone" - abrir, apuntar, cerrar.
 
-1. **Sistema de Comentarios** (Alta prioridad)
-   - Comentarios en cada request para discusión del equipo
-   - Historial de conversación visible
+**Requisitos identificados**:
+- Acceso instantáneo (1 clic desde cualquier parte)
+- Creación ultrarrápida (solo título obligatorio)
+- Sin modal pesado ni formularios complejos
+- Poder adjuntar archivos opcionalmente
+- Tareas separadas de las "mejoras/requests" existentes
 
-2. **Asignación de Tareas** (Alta prioridad)
-   - Campo `assigned_to` en requests
-   - Vista "Mis tareas asignadas"
-   - Filtro por asignado
+**Opciones de diseño**:
 
-3. **Menciones @usuario** (Media prioridad)
-   - En comentarios: notificar a usuarios mencionados
-   - Autocompletado de usuarios
+| Opción | Pros | Contras |
+|--------|------|---------|
+| A) Botón flotante + sidebar deslizable | Siempre visible, no interrumpe | Puede ser intrusivo |
+| B) Tecla rápida (Ctrl+N) + input inline | Súper rápido para power users | No visible para nuevos |
+| C) Sección "Tareas" en sidebar + quick-add | Integrado, consistente | Un clic más |
 
-4. **Sistema de Notificaciones** (Media prioridad)
-   - Notificaciones in-app (badge/dropdown)
-   - Tipos: asignación, comentario, mención, cambio de estado
-   - Marcar como leídas
+**Recomendación**: Combinar **A + C**
+- Botón flotante "+" en esquina inferior derecha
+- Al hacer clic: input inline que aparece al instante
+- Sección "Mis Tareas" en sidebar para ver/gestionar
+- Enter para guardar, Escape para cancelar
+- Opción de expandir para añadir descripción/adjuntos
 
-5. **Historial de Actividad** (Media prioridad)
-   - Timeline de cambios en cada request
-   - Quién cambió qué y cuándo
+### Análisis: Archivos por Aplicación
 
-6. **Etiquetas/Tags** (Baja prioridad)
-   - Tags personalizables por empresa
-   - Filtrar por tags
+**Objetivo del usuario**: Tener archivos importantes del proyecto accesibles al entrar en una aplicación.
 
-7. **Mejoras de UI** (Transversal)
-   - Panel lateral de detalles de request
-   - Indicadores visuales de asignación
-   - Avatar del asignado junto al request
+**Requisitos identificados**:
+- Archivos asociados a la app, no a una mejora específica
+- Accesibles desde la vista de la aplicación
+- Poder subir/descargar/eliminar
+- Organización simple
+
+**Diseño propuesto**:
+- Nueva sección "Archivos" cuando se está en vista de una app
+- Tabla/grid de archivos con: nombre, tamaño, fecha, subido por
+- Botón para subir nuevos archivos
+- Usar la misma infraestructura de uploads existente
 
 ---
 
 ## High-level Task Breakdown
 
-### Fase 1: Sistema de Comentarios (Fundamento de colaboración)
-1. **DB**: Crear tabla `comments` (request_id, user_id, content, created_at)
-2. **API**: Endpoint `/api/comments.php` (GET, POST, DELETE)
-3. **UI**: Sección de comentarios en modal/panel de request
-4. **UI**: Formulario para añadir comentario
-5. **Test**: Verificar CRUD de comentarios
+### Fase A: Zona de Tareas Rápidas
 
-### Fase 2: Asignación de Tareas
-1. **DB**: Añadir campo `assigned_to` en `requests`
-2. **API**: Actualizar `/api/requests.php` para soportar asignación
-3. **UI**: Selector de usuario para asignar en formulario de request
-4. **UI**: Vista "Mis tareas" en sidebar
-5. **UI**: Filtro por asignado en vista principal
-6. **UI**: Avatar/nombre del asignado en tarjeta de request
+#### A.1 Base de datos
+- Crear tabla `tasks` con campos: id, user_id, company_id, title, description, is_completed, created_at, updated_at
+- Crear tabla `task_attachments` para archivos
 
-### Fase 3: Sistema de Notificaciones
-1. **DB**: Crear tabla `notifications` (user_id, type, reference_id, read, created_at)
-2. **API**: Endpoint `/api/notifications.php`
-3. **UI**: Icono campana con badge en header
-4. **UI**: Dropdown con lista de notificaciones
-5. **Backend**: Generar notificaciones en eventos (asignación, comentario, estado)
+**Criterio de éxito**: Tablas creadas y migración lista
 
-### Fase 4: Menciones @usuario
-1. **Backend**: Parser de menciones en comentarios
-2. **UI**: Autocompletado @usuario en textarea de comentarios
-3. **Backend**: Crear notificación al mencionar
-4. **UI**: Resaltar menciones en texto
+#### A.2 API de Tareas
+- Endpoint `/api/tasks.php` con GET, POST, PUT, DELETE
+- GET: Obtener tareas del usuario (filtros: completadas/pendientes)
+- POST: Crear tarea (solo title obligatorio)
+- PUT: Actualizar/completar tarea
+- DELETE: Eliminar tarea
 
-### Fase 5: Historial de Actividad
-1. **DB**: Crear tabla `activity_log` (request_id, user_id, action, old_value, new_value, created_at)
-2. **API**: Endpoint para obtener actividad de un request
-3. **UI**: Timeline de actividad en panel de request
-4. **Backend**: Registrar cambios automáticamente
+**Criterio de éxito**: CRUD funcional via API
 
-### Fase 6: Etiquetas (Opcional)
-1. **DB**: Tablas `tags` y `request_tags`
-2. **API**: CRUD de tags y asignación
-3. **UI**: Selector de tags, filtro, badges de colores
+#### A.3 UI - Botón flotante + Quick Add
+- Botón "+" flotante en esquina inferior derecha
+- Al hacer clic: input inline que aparece
+- Enter guarda, Escape cancela
+- Animación suave de aparición
+
+**Criterio de éxito**: Poder crear tarea en <3 segundos
+
+#### A.4 UI - Sección "Mis Tareas" en sidebar
+- Nuevo item en sidebar: "Mis Tareas"
+- Vista con lista de tareas pendientes/completadas
+- Checkbox para marcar como completada
+- Swipe/botón para eliminar
+
+**Criterio de éxito**: Vista completa de gestión de tareas
+
+#### A.5 Adjuntos en Tareas
+- Botón para expandir y añadir descripción/adjuntos
+- Reutilizar componente de upload existente
+
+**Criterio de éxito**: Poder adjuntar archivos a tareas
+
+### Fase B: Archivos por Aplicación
+
+#### B.1 Base de datos
+- Crear tabla `app_files` con: id, app_id, filename, original_filename, file_path, file_size, mime_type, uploaded_by, created_at
+
+**Criterio de éxito**: Tabla creada
+
+#### B.2 API de Archivos de App
+- Endpoint `/api/app-files.php` con GET, POST, DELETE
+- GET: Listar archivos de una app
+- POST: Subir archivo a app
+- DELETE: Eliminar archivo
+
+**Criterio de éxito**: CRUD funcional
+
+#### B.3 UI - Sección de archivos en vista de app
+- Tab o sección "Archivos" cuando se está viendo una app específica
+- Grid/lista de archivos
+- Botón de subir archivo
+- Preview/descarga al hacer clic
+
+**Criterio de éxito**: Poder ver y gestionar archivos de cada app
 
 ---
 
 ## Project Status Board
 
-### Fase 1: Comentarios
-- [ ] DB: Crear tabla `comments` <!-- id: 1.1 -->
-- [ ] API: `/api/comments.php` CRUD <!-- id: 1.2 -->
-- [ ] UI: Sección de comentarios en request <!-- id: 1.3 -->
-- [ ] UI: Formulario añadir comentario <!-- id: 1.4 -->
-- [ ] Test: Verificar funcionamiento <!-- id: 1.5 -->
+### Fase A: Zona de Tareas Rápidas
+- [ ] A.1: DB - Crear tablas `tasks` y `task_attachments`
+- [ ] A.2: API - `/api/tasks.php` CRUD
+- [ ] A.3: UI - Botón flotante + Quick Add inline
+- [ ] A.4: UI - Sección "Mis Tareas" en sidebar + vista
+- [ ] A.5: Adjuntos en tareas
 
-### Fase 2: Asignación
-- [ ] DB: Campo `assigned_to` en requests <!-- id: 2.1 -->
-- [ ] API: Soporte asignación en requests <!-- id: 2.2 -->
-- [ ] UI: Selector de asignado <!-- id: 2.3 -->
-- [ ] UI: Vista "Mis tareas" <!-- id: 2.4 -->
-- [ ] UI: Filtro por asignado <!-- id: 2.5 -->
-- [ ] UI: Avatar asignado en tarjetas <!-- id: 2.6 -->
+### Fase B: Archivos por Aplicación
+- [ ] B.1: DB - Crear tabla `app_files`
+- [ ] B.2: API - `/api/app-files.php` CRUD
+- [ ] B.3: UI - Sección archivos en vista de app
 
-### Fase 3: Notificaciones
-- [ ] DB: Tabla `notifications` <!-- id: 3.1 -->
-- [ ] API: `/api/notifications.php` <!-- id: 3.2 -->
-- [ ] UI: Icono campana con badge <!-- id: 3.3 -->
-- [ ] UI: Dropdown notificaciones <!-- id: 3.4 -->
-- [ ] Backend: Generar notificaciones automáticas <!-- id: 3.5 -->
-
-### Fase 4: Menciones
-- [ ] Backend: Parser de @menciones <!-- id: 4.1 -->
-- [ ] UI: Autocompletado @usuario <!-- id: 4.2 -->
-- [ ] Backend: Notificación al mencionar <!-- id: 4.3 -->
-
-### Fase 5: Historial
-- [ ] DB: Tabla `activity_log` <!-- id: 5.1 -->
-- [ ] API: Obtener actividad <!-- id: 5.2 -->
-- [ ] UI: Timeline en panel de request <!-- id: 5.3 -->
-- [ ] Backend: Registro automático de cambios <!-- id: 5.4 -->
+### Tareas completadas hoy (20 Enero 2026)
+- [x] Archivos adjuntos visibles en mejoras (api/attachments.php + UI)
+- [x] Changelog restringido a apps del usuario
 
 ---
 
 ## Executor's Feedback or Assistance Requests
-- Esperando aprobación del plan por el usuario/Planner antes de comenzar ejecución.
+
+**Plan listo para revisión**. Puntos a confirmar antes de ejecutar:
+
+1. **Tareas**: ¿Las tareas son personales (solo del usuario) o compartidas (visibles para el equipo)?
+2. **Tareas**: ¿Quieres que estén asociadas a una app específica o sean generales del usuario?
+3. **Archivos de app**: ¿Solo admins pueden subir o cualquier usuario con acceso a la app?
+
+---
 
 ## Lessons
-- (None yet)
+
+- Los archivos adjuntos se guardan en `/uploads/` y en tabla `attachments`
+- `get_user_apps()` retorna las apps a las que el usuario tiene acceso
 
 ---
 
 ## Notas Técnicas
 
-### Estructura de tablas propuestas
+### Estructura de tablas propuestas (Tareas)
 
 ```sql
--- Comentarios
-CREATE TABLE comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    request_id INT NOT NULL,
-    user_id INT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Notificaciones
-CREATE TABLE notifications (
+-- Tareas rápidas
+CREATE TABLE tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    type ENUM('assignment', 'comment', 'mention', 'status_change') NOT NULL,
-    reference_type ENUM('request', 'comment') NOT NULL,
-    reference_id INT NOT NULL,
-    message TEXT,
-    is_read BOOLEAN DEFAULT FALSE,
+    company_id INT NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    is_completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    INDEX idx_user (user_id),
+    INDEX idx_completed (is_completed)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Activity Log
-CREATE TABLE activity_log (
+-- Adjuntos de tareas
+CREATE TABLE task_attachments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    request_id INT NOT NULL,
-    user_id INT NOT NULL,
-    action VARCHAR(50) NOT NULL,
-    field_name VARCHAR(50),
-    old_value TEXT,
-    new_value TEXT,
+    task_id INT NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INT,
+    mime_type VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    INDEX idx_task (task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Campo asignación (migración)
-ALTER TABLE requests ADD COLUMN assigned_to INT NULL;
-ALTER TABLE requests ADD FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
+-- Archivos por aplicación
+CREATE TABLE app_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    app_id INT NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INT,
+    mime_type VARCHAR(100),
+    uploaded_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_app (app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```

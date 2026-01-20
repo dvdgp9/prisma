@@ -854,12 +854,94 @@ async function openEditRequestModal(requestId) {
             if (requesterNameField) requesterNameField.value = request.requester_name || '';
             if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
 
+            // Load attachments
+            await loadRequestAttachments(requestId);
+
             // Open modal
             document.getElementById('edit-request-modal').classList.add('active');
         }
     } catch (error) {
         console.error('Error loading request:', error);
         alert('Error al cargar la petición');
+    }
+}
+
+// Load attachments for a request
+async function loadRequestAttachments(requestId) {
+    const container = document.getElementById('edit-attachments-list');
+    const countEl = document.getElementById('edit-attachment-count');
+    
+    if (!container) return;
+    
+    try {
+        const response = await fetch(`/api/attachments.php?request_id=${requestId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const attachments = data.data;
+            
+            if (attachments.length === 0) {
+                container.innerHTML = '<p class="text-muted text-small">No hay archivos adjuntos</p>';
+                if (countEl) countEl.textContent = '';
+            } else {
+                if (countEl) countEl.textContent = `${attachments.length} archivo${attachments.length > 1 ? 's' : ''}`;
+                container.innerHTML = attachments.map(att => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
+                        <a href="/${att.file_path}" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-primary); flex: 1; overflow: hidden;">
+                            <i class="${getFileIcon(att.mime_type)}" style="color: var(--primary-color);"></i>
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(att.original_filename)}">
+                                ${escapeHtml(att.original_filename)}
+                            </span>
+                            <span class="text-muted text-small">(${formatFileSize(att.file_size)})</span>
+                        </a>
+                        <button type="button" class="btn btn-sm" onclick="deleteAttachment(${att.id}, ${requestId})" style="padding: 0.25rem 0.5rem; color: var(--text-muted);" title="Eliminar">
+                            <i class="iconoir-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading attachments:', error);
+        container.innerHTML = '<p class="text-muted text-small">Error al cargar archivos</p>';
+    }
+}
+
+// Get icon based on mime type
+function getFileIcon(mimeType) {
+    if (mimeType.startsWith('image/')) return 'iconoir-media-image';
+    if (mimeType === 'application/pdf') return 'iconoir-page';
+    if (mimeType.includes('word')) return 'iconoir-page';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'iconoir-table-2-columns';
+    return 'iconoir-attachment';
+}
+
+// Delete attachment
+async function deleteAttachment(attachmentId, requestId) {
+    if (!confirm('¿Eliminar este archivo?')) return;
+    
+    try {
+        const response = await fetch('/api/attachments.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: attachmentId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadRequestAttachments(requestId);
+            showToast({
+                title: 'Archivo eliminado',
+                message: 'El archivo se ha eliminado correctamente',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al eliminar el archivo');
+        }
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
+        alert('Error al eliminar el archivo');
     }
 }
 
