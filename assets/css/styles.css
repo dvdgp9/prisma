@@ -1879,7 +1879,7 @@ nav {
 .floating-task-btn {
     position: fixed;
     bottom: 24px;
-    left: 24px;
+    right: 24px;
     width: 56px;
     height: 56px;
     background: var(--primary-color);
@@ -1911,7 +1911,7 @@ nav {
 .floating-task-input {
     position: fixed;
     bottom: 90px;
-    left: 24px;
+    right: 24px;
     display: none;
     align-items: center;
     gap: var(--spacing-sm);
@@ -1964,6 +1964,7 @@ nav {
     align-items: center;
     justify-content: center;
     transition: background 0.15s ease;
+    flex-shrink: 0;
 }
 
 .floating-task-submit:hover {
