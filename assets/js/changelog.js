@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('date-from').value = monthAgo.toISOString().split('T')[0];
 });
 
-// Load apps for filter
+// Load apps for filter (sidebar is handled by sidebar.js)
 async function loadApps() {
     try {
         const response = await fetch('/api/apps.php');
@@ -23,8 +23,8 @@ async function loadApps() {
 
         if (data.success) {
             apps = data.data;
-            renderAppsNav();
 
+            // Populate app filter dropdown
             const appFilter = document.getElementById('app-filter');
             apps.forEach(app => {
                 const option = document.createElement('option');
@@ -36,24 +36,6 @@ async function loadApps() {
     } catch (error) {
         console.error('Error loading apps:', error);
     }
-}
-
-// Render apps in sidebar navigation
-function renderAppsNav() {
-    const appsNav = document.getElementById('apps-nav');
-    if (!appsNav) return;
-
-    const navItems = apps.map(app => `
-        <a href="/index.php?app_id=${app.id}" class="nav-item">
-            <i class="iconoir-app-window"></i>
-            <span>${escapeHtml(app.name)}</span>
-        </a>
-    `).join('');
-
-    appsNav.innerHTML = `
-        <div class="nav-section-title">Aplicaciones</div>
-        ${navItems}
-    `;
 }
 
 // Load changelog data

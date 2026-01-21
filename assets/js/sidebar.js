@@ -1,11 +1,19 @@
 // Sidebar - Common functionality for all pages
+// Note: On index.php, main.js handles the sidebar instead
 
 let sidebarAppsGrouped = [];
 let sidebarApps = [];
 
-// Load apps on page load
+// Load apps on page load (skip if main.js will handle it)
 document.addEventListener('DOMContentLoaded', function() {
-    loadAppsForSidebar();
+    // Check if we're on index.php where main.js handles the sidebar
+    const isIndexPage = window.location.pathname === '/' || 
+                        window.location.pathname.includes('index.php');
+    
+    // Only load if not on index page (main.js handles it there)
+    if (!isIndexPage) {
+        loadAppsForSidebar();
+    }
 });
 
 // Load all apps (grouped by company) for sidebar
