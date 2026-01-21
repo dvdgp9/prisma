@@ -853,6 +853,7 @@ nav {
 .sidebar-search:focus-within {
     border-color: var(--primary-color);
     background: var(--bg-primary);
+    box-shadow: none;
 }
 
 .sidebar-search i {
@@ -866,11 +867,74 @@ nav {
     background: transparent;
     font-size: 0.875rem;
     color: var(--text-primary);
-    outline: none;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .sidebar-search input::placeholder {
     color: var(--text-light);
+}
+
+.sidebar-search input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Quick Actions Row */
+.quick-actions-row {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.quick-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.quick-action-btn i {
+    font-size: 1.25rem;
+}
+
+.quick-action-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.quick-action-btn.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.quick-action-btn .badge-count {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--secondary);
+    color: white;
+    border-radius: 9px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Company Groups in Sidebar */

@@ -22,18 +22,6 @@ $company_name = $user['company_name'] ?? '';
             <img src="/assets/images/logo.png" alt="Prisma" style="height: 32px; width: auto;">
             <div class="logo">Prisma</div>
         </div>
-        <div class="user-info" onclick="openProfileModal()" style="cursor: pointer;" title="Editar perfil">
-            <div class="user-avatar">
-                <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
-            </div>
-            <div>
-                <div style="font-weight: 600;">
-                    <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
-                </div>
-                <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
-            </div>
-            <i class="iconoir-edit user-info-edit-icon"></i>
-        </div>
     </div>
 
     <nav>
@@ -45,40 +33,37 @@ $company_name = $user['company_name'] ?? '';
             </div>
         </div>
 
-        <!-- General Views -->
+        <!-- Quick Actions Icons -->
         <div class="nav-section">
-            <div class="nav-section-title">Vistas Generales</div>
-            <?php if ($current_page === 'index'): ?>
-                <a href="javascript:void(0)" class="nav-item <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="loadView('global')">
-                    <i class="iconoir-globe"></i>
-                    <span>Vista Global</span>
-                </a>
-            <?php else: ?>
-                <a href="/index.php" class="nav-item">
-                    <i class="iconoir-globe"></i>
-                    <span>Vista Global</span>
-                </a>
-            <?php endif; ?>
-            
-            <?php if (has_role('admin')): ?>
+            <div class="quick-actions-row">
                 <?php if ($current_page === 'index'): ?>
-                    <a href="#" onclick="loadPendingApprovals(); return false;" class="nav-item" id="pending-approvals-nav">
-                        <i class="iconoir-clock"></i>
-                        <span>Pendientes Aprobar</span>
-                        <span class="badge-count" id="pending-count" style="display: none;"></span>
+                    <a href="javascript:void(0)" class="quick-action-btn <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="loadView('global')" title="Vista Global">
+                        <i class="iconoir-globe"></i>
                     </a>
                 <?php else: ?>
-                    <a href="/index.php#pending" class="nav-item">
-                        <i class="iconoir-clock"></i>
-                        <span>Pendientes Aprobar</span>
+                    <a href="/index.php" class="quick-action-btn" title="Vista Global">
+                        <i class="iconoir-globe"></i>
                     </a>
                 <?php endif; ?>
-            <?php endif; ?>
+                
+                <?php if (has_role('admin')): ?>
+                    <?php if ($current_page === 'index'): ?>
+                        <a href="#" onclick="loadPendingApprovals(); return false;" class="quick-action-btn" id="pending-approvals-nav" title="Pendientes Aprobar">
+                            <i class="iconoir-clock"></i>
+                            <span class="badge-count" id="pending-count" style="display: none;"></span>
+                        </a>
+                    <?php else: ?>
+                        <a href="/index.php#pending" class="quick-action-btn" title="Pendientes Aprobar">
+                            <i class="iconoir-clock"></i>
+                        </a>
+                    <?php endif; ?>
+                <?php endif; ?>
+                
+                <a href="/changelog.php" class="quick-action-btn <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog">
+                    <i class="iconoir-list"></i>
+                </a>
+            </div>
             
-            <a href="/changelog.php" class="nav-item <?php echo $current_page === 'changelog' ? 'active' : ''; ?>">
-                <i class="iconoir-list"></i>
-                <span>Changelog</span>
-            </a>
             <a href="/tasks.php" class="nav-item <?php echo $current_page === 'tasks' ? 'active' : ''; ?>">
                 <i class="iconoir-check-circle"></i>
                 <span>Mis Tareas</span>
@@ -109,8 +94,12 @@ $company_name = $user['company_name'] ?? '';
             </div>
         <?php endif; ?>
 
-        <!-- Logout -->
+        <!-- Profile and Logout -->
         <div class="nav-section">
+            <a href="javascript:void(0)" class="nav-item" onclick="openProfileModal()">
+                <i class="iconoir-user"></i>
+                <span>Mi Perfil</span>
+            </a>
             <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
                 <i class="iconoir-log-out"></i>
                 <span>Cerrar Sesión</span>
