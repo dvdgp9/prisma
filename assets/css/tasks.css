@@ -385,156 +385,82 @@
     background: rgba(var(--primary-rgb), 0.02);
 }
 
-/* Task Modal Modern Design */
+/* Task Modal Redesign */
 .task-modal-content {
-    max-width: 850px !important;
-    padding: 0;
-    overflow: hidden;
+    max-width: 800px;
+    width: 100%;
 }
 
 .task-modal-grid {
     display: grid;
-    grid-template-columns: 1fr 300px;
-    min-height: 500px;
+    grid-template-columns: 1fr 280px;
+    gap: 2rem;
+    padding: 1.5rem;
 }
 
-.task-modal-left {
-    padding: var(--spacing-xl);
-    background: white;
-}
-
-.task-modal-right {
-    padding: var(--spacing-xl);
-    background: var(--bg-secondary);
-    border-left: 1px solid var(--border-color);
+.task-modal-main {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: 1.25rem;
 }
 
-.task-modal-left .form-group:last-child {
-    margin-bottom: 0;
-}
-
-#task-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    border: none;
-    padding: 0;
-    margin-bottom: var(--spacing-md);
-    background: transparent;
-    width: 100%;
-}
-
-#task-title:focus {
-    outline: none;
-    box-shadow: none;
-}
-
-#task-description {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    border: none;
-    padding: 0;
-    background: transparent;
-    resize: none;
-    min-height: 300px;
-}
-
-#task-description:focus {
-    outline: none;
-    box-shadow: none;
-}
-
-.toggle-label-card {
+.task-modal-sidebar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md);
-    background: white;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.task-modal-sidebar-section {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all 0.2s ease;
 }
 
-.toggle-label-card:hover {
-    border-color: var(--primary-color);
-}
-
-.toggle-label-info {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-size: 0.875rem;
-    color: var(--text-primary);
-}
-
-.toggle-label-info i {
-    font-size: 1.1rem;
+.sidebar-section-title {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: var(--text-muted);
-}
-
-.file-upload-area-mini {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    background: white;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.file-upload-area-mini:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: rgba(var(--primary-rgb), 0.02);
+    margin-bottom: 1rem;
 }
 
 .task-modal-actions {
-    margin-top: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: 0.75rem;
 }
 
-.btn-full {
-    width: 100%;
+.task-modal-actions .btn {
+    display: flex;
+    align-items: center;
     justify-content: center;
-}
-
-/* Custom Scrollbar for Description */
-#task-description::-webkit-scrollbar {
-    width: 6px;
-}
-
-#task-description::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
-}
-
-#task-description::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    gap: 0.5rem;
 }
 
 /* Responsive */
-@media (max-width: 850px) {
+@media (max-width: 768px) {
+    .header-actions {
+        flex-wrap: wrap;
+    }
+    
+    .expanded-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .task-actions {
+        opacity: 1;
+    }
+    
     .task-modal-grid {
         grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
     
-    .task-modal-right {
-        border-left: none;
-        border-top: 1px solid var(--border-color);
-    }
-    
-    .task-modal-content {
-        max-width: 95% !important;
-        margin: 20px auto;
+    .task-modal-sidebar {
+        order: -1;
     }
 }
