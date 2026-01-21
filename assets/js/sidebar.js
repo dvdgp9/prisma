@@ -90,14 +90,7 @@ function renderSidebarApps() {
 
 // Get link for app based on current page
 function getAppLink(appId) {
-    const currentPage = window.location.pathname;
-    
-    // If we're on index.php, use the loadView function
-    if (currentPage.includes('index.php') || currentPage === '/') {
-        return `javascript:void(0)" onclick="loadView('app', ${appId})`;
-    }
-    
-    // Otherwise link to index with app parameter
+    // Always return direct link - index.php will handle the app parameter
     return `/index.php?app=${appId}`;
 }
 

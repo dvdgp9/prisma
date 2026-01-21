@@ -26,6 +26,10 @@ async function updatePendingCount() {
 // Load pending approvals view
 async function loadPendingApprovals() {
     currentView = 'pending';
+    currentAppId = null;
+
+    // Update URL without reload
+    history.pushState({view: 'pending'}, '', '/index.php#pending');
 
     // Update UI
     document.getElementById('page-title').textContent = 'Solicitudes Pendientes de Aprobar';
@@ -35,7 +39,8 @@ async function loadPendingApprovals() {
     document.querySelectorAll('.quick-action-btn').forEach(btn => btn.classList.remove('active'));
     
     // Add active to pending approvals button
-    document.getElementById('pending-approvals-nav').classList.add('active');
+    const pendingNav = document.getElementById('pending-approvals-nav');
+    if (pendingNav) pendingNav.classList.add('active');
 
     try {
         const response = await fetch('/api/pending-approvals.php');

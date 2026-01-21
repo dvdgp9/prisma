@@ -10,39 +10,40 @@ let showFinished = false;
 const userRole = document.body.dataset.userRole;
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function () {
-    loadApps();
-
-    // Check for app_id in URL
+document.addEventListener('DOMContentLoaded', async function () {
+    // Check for app in URL (supports both 'app' and 'app_id' params)
     const urlParams = new URLSearchParams(window.location.search);
-    const appIdParam = urlParams.get('app_id');
+    const appIdParam = urlParams.get('app') || urlParams.get('app_id');
+    const isPending = window.location.hash === '#pending';
 
-    if (appIdParam) {
-        // We need to wait for apps to load to get the app name, 
-        // but we can start loading requests immediately
+    // Set initial state based on URL
+    if (isPending && (userRole === 'admin' || userRole === 'superadmin')) {
+        currentView = 'pending';
+        document.getElementById('page-title').textContent = 'Solicitudes Pendientes de Aprobar';
+    } else if (appIdParam) {
         currentView = 'app';
-        currentAppId = appIdParam;
+        currentAppId = parseInt(appIdParam);
+    }
+
+    // Load apps first, then update UI
+    await loadApps();
+
+    // Now update based on current view
+    if (currentView === 'pending') {
+        loadPendingApprovals();
+    } else if (currentView === 'app' && currentAppId) {
+        // Update title and active state now that apps are loaded
+        const app = apps.find(a => a.id == currentAppId);
+        if (app) {
+            document.getElementById('page-title').textContent = app.name;
+        }
+        updateActiveNavItem(currentAppId);
         loadRequests();
         loadAppFiles();
-
-        // Update UI once apps are loaded
-        // This is handled in loadApps -> renderAppsNav -> but we need to set active state
-        // We'll add a small check in renderAppsNav or just wait a bit
-        setTimeout(() => {
-            const navItem = document.querySelector(`a[onclick*="loadView('app', ${appIdParam})"]`);
-            if (navItem) {
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                navItem.classList.add('active');
-
-                const app = apps.find(a => a.id == appIdParam);
-                if (app) {
-                    document.getElementById('page-title').textContent = app.name;
-                }
-            }
-        }, 500); // Small delay to ensure apps are rendered
     } else {
         loadRequests();
     }
+
     setupFileUpload();
     setupAppFilesUpload();
 
@@ -60,15 +61,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update pending count for admins
     if (userRole === 'admin' || userRole === 'superadmin') {
         updatePendingCount();
-        
-        // Check if we need to load pending approvals from hash
-        if (window.location.hash === '#pending') {
-            setTimeout(() => {
-                loadPendingApprovals();
-            }, 600);
-        }
     }
 });
+
+// Helper to update active nav item by app ID
+function updateActiveNavItem(appId) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.quick-action-btn').forEach(b => b.classList.remove('active'));
+    
+    if (appId) {
+        const navItem = document.querySelector(`.nav-item[data-app-id="${appId}"]`);
+        if (navItem) {
+            navItem.classList.add('active');
+        }
+    }
+}
 
 // Load all apps (grouped by company)
 let appsGrouped = [];
@@ -163,9 +170,13 @@ function loadView(type, appId = null, sourceEvent = null) {
     const pageTitle = document.getElementById('page-title');
     if (type === 'global') {
         pageTitle.textContent = 'Vista Global';
+        // Update URL without reload
+        history.pushState({view: 'global'}, '', '/index.php');
     } else {
         const app = apps.find(a => a.id == appId);
         pageTitle.textContent = app ? app.name : 'App';
+        // Update URL without reload
+        history.pushState({view: 'app', appId: appId}, '', `/index.php?app=${appId}`);
     }
 
     // Update active nav items and quick action buttons
@@ -176,7 +187,7 @@ function loadView(type, appId = null, sourceEvent = null) {
         btn.classList.remove('active');
     });
     
-    // Add active to the clicked element
+    // Add active to the clicked element or find it by data attribute
     const evt = sourceEvent || window.event;
     if (evt && evt.target) {
         const clickedElement = evt.target.closest('.nav-item, .quick-action-btn');
@@ -184,11 +195,14 @@ function loadView(type, appId = null, sourceEvent = null) {
             clickedElement.classList.add('active');
         }
     } else if (type === 'global') {
-        // If no event (programmatic call), try to find and activate global view button
-        const globalBtn = document.querySelector('.quick-action-btn[onclick*="loadView(\'global\')"]');
+        // Activate global view button
+        const globalBtn = document.querySelector('.quick-action-btn[title="Vista Global"]');
         if (globalBtn) {
             globalBtn.classList.add('active');
         }
+    } else if (type === 'app' && appId) {
+        // Activate the app nav item
+        updateActiveNavItem(appId);
     }
 
     // Show/hide app files section
