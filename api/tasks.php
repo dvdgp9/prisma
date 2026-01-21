@@ -54,7 +54,11 @@ switch ($method) {
             $params[':app_id'] = $appId;
         }
         
-        $query .= " ORDER BY t.is_completed ASC, t.created_at DESC";
+        // Smart ordering: uncompleted tasks by due_date (nulls last), then by created_at
+        $query .= " ORDER BY t.is_completed ASC, 
+                    CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
+                    t.due_date ASC, 
+                    t.created_at DESC";
         
         $stmt = $db->prepare($query);
         $stmt->execute($params);
@@ -72,8 +76,8 @@ switch ($method) {
         }
         
         $stmt = $db->prepare("
-            INSERT INTO tasks (user_id, company_id, app_id, title, description, is_shared)
-            VALUES (:user_id, :company_id, :app_id, :title, :description, :is_shared)
+            INSERT INTO tasks (user_id, company_id, app_id, title, description, due_date, is_shared)
+            VALUES (:user_id, :company_id, :app_id, :title, :description, :due_date, :is_shared)
         ");
         
         $stmt->execute([
@@ -82,6 +86,7 @@ switch ($method) {
             ':app_id' => $input['app_id'] ?? null,
             ':title' => trim($input['title']),
             ':description' => $input['description'] ?? null,
+            ':due_date' => $input['due_date'] ?? null,
             ':is_shared' => $input['is_shared'] ?? false
         ]);
         
@@ -135,6 +140,10 @@ switch ($method) {
         if (array_key_exists('app_id', $input)) {
             $updates[] = "app_id = ?";
             $params[] = $input['app_id'];
+        }
+        if (array_key_exists('due_date', $input)) {
+            $updates[] = "due_date = ?";
+            $params[] = $input['due_date'];
         }
         
         if (empty($updates)) {

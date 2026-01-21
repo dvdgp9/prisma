@@ -307,6 +307,129 @@
     accent-color: var(--primary-color);
 }
 
+/* Filter Chips (Modern Style) */
+.filter-chips {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.filter-chip {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.filter-chip .chip-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.filter-chip:hover .chip-content {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+.filter-chip input:checked + .chip-content {
+    background: rgba(var(--primary-rgb), 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.filter-chip .chip-content i {
+    font-size: 1rem;
+}
+
+/* Date Input Wrapper */
+.date-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.date-input-wrapper i {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 1rem;
+}
+
+.expanded-date {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.expanded-date:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Task Due Date Indicators */
+.task-due-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.task-due-date i {
+    font-size: 0.85rem;
+}
+
+.task-due-date.overdue {
+    background: rgba(255, 77, 77, 0.1);
+    color: #ff4d4d;
+}
+
+.task-due-date.today {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ff9800;
+}
+
+.task-due-date.soon {
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196f3;
+}
+
+.task-item.overdue {
+    border-left: 3px solid #ff4d4d;
+}
+
+.task-item.today {
+    border-left: 3px solid #ff9800;
+}
+
+.task-item.soon {
+    border-left: 3px solid #2196f3;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -391,9 +514,18 @@
         flex-wrap: wrap;
     }
     
+    .filter-chips {
+        width: 100%;
+        order: 3;
+    }
+    
     .expanded-row {
         flex-direction: column;
         align-items: stretch;
+    }
+    
+    .date-input-wrapper {
+        width: 100%;
     }
     
     .task-actions {

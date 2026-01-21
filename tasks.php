@@ -49,14 +49,22 @@ $userApps = get_user_apps();
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <label class="toggle-completed">
-                        <input type="checkbox" id="show-completed" onchange="loadTasks()">
-                        <span>Mostrar completadas</span>
-                    </label>
-                    <label class="toggle-completed">
-                        <input type="checkbox" id="show-shared" onchange="loadTasks()">
-                        <span>Ver del equipo</span>
-                    </label>
+                    <div class="filter-chips">
+                        <label class="filter-chip">
+                            <input type="checkbox" id="show-completed" onchange="loadTasks()">
+                            <span class="chip-content">
+                                <i class="iconoir-check-circle"></i>
+                                <span>Completadas</span>
+                            </span>
+                        </label>
+                        <label class="filter-chip">
+                            <input type="checkbox" id="show-shared" onchange="loadTasks()">
+                            <span class="chip-content">
+                                <i class="iconoir-group"></i>
+                                <span>Del equipo</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -87,6 +95,12 @@ $userApps = get_user_apps();
                                 <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div class="date-input-wrapper">
+                            <i class="iconoir-calendar"></i>
+                            <input type="date" id="quick-add-due-date" class="expanded-date" placeholder="Fecha límite">
+                        </div>
+                    </div>
+                    <div class="expanded-row">
                         <label class="expanded-toggle">
                             <input type="checkbox" id="quick-add-shared">
                             <span>Compartir con equipo</span>
@@ -144,6 +158,13 @@ $userApps = get_user_apps();
                             <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="task-due-date">
+                        <i class="iconoir-calendar"></i> Fecha límite
+                    </label>
+                    <input type="date" id="task-due-date">
                 </div>
                 
                 <div class="form-group">

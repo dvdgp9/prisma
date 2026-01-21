@@ -56,10 +56,12 @@ async function createQuickTask() {
         const appId = document.getElementById('quick-add-app').value;
         const isShared = document.getElementById('quick-add-shared').checked;
         const description = document.getElementById('quick-add-description').value.trim();
+        const dueDate = document.getElementById('quick-add-due-date').value;
         
         if (appId) taskData.app_id = parseInt(appId);
         if (isShared) taskData.is_shared = true;
         if (description) taskData.description = description;
+        if (dueDate) taskData.due_date = dueDate;
     }
     
     try {
@@ -76,6 +78,7 @@ async function createQuickTask() {
             input.value = '';
             document.getElementById('quick-add-description').value = '';
             document.getElementById('quick-add-shared').checked = false;
+            document.getElementById('quick-add-due-date').value = '';
             
             // Reload tasks
             await loadTasks();
@@ -125,14 +128,52 @@ function renderTasks(tasks) {
     
     emptyState.style.display = 'none';
     
-    container.innerHTML = tasks.map(task => `
-        <div class="task-item ${task.is_completed ? 'completed' : ''}" data-id="${task.id}">
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    container.innerHTML = tasks.map(task => {
+        let dueDateHtml = '';
+        let dueDateClass = '';
+        
+        if (task.due_date && !task.is_completed) {
+            const dueDate = new Date(task.due_date);
+            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) {
+                dueDateClass = 'overdue';
+                dueDateHtml = `<span class="task-due-date overdue" title="Vencida">
+                    <i class="iconoir-warning-triangle"></i>
+                    ${formatDueDate(task.due_date)}
+                </span>`;
+            } else if (diffDays === 0) {
+                dueDateClass = 'today';
+                dueDateHtml = `<span class="task-due-date today" title="Hoy">
+                    <i class="iconoir-clock"></i>
+                    Hoy
+                </span>`;
+            } else if (diffDays <= 3) {
+                dueDateClass = 'soon';
+                dueDateHtml = `<span class="task-due-date soon" title="Próximamente">
+                    <i class="iconoir-calendar"></i>
+                    ${formatDueDate(task.due_date)}
+                </span>`;
+            } else {
+                dueDateHtml = `<span class="task-due-date" title="Fecha límite">
+                    <i class="iconoir-calendar"></i>
+                    ${formatDueDate(task.due_date)}
+                </span>`;
+            }
+        }
+        
+        return `
+        <div class="task-item ${task.is_completed ? 'completed' : ''} ${dueDateClass}" data-id="${task.id}">
             <div class="task-checkbox ${task.is_completed ? 'checked' : ''}" 
                  onclick="toggleTask(${task.id}, ${task.is_completed ? 'false' : 'true'}, event)">
             </div>
             <div class="task-content" onclick="openTaskModal(${task.id})">
                 <div class="task-title">${escapeHtml(task.title)}</div>
                 <div class="task-meta">
+                    ${dueDateHtml}
                     ${task.app_name ? `
                         <span class="task-meta-item">
                             <i class="iconoir-app-window"></i>
@@ -167,7 +208,8 @@ function renderTasks(tasks) {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Toggle task completion
@@ -283,6 +325,7 @@ async function openTaskModal(taskId) {
                 document.getElementById('task-title').value = task.title;
                 document.getElementById('task-description').value = task.description || '';
                 document.getElementById('task-app').value = task.app_id || '';
+                document.getElementById('task-due-date').value = task.due_date || '';
                 document.getElementById('task-shared').checked = task.is_shared == 1;
                 
                 await loadTaskAttachments(taskId);
@@ -353,6 +396,7 @@ async function saveTask(event) {
         title: document.getElementById('task-title').value.trim(),
         description: document.getElementById('task-description').value.trim() || null,
         app_id: document.getElementById('task-app').value || null,
+        due_date: document.getElementById('task-due-date').value || null,
         is_shared: document.getElementById('task-shared').checked
     };
     
@@ -404,6 +448,31 @@ async function deleteTask() {
 function closeTaskModal() {
     document.getElementById('task-modal').classList.remove('active');
     currentTaskId = null;
+}
+
+// Format due date for display
+function formatDueDate(dateString) {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays === -1) return 'Ayer';
+    
+    const options = { day: 'numeric', month: 'short' };
+    return date.toLocaleDateString('es-ES', options);
+}
+
+// Escape HTML helper
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Utility functions
