@@ -3,11 +3,16 @@
  */
 
 let currentTaskId = null;
+let teamMembers = [];
+let selectedShareUsers = [];
+let shareWithAll = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTasks();
     setupQuickAdd();
     setupTaskModal();
+    loadTeamMembers();
+    setupShareDropdown();
 });
 
 // Setup Quick Add functionality
@@ -54,12 +59,10 @@ async function createQuickTask() {
     // Get expanded options if visible
     if (isExpanded) {
         const appId = document.getElementById('quick-add-app').value;
-        const isShared = document.getElementById('quick-add-shared').checked;
         const description = document.getElementById('quick-add-description').value.trim();
         const dueDate = document.getElementById('quick-add-due-date').value;
         
         if (appId) taskData.app_id = parseInt(appId);
-        if (isShared) taskData.is_shared = true;
         if (description) taskData.description = description;
         if (dueDate) taskData.due_date = dueDate;
     }
@@ -77,7 +80,6 @@ async function createQuickTask() {
             // Reset form
             input.value = '';
             document.getElementById('quick-add-description').value = '';
-            document.getElementById('quick-add-shared').checked = false;
             document.getElementById('quick-add-due-date').value = '';
             
             // Reload tasks
@@ -184,6 +186,11 @@ function renderTasks(tasks) {
                         <span class="task-badge shared">
                             <i class="iconoir-group"></i>
                             Equipo
+                        </span>
+                    ` : task.share_count > 0 ? `
+                        <span class="task-badge shared">
+                            <i class="iconoir-user"></i>
+                            ${task.share_count}
                         </span>
                     ` : ''}
                     ${task.attachment_count > 0 ? `
@@ -326,7 +333,9 @@ async function openTaskModal(taskId) {
                 document.getElementById('task-description').value = task.description || '';
                 document.getElementById('task-app').value = task.app_id || '';
                 document.getElementById('task-due-date').value = task.due_date || '';
-                document.getElementById('task-shared').checked = task.is_shared == 1;
+                
+                // Load share settings
+                await loadTaskShares(taskId, task.is_shared == 1);
                 
                 await loadTaskAttachments(taskId);
                 
@@ -391,13 +400,14 @@ async function deleteTaskAttachment(attachmentId) {
 async function saveTask(event) {
     event.preventDefault();
     
+    const taskId = parseInt(document.getElementById('task-id').value);
+    
     const taskData = {
-        id: parseInt(document.getElementById('task-id').value),
+        id: taskId,
         title: document.getElementById('task-title').value.trim(),
         description: document.getElementById('task-description').value.trim() || null,
         app_id: document.getElementById('task-app').value || null,
-        due_date: document.getElementById('task-due-date').value || null,
-        is_shared: document.getElementById('task-shared').checked
+        due_date: document.getElementById('task-due-date').value || null
     };
     
     try {
@@ -410,6 +420,9 @@ async function saveTask(event) {
         const data = await response.json();
         
         if (data.success) {
+            // Save share settings
+            await saveTaskShares(taskId);
+            
             closeTaskModal();
             await loadTasks();
             showToast({ title: 'Guardado', message: 'Tarea actualizada', icon: 'iconoir-check' }, 'toast-completed');
@@ -447,7 +460,10 @@ async function deleteTask() {
 // Close task modal
 function closeTaskModal() {
     document.getElementById('task-modal').classList.remove('active');
+    document.getElementById('share-selector').classList.remove('open');
     currentTaskId = null;
+    selectedShareUsers = [];
+    shareWithAll = false;
 }
 
 // Format due date for display
@@ -490,6 +506,157 @@ function getFileIcon(mimeType) {
     if (mimeType.includes('word')) return 'iconoir-page';
     if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'iconoir-table-2-columns';
     return 'iconoir-attachment';
+}
+
+// ========== Share Functions ==========
+
+// Load team members for sharing
+async function loadTeamMembers() {
+    try {
+        const response = await fetch('/api/task-shares.php');
+        const data = await response.json();
+        if (data.success) {
+            teamMembers = data.data;
+            renderShareUsersList();
+        }
+    } catch (error) {
+        console.error('Error loading team members:', error);
+    }
+}
+
+// Render users list in dropdown
+function renderShareUsersList() {
+    const container = document.getElementById('share-users-list');
+    if (!container || teamMembers.length === 0) {
+        if (container) container.innerHTML = '<div class="share-option" style="color: var(--text-muted); font-size: 0.8rem;">No hay otros miembros en el equipo</div>';
+        return;
+    }
+    
+    container.innerHTML = teamMembers.map(user => {
+        const initials = getInitials(user.full_name || user.username);
+        const isChecked = selectedShareUsers.includes(user.id);
+        return `
+            <div class="share-option">
+                <label>
+                    <input type="checkbox" 
+                           value="${user.id}" 
+                           ${isChecked ? 'checked' : ''}
+                           ${shareWithAll ? 'disabled' : ''}
+                           onchange="toggleShareUser(${user.id})">
+                    <div class="share-user-item">
+                        <div class="share-user-avatar">${initials}</div>
+                        <span class="share-user-name">${escapeHtml(user.full_name || user.username)}</span>
+                    </div>
+                </label>
+            </div>
+        `;
+    }).join('');
+}
+
+// Get initials from name
+function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+}
+
+// Toggle share dropdown
+function toggleShareDropdown() {
+    const selector = document.getElementById('share-selector');
+    selector.classList.toggle('open');
+}
+
+// Setup share dropdown (close on outside click)
+function setupShareDropdown() {
+    document.addEventListener('click', (e) => {
+        const selector = document.getElementById('share-selector');
+        if (selector && !selector.contains(e.target)) {
+            selector.classList.remove('open');
+        }
+    });
+}
+
+// Toggle share with all
+function toggleShareAll() {
+    shareWithAll = document.getElementById('share-with-all').checked;
+    if (shareWithAll) {
+        selectedShareUsers = [];
+    }
+    renderShareUsersList();
+    updateShareStatus();
+}
+
+// Toggle individual user
+function toggleShareUser(userId) {
+    const index = selectedShareUsers.indexOf(userId);
+    if (index > -1) {
+        selectedShareUsers.splice(index, 1);
+    } else {
+        selectedShareUsers.push(userId);
+    }
+    updateShareStatus();
+}
+
+// Update share status display
+function updateShareStatus() {
+    const statusEl = document.getElementById('share-status');
+    
+    if (shareWithAll) {
+        statusEl.innerHTML = '<span class="user-chip all"><i class="iconoir-group"></i> Todo el equipo</span>';
+    } else if (selectedShareUsers.length === 0) {
+        statusEl.textContent = 'Privada';
+    } else {
+        const chips = selectedShareUsers.slice(0, 3).map(userId => {
+            const user = teamMembers.find(u => u.id === userId);
+            if (user) {
+                const initials = getInitials(user.full_name || user.username);
+                return `<span class="user-chip">${initials}</span>`;
+            }
+            return '';
+        }).join('');
+        
+        const extra = selectedShareUsers.length > 3 ? `<span class="user-chip">+${selectedShareUsers.length - 3}</span>` : '';
+        statusEl.innerHTML = chips + extra;
+    }
+}
+
+// Load task shares when opening modal
+async function loadTaskShares(taskId, isSharedWithAll) {
+    shareWithAll = isSharedWithAll;
+    selectedShareUsers = [];
+    
+    document.getElementById('share-with-all').checked = isSharedWithAll;
+    
+    if (!isSharedWithAll) {
+        try {
+            const response = await fetch(`/api/task-shares.php?task_id=${taskId}`);
+            const data = await response.json();
+            if (data.success) {
+                selectedShareUsers = data.data.map(u => u.id);
+            }
+        } catch (error) {
+            console.error('Error loading task shares:', error);
+        }
+    }
+    
+    renderShareUsersList();
+    updateShareStatus();
+}
+
+// Save share settings (called from saveTask)
+async function saveTaskShares(taskId) {
+    try {
+        await fetch('/api/task-shares.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                task_id: taskId,
+                user_ids: selectedShareUsers,
+                share_with_all: shareWithAll
+            })
+        });
+    } catch (error) {
+        console.error('Error saving shares:', error);
+    }
 }
 
 function showToast(config, className = '') {

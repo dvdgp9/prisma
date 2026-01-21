@@ -100,12 +100,6 @@ $userApps = get_user_apps();
                             <input type="date" id="quick-add-due-date" class="expanded-date" placeholder="Fecha límite">
                         </div>
                     </div>
-                    <div class="expanded-row">
-                        <label class="expanded-toggle">
-                            <input type="checkbox" id="quick-add-shared">
-                            <span>Compartir con equipo</span>
-                        </label>
-                    </div>
                     <textarea 
                         id="quick-add-description" 
                         class="expanded-textarea" 
@@ -210,10 +204,28 @@ $userApps = get_user_apps();
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="toggle-label">
-                                        <input type="checkbox" id="task-shared">
-                                        <span>Compartir con el equipo</span>
+                                    <label>
+                                        <i class="iconoir-group"></i> Compartir
                                     </label>
+                                    <div class="share-selector" id="share-selector">
+                                        <div class="share-display" onclick="toggleShareDropdown()">
+                                            <span class="share-status" id="share-status">Privada</span>
+                                            <i class="iconoir-nav-arrow-down"></i>
+                                        </div>
+                                        <div class="share-dropdown" id="share-dropdown">
+                                            <div class="share-option share-all">
+                                                <label>
+                                                    <input type="checkbox" id="share-with-all" onchange="toggleShareAll()">
+                                                    <span>Todo el equipo</span>
+                                                </label>
+                                            </div>
+                                            <div class="share-divider"></div>
+                                            <div class="share-users-list" id="share-users-list">
+                                                <!-- Users loaded dynamically -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="task-shared">
                                 </div>
                             </div>
                         </div>

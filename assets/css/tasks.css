@@ -508,6 +508,145 @@
     background: rgba(var(--primary-rgb), 0.02);
 }
 
+/* Share Selector */
+.share-selector {
+    position: relative;
+}
+
+.share-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.share-display:hover {
+    border-color: var(--primary-color);
+}
+
+.share-display i {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.share-selector.open .share-display i {
+    transform: rotate(180deg);
+}
+
+.share-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.share-status .user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.share-status .user-chip.all {
+    background: rgba(var(--primary-rgb), 0.15);
+}
+
+.share-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.share-selector.open .share-dropdown {
+    display: block;
+}
+
+.share-option {
+    padding: 0.5rem 0.75rem;
+}
+
+.share-option label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.share-option:hover {
+    background: var(--bg-secondary);
+}
+
+.share-option input[type="checkbox"] {
+    accent-color: var(--primary-color);
+}
+
+.share-option.share-all {
+    background: var(--bg-secondary);
+    font-weight: 500;
+}
+
+.share-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.25rem 0;
+}
+
+.share-users-list {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.share-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.share-user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.share-user-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .header-actions {

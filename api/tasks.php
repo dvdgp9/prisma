@@ -26,7 +26,8 @@ switch ($method) {
                 u.username as creator_username,
                 u.full_name as creator_name,
                 a.name as app_name,
-                (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
+                (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count,
+                (SELECT COUNT(*) FROM task_shares WHERE task_id = t.id) as share_count
             FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN apps a ON t.app_id = a.id
@@ -35,9 +36,10 @@ switch ($method) {
         
         $params = [':company_id' => $user['company_id']];
         
-        // Filter: own tasks OR shared tasks from team
+        // Filter: own tasks OR shared tasks (with all team OR specifically with this user)
         if ($showShared) {
-            $query .= " AND (t.user_id = :user_id OR t.is_shared = 1)";
+            $query .= " AND (t.user_id = :user_id OR t.is_shared = 1 OR EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = :user_id2))";
+            $params[':user_id2'] = $user['id'];
         } else {
             $query .= " AND t.user_id = :user_id";
         }
