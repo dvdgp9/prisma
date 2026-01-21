@@ -20,8 +20,14 @@ switch ($method) {
             $stmt = $db->query("
                 SELECT 
                     c.*,
-                    (SELECT COUNT(*) FROM users WHERE company_id = c.id) as user_count,
-                    (SELECT COUNT(*) FROM users WHERE company_id = c.id AND role = 'admin') as admin_count
+                    (SELECT COUNT(DISTINCT uc.user_id) 
+                     FROM user_companies uc 
+                     INNER JOIN users u ON uc.user_id = u.id
+                     WHERE uc.company_id = c.id AND u.role IN ('user', 'admin')) as user_count,
+                    (SELECT COUNT(DISTINCT uc.user_id) 
+                     FROM user_companies uc 
+                     INNER JOIN users u ON uc.user_id = u.id
+                     WHERE uc.company_id = c.id AND u.role = 'admin') as admin_count
                 FROM companies c
                 ORDER BY c.name ASC
             ");

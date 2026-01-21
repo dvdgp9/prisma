@@ -97,6 +97,11 @@ switch ($method) {
                 $values[] = $input['description'];
             }
 
+            if (isset($input['company_id']) && $user['role'] === 'superadmin') {
+                $updates[] = 'company_id = ?';
+                $values[] = $input['company_id'];
+            }
+
             if (isset($input['is_active'])) {
                 $updates[] = 'is_active = ?';
                 $values[] = $input['is_active'] ? 1 : 0;
