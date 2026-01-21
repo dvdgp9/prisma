@@ -215,11 +215,15 @@ $userApps = get_user_apps();
                                         <div class="share-dropdown" id="share-dropdown">
                                             <div class="share-option share-all">
                                                 <label>
+                                                    <div class="share-user-item">
+                                                        <div class="share-user-avatar">
+                                                            <i class="iconoir-group"></i>
+                                                        </div>
+                                                        <span class="share-user-name">Todo el equipo</span>
+                                                    </div>
                                                     <input type="checkbox" id="share-with-all" onchange="toggleShareAll()">
-                                                    <span>Todo el equipo</span>
                                                 </label>
                                             </div>
-                                            <div class="share-divider"></div>
                                             <div class="share-users-list" id="share-users-list">
                                                 <!-- Users loaded dynamically -->
                                             </div>

@@ -527,8 +527,10 @@ async function loadTeamMembers() {
 // Render users list in dropdown
 function renderShareUsersList() {
     const container = document.getElementById('share-users-list');
-    if (!container || teamMembers.length === 0) {
-        if (container) container.innerHTML = '<div class="share-option" style="color: var(--text-muted); font-size: 0.8rem;">No hay otros miembros en el equipo</div>';
+    if (!container) return;
+    
+    if (teamMembers.length === 0) {
+        container.innerHTML = '<div class="share-option" style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem;">No hay otros miembros en el equipo</div>';
         return;
     }
     
@@ -538,15 +540,15 @@ function renderShareUsersList() {
         return `
             <div class="share-option">
                 <label>
+                    <div class="share-user-item">
+                        <div class="share-user-avatar">${initials}</div>
+                        <span class="share-user-name">${escapeHtml(user.full_name || user.username)}</span>
+                    </div>
                     <input type="checkbox" 
                            value="${user.id}" 
                            ${isChecked ? 'checked' : ''}
                            ${shareWithAll ? 'disabled' : ''}
                            onchange="toggleShareUser(${user.id})">
-                    <div class="share-user-item">
-                        <div class="share-user-avatar">${initials}</div>
-                        <span class="share-user-name">${escapeHtml(user.full_name || user.username)}</span>
-                    </div>
                 </label>
             </div>
         `;
