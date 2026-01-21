@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     setupFileUpload();
-    setupEditFileUpload();
     setupAppFilesUpload();
+    setupEditModalFileUpload();
 
     // Cmd/Ctrl + Enter to submit new request form
     const newRequestForm = document.getElementById('new-request-form');
@@ -794,91 +794,26 @@ function setupFileUpload() {
     const fileInput = document.getElementById('file-input');
     const fileList = document.getElementById('file-list');
 
-    if (uploadArea && fileInput && fileList) {
-        uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('click', () => fileInput.click());
 
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
 
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
 
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
-    }
-}
-
-// Setup file upload for edit modal
-function setupEditFileUpload() {
-    const uploadArea = document.getElementById('edit-file-upload-area');
-    const fileInput = document.getElementById('edit-file-input');
-    const fileList = document.getElementById('edit-file-list');
-
-    if (uploadArea && fileInput && fileList) {
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            handleEditFiles(e.target.files);
-        });
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            handleEditFiles(e.dataTransfer.files);
-        });
-    }
-}
-
-// Handle file selection for edit modal
-let selectedEditFiles = [];
-function handleEditFiles(files) {
-    const fileList = document.getElementById('edit-file-list');
-    selectedEditFiles = Array.from(files);
-
-    fileList.innerHTML = selectedEditFiles.map((file, index) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-            <span class="text-small">
-                <i class="iconoir-attachment"></i>
-                ${escapeHtml(file.name)} (${formatFileSize(file.size)})
-            </span>
-            <button type="button" class="btn btn-sm" onclick="removeEditFile(${index})" style="padding: 0.25rem 0.5rem;">×</button>
-        </div>
-    `).join('');
-}
-
-// Remove file from edit selection
-function removeEditFile(index) {
-    selectedEditFiles.splice(index, 1);
-    handleEditFiles(selectedEditFiles);
-}
-
-// Toggle requester fields based on dropdown
-function toggleRequesterFields(type) {
-    const hasRequester = document.getElementById(`${type}-has-requester`).value === 'yes';
-    const fieldsContainer = document.getElementById(`${type}-requester-fields`);
-    
-    if (fieldsContainer) {
-        fieldsContainer.style.display = hasRequester ? 'block' : 'none';
-    }
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
 }
 
 // Handle file selection
@@ -1009,24 +944,19 @@ async function openEditRequestModal(requestId) {
             // Set requester info if available
             const requesterNameField = document.getElementById('edit-request-requester-name');
             const requesterEmailField = document.getElementById('edit-request-requester-email');
-            const hasRequesterField = document.getElementById('edit-has-requester');
-            
-            if (request.requester_name || request.requester_email) {
-                if (hasRequesterField) hasRequesterField.value = 'yes';
-                if (requesterNameField) requesterNameField.value = request.requester_name || '';
-                if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
-                toggleRequesterFields('edit');
-            } else {
-                if (hasRequesterField) hasRequesterField.value = 'no';
-                if (requesterNameField) requesterNameField.value = '';
-                if (requesterEmailField) requesterEmailField.value = '';
-                toggleRequesterFields('edit');
-            }
+            if (requesterNameField) requesterNameField.value = request.requester_name || '';
+            if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
 
-            // Clear new file selection
-            selectedEditFiles = [];
-            const fileList = document.getElementById('edit-file-list');
-            if (fileList) fileList.innerHTML = '';
+            // Update requester dot and section state
+            updateRequesterDot('edit');
+            const editRequesterSection = document.getElementById('edit-requester-section');
+            if (editRequesterSection) {
+                if (request.requester_name || request.requester_email) {
+                    editRequesterSection.classList.add('active');
+                } else {
+                    editRequesterSection.classList.remove('active');
+                }
+            }
 
             // Load attachments
             await loadRequestAttachments(requestId);
@@ -1294,7 +1224,21 @@ window.addEventListener('click', (e) => {
 
 // ========== App Files Functions ==========
 
-// Setup app files upload
+// Helper to update requester dot status
+function updateRequesterDot(type) {
+    const name = document.getElementById(`${type}-request-requester-name`).value;
+    const email = document.getElementById(`${type}-request-requester-email`).value;
+    const dot = document.getElementById(`${type}-requester-dot`);
+    if (dot) {
+        if (name || email) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    }
+}
+
+// Setup app files upload in index.php
 function setupAppFilesUpload() {
     const uploadArea = document.getElementById('app-files-upload');
     const fileInput = document.getElementById('app-file-input');
@@ -1360,6 +1304,95 @@ async function handleAppFileUpload(files) {
     }
     
     await loadAppFiles();
+}
+
+// Setup file upload for edit modal
+function setupEditModalFileUpload() {
+    const editArea = document.getElementById('edit-file-upload-area');
+    const editInput = document.getElementById('edit-file-input');
+    
+    if (editArea && editInput) {
+        editArea.onclick = () => editInput.click();
+        
+        editInput.onchange = async (e) => {
+            const requestId = document.getElementById('edit-request-id').value;
+            if (!requestId) return;
+            
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            const formData = new FormData();
+            formData.append('request_id', requestId);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+            
+            try {
+                editArea.style.opacity = '0.5';
+                editArea.style.pointerEvents = 'none';
+                
+                const response = await fetch('/api/upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadRequestAttachments(requestId);
+                    editInput.value = ''; // Reset input
+                } else {
+                    alert(data.error || 'Error al subir archivos');
+                }
+            } catch (error) {
+                console.error('Error uploading files:', error);
+                alert('Error al subir archivos');
+            } finally {
+                editArea.style.opacity = '1';
+                editArea.style.pointerEvents = 'auto';
+            }
+        };
+
+        // Drag and drop for edit modal
+        editArea.ondragover = (e) => {
+            e.preventDefault();
+            editArea.classList.add('dragover');
+        };
+        editArea.ondragleave = () => editArea.classList.remove('dragover');
+        editArea.ondrop = async (e) => {
+            e.preventDefault();
+            editArea.classList.remove('dragover');
+            
+            const requestId = document.getElementById('edit-request-id').value;
+            if (!requestId) return;
+            
+            const files = e.dataTransfer.files;
+            if (files.length === 0) return;
+            
+            const formData = new FormData();
+            formData.append('request_id', requestId);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+            
+            try {
+                editArea.style.opacity = '0.5';
+                const response = await fetch('/api/upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadRequestAttachments(requestId);
+                } else {
+                    alert(data.error || 'Error al subir archivos');
+                }
+            } catch (error) {
+                console.error('Error uploading files:', error);
+            } finally {
+                editArea.style.opacity = '1';
+            }
+        };
+    }
 }
 
 // Load app files

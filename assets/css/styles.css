@@ -1456,6 +1456,7 @@ nav {
 .modal-side-title {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
     font-weight: 600;
     font-size: 0.85rem;
@@ -1463,6 +1464,43 @@ nav {
     margin-bottom: 0.75rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
+}
+
+.modal-side-title-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-side-section.collapsible .modal-side-title {
+    cursor: pointer;
+}
+
+.modal-side-section.collapsible .modal-side-content {
+    display: none;
+}
+
+.modal-side-section.collapsible.active .modal-side-content {
+    display: block;
+}
+
+.modal-side-section.collapsible .toggle-icon {
+    transition: transform 0.2s ease;
+}
+
+.modal-side-section.collapsible.active .toggle-icon {
+    transform: rotate(90deg);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.status-dot.active {
+    background: var(--primary-color);
 }
 
 .modal-side-title i {
