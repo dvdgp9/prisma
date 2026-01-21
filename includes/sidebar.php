@@ -119,36 +119,4 @@ $company_name = $user['company_name'] ?? '';
     </nav>
 </aside>
 
-<script>
-// Sidebar search filter
-function filterSidebarApps(query) {
-    const apps = document.querySelectorAll('#apps-nav .nav-item');
-    const companyGroups = document.querySelectorAll('#apps-nav .company-group');
-    const q = query.toLowerCase().trim();
-    
-    if (companyGroups.length > 0) {
-        // Multi-company mode: filter within groups
-        companyGroups.forEach(group => {
-            const items = group.querySelectorAll('.nav-item');
-            let visibleCount = 0;
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                if (q === '' || text.includes(q)) {
-                    item.style.display = '';
-                    visibleCount++;
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-            // Hide entire group if no matches
-            group.style.display = visibleCount > 0 ? '' : 'none';
-        });
-    } else {
-        // Single company mode
-        apps.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = (q === '' || text.includes(q)) ? '' : 'none';
-        });
-    }
-}
-</script>
+<script src="/assets/js/sidebar.js"></script>
