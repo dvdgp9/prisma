@@ -136,13 +136,13 @@ $company_name = $user['company_name'] ?? '';
 
             <!-- App Files Section (visible only when viewing specific app) -->
             <div class="app-files-section" id="app-files-section" style="display: none;">
-                <div class="app-files-header">
+                <div class="app-files-header" onclick="toggleAppFiles()" style="cursor: pointer;">
                     <div class="app-files-title">
                         <i class="iconoir-folder"></i>
                         <span>Archivos del proyecto</span>
                         <span class="app-files-count" id="app-files-count"></span>
                     </div>
-                    <button class="btn btn-sm btn-outline" onclick="toggleAppFiles()">
+                    <button class="btn btn-sm btn-outline">
                         <i class="iconoir-nav-arrow-right" id="app-files-toggle-icon"></i>
                     </button>
                 </div>
