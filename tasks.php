@@ -131,66 +131,109 @@ $userApps = get_user_apps();
 
     <!-- Task Detail Modal -->
     <div class="modal" id="task-modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content modal-wide">
             <div class="modal-header">
-                <h3 class="modal-title">Editar Tarea</h3>
-                <button class="close-modal" onclick="closeTaskModal()">×</button>
+                <div class="modal-header-left">
+                    <i class="iconoir-edit-pencil modal-header-icon"></i>
+                    <h3 class="modal-title">Editar Tarea</h3>
+                </div>
+                <button class="close-modal" onclick="closeTaskModal()">
+                    <i class="iconoir-xmark"></i>
+                </button>
             </div>
             
             <form id="task-form" onsubmit="saveTask(event)">
                 <input type="hidden" id="task-id">
                 
-                <div class="form-group">
-                    <label for="task-title">Título *</label>
-                    <input type="text" id="task-title" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="task-description">Descripción</label>
-                    <textarea id="task-description" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="task-app">Aplicación</label>
-                    <select id="task-app">
-                        <option value="">Sin aplicación</option>
-                        <?php foreach ($userApps as $app): ?>
-                            <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="task-due-date">
-                        <i class="iconoir-calendar"></i> Fecha límite
-                    </label>
-                    <input type="date" id="task-due-date">
-                </div>
-                
-                <div class="form-group">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="task-shared">
-                        <span>Compartir con el equipo</span>
-                    </label>
+                <div class="modal-body-grid">
+                    <!-- Left Column: Main Content -->
+                    <div class="modal-column-main">
+                        <div class="form-group">
+                            <label for="task-title">
+                                <i class="iconoir-text"></i> Título *
+                            </label>
+                            <input type="text" id="task-title" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="task-description">
+                                <i class="iconoir-align-left"></i> Descripción
+                            </label>
+                            <textarea id="task-description" rows="6"></textarea>
+                        </div>
+
+                        <!-- Attachments -->
+                        <div class="form-group">
+                            <div class="attachments-header">
+                                <label>
+                                    <i class="iconoir-attachment"></i> Archivos adjuntos
+                                </label>
+                            </div>
+                            
+                            <!-- Upload area -->
+                            <div class="file-upload-area" id="task-file-upload" style="padding: var(--spacing-lg); margin-bottom: 1rem;">
+                                <i class="iconoir-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 0.25rem;"></i>
+                                <p style="font-size: 0.875rem;">Haz clic o arrastra para añadir archivos</p>
+                                <input type="file" id="task-file-input" style="display: none;" multiple>
+                            </div>
+
+                            <div id="task-attachments" class="task-attachments-list">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Metadata -->
+                    <div class="modal-column-side">
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <div class="modal-side-title-content">
+                                    <i class="iconoir-settings"></i> Configuración
+                                </div>
+                            </div>
+                            <div class="modal-side-content">
+                                <div class="form-group">
+                                    <label for="task-app">Aplicación</label>
+                                    <select id="task-app">
+                                        <option value="">Sin aplicación</option>
+                                        <?php foreach ($userApps as $app): ?>
+                                            <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="task-due-date">
+                                        <i class="iconoir-calendar"></i> Fecha límite
+                                    </label>
+                                    <input type="date" id="task-due-date">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="task-shared">
+                                        <span>Compartir con el equipo</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-side-section modal-danger-zone">
+                            <div class="modal-side-title">
+                                <i class="iconoir-warning-triangle"></i> Zona peligrosa
+                            </div>
+                            <button type="button" class="btn btn-danger-outline btn-sm" onclick="deleteTask()">
+                                <i class="iconoir-trash"></i> Eliminar tarea
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Attachments -->
-                <div class="form-group">
-                    <label>Archivos adjuntos</label>
-                    <div id="task-attachments" class="task-attachments-list">
-                        <!-- Loaded dynamically -->
-                    </div>
-                    <div class="file-upload-area" id="task-file-upload">
-                        <p>📎 Arrastra archivos aquí o haz clic</p>
-                        <p class="text-small text-muted">Máximo 5MB</p>
-                        <input type="file" id="task-file-input" style="display: none;" multiple>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
-                    <button type="button" class="btn btn-secondary" onclick="deleteTask()">Eliminar</button>
-                    <button type="button" class="btn btn-outline" onclick="closeTaskModal()">Cancelar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeTaskModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-check"></i> Guardar Cambios
+                    </button>
                 </div>
             </form>
         </div>
