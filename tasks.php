@@ -117,7 +117,7 @@ $userApps = get_user_apps();
 
     <!-- Task Detail Modal -->
     <div class="modal" id="task-modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content task-modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Editar Tarea</h3>
                 <button class="close-modal" onclick="closeTaskModal()">×</button>
@@ -126,50 +126,72 @@ $userApps = get_user_apps();
             <form id="task-form" onsubmit="saveTask(event)">
                 <input type="hidden" id="task-id">
                 
-                <div class="form-group">
-                    <label for="task-title">Título *</label>
-                    <input type="text" id="task-title" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="task-description">Descripción</label>
-                    <textarea id="task-description" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="task-app">Aplicación</label>
-                    <select id="task-app">
-                        <option value="">Sin aplicación</option>
-                        <?php foreach ($userApps as $app): ?>
-                            <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="task-shared">
-                        <span>Compartir con el equipo</span>
-                    </label>
-                </div>
+                <div class="task-modal-grid">
+                    <!-- Left Column: Content -->
+                    <div class="task-modal-left">
+                        <div class="form-group">
+                            <label for="task-title">Título *</label>
+                            <input type="text" id="task-title" required placeholder="¿Qué hay que hacer?">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="task-description">Descripción</label>
+                            <textarea id="task-description" rows="10" placeholder="Añade más detalles sobre esta tarea..."></textarea>
+                        </div>
+                    </div>
 
-                <!-- Attachments -->
-                <div class="form-group">
-                    <label>Archivos adjuntos</label>
-                    <div id="task-attachments" class="task-attachments-list">
-                        <!-- Loaded dynamically -->
+                    <!-- Right Column: Meta & Actions -->
+                    <div class="task-modal-right">
+                        <div class="form-group">
+                            <label for="task-app">Aplicación</label>
+                            <select id="task-app">
+                                <option value="">Sin aplicación</option>
+                                <?php foreach ($userApps as $app): ?>
+                                    <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="toggle-label-card">
+                                <div class="toggle-label-info">
+                                    <i class="iconoir-group"></i>
+                                    <span>Compartir con el equipo</span>
+                                </div>
+                                <input type="checkbox" id="task-shared">
+                            </label>
+                        </div>
+
+                        <!-- Attachments -->
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="iconoir-attachment"></i>
+                                <span>Adjuntos</span>
+                            </label>
+                            <div id="task-attachments" class="task-attachments-list">
+                                <!-- Loaded dynamically -->
+                            </div>
+                            <div class="file-upload-area-mini" id="task-file-upload">
+                                <i class="iconoir-plus"></i>
+                                <span>Añadir archivos</span>
+                                <input type="file" id="task-file-input" style="display: none;" multiple>
+                            </div>
+                        </div>
+
+                        <div class="task-modal-actions">
+                            <button type="submit" class="btn btn-primary btn-full">
+                                <i class="iconoir-check"></i>
+                                Guardar cambios
+                            </button>
+                            <div style="display: flex; gap: 0.5rem; width: 100%;">
+                                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="deleteTask()">
+                                    <i class="iconoir-trash"></i>
+                                    Eliminar
+                                </button>
+                                <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeTaskModal()">Cancelar</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="file-upload-area" id="task-file-upload">
-                        <p>📎 Arrastra archivos aquí o haz clic</p>
-                        <p class="text-small text-muted">Máximo 5MB</p>
-                        <input type="file" id="task-file-input" style="display: none;" multiple>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
-                    <button type="button" class="btn btn-secondary" onclick="deleteTask()">Eliminar</button>
-                    <button type="button" class="btn btn-outline" onclick="closeTaskModal()">Cancelar</button>
                 </div>
             </form>
         </div>
