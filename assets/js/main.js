@@ -121,7 +121,7 @@ function renderAppsNav() {
                     </div>
                     <i class="iconoir-nav-arrow-down company-group-toggle"></i>
                 </div>
-                <div class="company-group-apps" style="max-height: 500px;">
+                <div class="company-group-apps" style="max-height: none;">
                     ${group.apps.map(app => `
                         <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                             <i class="iconoir-app-window"></i>

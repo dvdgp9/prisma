@@ -59,7 +59,7 @@ function renderSidebarApps() {
                     </div>
                     <i class="iconoir-nav-arrow-down company-group-toggle"></i>
                 </div>
-                <div class="company-group-apps" style="max-height: 500px;">
+                <div class="company-group-apps" style="max-height: none;">
                     ${group.apps.map(app => {
                         const appLink = getAppLink(app.id);
                         return `
