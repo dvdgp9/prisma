@@ -95,6 +95,14 @@ switch ($method) {
                 }
             }
 
+            // Save company assignments (multi-company support)
+            if (isset($input['company_ids']) && is_array($input['company_ids'])) {
+                foreach ($input['company_ids'] as $idx => $cid) {
+                    $stmtComp = $db->prepare("INSERT INTO user_companies (user_id, company_id, is_default) VALUES (?, ?, ?)");
+                    $stmtComp->execute([$user_id, $cid, $idx === 0 ? 1 : 0]);
+                }
+            }
+
             success_response(['id' => $user_id], 'User created successfully');
         } catch (Exception $e) {
             error_response('Failed to create user: ' . $e->getMessage(), 500);
@@ -182,6 +190,19 @@ switch ($method) {
                 foreach ($input['app_permissions'] as $app_id) {
                     $stmtIns = $db->prepare("INSERT INTO user_app_permissions (user_id, app_id, can_view) VALUES (?, ?, 1)");
                     $stmtIns->execute([$input['id'], $app_id]);
+                }
+            }
+
+            // Update company assignments (multi-company support)
+            if (isset($input['company_ids']) && is_array($input['company_ids']) && $user['role'] === 'superadmin') {
+                // Remove existing company assignments
+                $stmtDelComp = $db->prepare("DELETE FROM user_companies WHERE user_id = ?");
+                $stmtDelComp->execute([$input['id']]);
+
+                // Add new company assignments
+                foreach ($input['company_ids'] as $idx => $cid) {
+                    $stmtComp = $db->prepare("INSERT INTO user_companies (user_id, company_id, is_default) VALUES (?, ?, ?)");
+                    $stmtComp->execute([$input['id'], $cid, $idx === 0 ? 1 : 0]);
                 }
             }
 

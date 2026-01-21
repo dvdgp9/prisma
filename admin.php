@@ -138,57 +138,7 @@ $user = get_logged_user();
 
 <body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
     <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">Prisma</div>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600;">
-                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
-                        </div>
-                        <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <nav>
-                <div class="nav-section">
-                    <div class="nav-section-title">Vistas Generales</div>
-                    <a href="/index.php" class="nav-item">
-                        <i class="iconoir-globe"></i>
-                        <span>Vista Global</span>
-                    </a>
-                </div>
-
-                <div class="nav-section" id="apps-nav">
-                    <div class="nav-section-title">Aplicaciones</div>
-                    <!-- Apps will be loaded dynamically -->
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Administración</div>
-                    <a href="/admin.php" class="nav-item active">
-                        <i class="iconoir-shield-check"></i>
-                        <span>Panel Admin</span>
-                    </a>
-                    <a href="/manage-apps.php" class="nav-item">
-                        <i class="iconoir-settings"></i>
-                        <span>Gestionar Apps</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
-                        <i class="iconoir-log-out"></i>
-                        <span>Cerrar Sesión</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+        <?php $current_page = 'admin'; include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -350,10 +300,16 @@ $user = get_logged_user();
                 </div>
 
                 <div class="form-group">
-                    <label for="user-company">Empresa *</label>
-                    <select id="user-company" required>
-                        <option value="">Selecciona una empresa</option>
-                    </select>
+                    <label>Empresas asignadas *</label>
+                    <div class="permissions-container-premium" style="max-height: 150px;">
+                        <div id="user-companies-list" class="permissions-grid-premium">
+                            <!-- Companies will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="perms-footer-hint">
+                        <i class="iconoir-info-empty"></i>
+                        <span>El usuario verá las apps de todas las empresas seleccionadas.</span>
+                    </div>
                 </div>
 
                 <div class="form-group">

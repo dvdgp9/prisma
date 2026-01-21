@@ -29,7 +29,9 @@ switch ($method) {
                 ");
                 success_response($stmt->fetchAll());
             } else {
-                $apps = get_user_apps();
+                // Check if grouped view is requested
+                $grouped = isset($_GET['grouped']) && $_GET['grouped'] === '1';
+                $apps = get_user_apps($grouped);
                 success_response($apps);
             }
         } catch (Exception $e) {

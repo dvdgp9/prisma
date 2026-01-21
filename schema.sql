@@ -97,6 +97,20 @@ CREATE TABLE IF NOT EXISTS attachments (
     INDEX idx_request (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- User-Company relationship (many-to-many for multi-company support)
+CREATE TABLE IF NOT EXISTS user_companies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    company_id INT NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_company (user_id, company_id),
+    INDEX idx_user (user_id),
+    INDEX idx_company (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Insert default company
 INSERT INTO companies (name) VALUES ('Default Company');
 

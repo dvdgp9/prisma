@@ -63,14 +63,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// Load all apps
+// Load all apps (grouped by company)
+let appsGrouped = [];
 async function loadApps() {
     try {
-        const response = await fetch('/api/apps.php');
+        const response = await fetch('/api/apps.php?grouped=1');
         const data = await response.json();
 
         if (data.success) {
-            apps = data.data;
+            appsGrouped = data.data;
+            // Flatten for compatibility with existing code
+            apps = [];
+            appsGrouped.forEach(group => {
+                if (group.apps) {
+                    apps.push(...group.apps);
+                }
+            });
             renderAppsNav();
             populateAppSelects();
         }
@@ -79,20 +87,55 @@ async function loadApps() {
     }
 }
 
-// Render apps in sidebar navigation
+// Render apps in sidebar navigation (grouped by company)
 function renderAppsNav() {
     const appsNav = document.getElementById('apps-nav');
-    const navItems = apps.map(app => `
-        <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})">
-            <i class="iconoir-app-window"></i>
-            <span>${escapeHtml(app.name)}</span>
-        </a>
-    `).join('');
+    
+    // Check if we have multiple companies
+    const hasMultipleCompanies = appsGrouped.length > 1;
+    
+    let navContent = '<div class="nav-section-title">Aplicaciones</div>';
+    
+    if (hasMultipleCompanies) {
+        // Render grouped by company
+        navContent += appsGrouped.map(group => `
+            <div class="company-group" data-company-id="${group.id}">
+                <div class="company-group-header" onclick="toggleCompanyGroup(${group.id})">
+                    <div class="company-group-title">
+                        <i class="iconoir-building"></i>
+                        <span>${escapeHtml(group.name)}</span>
+                    </div>
+                    <i class="iconoir-nav-arrow-down company-group-toggle"></i>
+                </div>
+                <div class="company-group-apps" style="max-height: 500px;">
+                    ${group.apps.map(app => `
+                        <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})" data-app-id="${app.id}">
+                            <i class="iconoir-app-window"></i>
+                            <span>${escapeHtml(app.name)}</span>
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    } else {
+        // Single company or flat list
+        navContent += apps.map(app => `
+            <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})" data-app-id="${app.id}">
+                <i class="iconoir-app-window"></i>
+                <span>${escapeHtml(app.name)}</span>
+            </a>
+        `).join('');
+    }
 
-    appsNav.innerHTML = `
-        <div class="nav-section-title">Aplicaciones</div>
-        ${navItems}
-    `;
+    appsNav.innerHTML = navContent;
+}
+
+// Toggle company group collapse/expand
+function toggleCompanyGroup(companyId) {
+    const group = document.querySelector(`.company-group[data-company-id="${companyId}"]`);
+    if (group) {
+        group.classList.toggle('collapsed');
+    }
 }
 
 // Populate app select dropdowns

@@ -252,15 +252,17 @@ function openNewUserModal() {
     document.getElementById('user-password').required = true;
     document.getElementById('password-optional').style.display = 'none';
     
-    // Update app permissions list when company is selected
-    const companySelect = document.getElementById('user-company');
-    companySelect.onchange = () => updateAppPermissionsList();
+    // Reset company checkboxes
+    document.querySelectorAll('input[name="user-companies"]').forEach(cb => cb.checked = false);
+    
+    // Setup company checkbox change listener for app permissions
+    setupCompanyCheckboxListeners();
     updateAppPermissionsList();
 
     document.getElementById('user-modal').classList.add('active');
 }
 
-function editUser(id) {
+async function editUser(id) {
     const user = users.find(u => u.id == id);
     if (!user) return;
 
@@ -270,36 +272,58 @@ function editUser(id) {
     document.getElementById('user-username').value = user.username;
     document.getElementById('user-fullname').value = user.full_name || '';
     document.getElementById('user-email').value = user.email || '';
-    document.getElementById('user-company').value = user.company_id || '';
     document.getElementById('user-role').value = user.role;
     document.getElementById('user-active').checked = user.is_active == 1;
     document.getElementById('user-password').value = '';
     document.getElementById('user-password').required = false;
     document.getElementById('password-optional').style.display = 'inline';
 
-    // Update app permissions list and check assigned ones
-    const companySelect = document.getElementById('user-company');
-    companySelect.onchange = () => updateAppPermissionsList();
+    // Load user's companies
+    try {
+        const response = await fetch(`/api/user-companies.php?user_id=${id}`);
+        const data = await response.json();
+        if (data.success) {
+            const userCompanyIds = data.data.map(c => c.id);
+            setSelectedCompanies(userCompanyIds);
+        }
+    } catch (error) {
+        console.error('Error loading user companies:', error);
+        // Fallback to legacy company_id
+        if (user.company_id) {
+            setSelectedCompanies([user.company_id]);
+        }
+    }
+
+    // Setup company checkbox change listener and update app permissions
+    setupCompanyCheckboxListeners();
     updateAppPermissionsList(user.app_permissions);
 
     document.getElementById('user-modal').classList.add('active');
 }
 
+// Setup listeners for company checkboxes to update app permissions
+function setupCompanyCheckboxListeners() {
+    document.querySelectorAll('input[name="user-companies"]').forEach(cb => {
+        cb.onchange = () => updateAppPermissionsList();
+    });
+}
+
 function updateAppPermissionsList(selectedAppIds = []) {
-    const companyId = document.getElementById('user-company').value;
+    const selectedCompanyIds = getSelectedCompanies();
     const permissionsList = document.getElementById('user-app-permissions-list');
     const permsActions = document.getElementById('perms-actions');
     const searchContainer = document.getElementById('perms-search-container');
     const searchInput = document.getElementById('perms-search');
     
-    if (!companyId) {
-        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Selecciona una empresa primero</p>';
+    if (selectedCompanyIds.length === 0) {
+        permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Selecciona al menos una empresa</p>';
         permsActions.style.display = 'none';
         searchContainer.style.display = 'none';
         return;
     }
 
-    const companyApps = apps.filter(a => a.company_id == companyId);
+    // Get apps from all selected companies
+    const companyApps = apps.filter(a => selectedCompanyIds.includes(parseInt(a.company_id)));
     
     if (companyApps.length === 0) {
         permissionsList.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center; font-size: 0.875rem; padding: 20px;">Esta empresa no tiene aplicaciones</p>';
@@ -352,11 +376,20 @@ async function submitUser(event) {
     const appPermissions = Array.from(document.querySelectorAll('input[name="app_permissions[]"]:checked'))
         .map(cb => parseInt(cb.value));
 
+    // Get selected companies
+    const selectedCompanies = getSelectedCompanies();
+    
+    if (selectedCompanies.length === 0) {
+        alert('Debes seleccionar al menos una empresa');
+        return;
+    }
+
     const data = {
         username: document.getElementById('user-username').value,
         full_name: document.getElementById('user-fullname').value,
         email: document.getElementById('user-email').value,
-        company_id: parseInt(document.getElementById('user-company').value),
+        company_id: selectedCompanies[0], // Primary company for legacy support
+        company_ids: selectedCompanies, // All companies for multi-company
         role: document.getElementById('user-role').value,
         is_active: document.getElementById('user-active').checked,
         app_permissions: appPermissions
@@ -573,13 +606,35 @@ function populateAppCompanySelect() {
 // ========== HELPERS ==========
 
 function populateCompanySelects() {
-    // For users
-    const userSelect = document.getElementById('user-company');
-    userSelect.innerHTML = '<option value="">Selecciona una empresa</option>' +
-        companies.map(company => `<option value="${company.id}">${escapeHtml(company.name)}</option>`).join('');
+    // For users - now using checkboxes for multi-company support
+    const companiesList = document.getElementById('user-companies-list');
+    if (companiesList) {
+        companiesList.innerHTML = companies.map(company => `
+            <label class="permission-item-premium">
+                <input type="checkbox" name="user-companies" value="${company.id}">
+                <span class="perm-label">
+                    <i class="iconoir-building"></i>
+                    ${escapeHtml(company.name)}
+                </span>
+            </label>
+        `).join('');
+    }
 
     // For apps
     populateAppCompanySelect();
+}
+
+// Get selected companies from checkboxes
+function getSelectedCompanies() {
+    const checkboxes = document.querySelectorAll('input[name="user-companies"]:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+// Set selected companies in checkboxes
+function setSelectedCompanies(companyIds) {
+    document.querySelectorAll('input[name="user-companies"]').forEach(cb => {
+        cb.checked = companyIds.includes(parseInt(cb.value));
+    });
 }
 
 function getRoleLabel(role) {

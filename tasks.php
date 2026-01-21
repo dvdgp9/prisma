@@ -31,51 +31,7 @@ $userApps = get_user_apps();
 
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <img src="/assets/images/logo.png" alt="Prisma" style="height: 32px; width: auto;">
-                    <div class="logo">Prisma</div>
-                </div>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600;">
-                            <?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?>
-                        </div>
-                        <div class="text-small text-muted"><?php echo htmlspecialchars($user['role']); ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <nav>
-                <div class="nav-section">
-                    <div class="nav-section-title">Vistas Generales</div>
-                    <a href="/" class="nav-item">
-                        <i class="iconoir-globe"></i>
-                        <span>Vista Global</span>
-                    </a>
-                    <a href="/changelog.php" class="nav-item">
-                        <i class="iconoir-list"></i>
-                        <span>Changelog</span>
-                    </a>
-                    <a href="/tasks.php" class="nav-item active">
-                        <i class="iconoir-check-circle"></i>
-                        <span>Mis Tareas</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <a href="/" class="nav-item">
-                        <i class="iconoir-arrow-left"></i>
-                        <span>Volver al Dashboard</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+        <?php $current_page = 'tasks'; include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">

@@ -11,16 +11,101 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 
 **Objetivo**: Convertir esto en una herramienta donde equipos puedan colaborar activamente en la gestión de mejoras/tareas.
 
-### Nuevas Funcionalidades Solicitadas (20 Enero 2026)
+### Funcionalidades Completadas
+1. ✅ **Archivos adjuntos visibles** - Ver y eliminar adjuntos de cada mejora
+2. ✅ **Changelog restringido** - Solo muestra apps del usuario
+3. ✅ **Zona de Tareas Rápidas** - Botón flotante + página Mis Tareas
+4. ✅ **Archivos por Aplicación** - Sección colapsable en vista de app
 
-1. ✅ **Archivos adjuntos visibles** - Ahora se pueden ver y eliminar los adjuntos de cada mejora
-2. ✅ **Changelog restringido** - Solo muestra apps a las que el usuario tiene acceso
-3. **Zona de Tareas Rápidas** - Sistema de notas/tareas ultrarrápido tipo "Notas de iPhone"
-4. **Archivos por Aplicación** - Repositorio de archivos importantes accesibles desde cada app
+### Nuevas Funcionalidades Solicitadas (21 Enero 2026)
+
+1. **Modularizar Sidebar** - Unificar la barra lateral que está duplicada en 5 archivos
+2. **Sistema Multi-Empresa** - Permitir que un usuario pertenezca a varias empresas
 
 ---
 
 ## Key Challenges and Analysis
+
+### Análisis: Modularización del Sidebar (21 Enero 2026)
+
+**Problema actual**: El sidebar está duplicado en 5 archivos con variaciones:
+
+| Archivo | Logo | Perfil editable | Pendientes | Tareas | Apps | Admin | Logout |
+|---------|------|-----------------|------------|--------|------|-------|--------|
+| `index.php` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `changelog.php` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `tasks.php` | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `manage-apps.php` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `admin.php` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+
+**Solución propuesta**: Crear `includes/sidebar.php` como componente reutilizable.
+
+```php
+// includes/sidebar.php
+// Recibe: $current_page (para marcar active)
+// Usa: $user (ya disponible via auth.php)
+// Renderiza: sidebar completo con todas las secciones
+```
+
+**Mejoras adicionales propuestas**:
+1. **Búsqueda rápida** - Input en la parte superior para filtrar apps
+2. **Agrupación por empresa** - Las apps se muestran agrupadas bajo su empresa
+3. **Selector de empresa activa** - Dropdown para cambiar entre empresas (multi-empresa)
+4. **Colapsar/expandir grupos** - Mejor organización visual
+5. **Contador de items** - Badge con número de mejoras pendientes por app
+
+---
+
+### Análisis: Sistema Multi-Empresa (21 Enero 2026)
+
+**Problema actual**: 
+- Usuario tiene `company_id` (FK a companies) → solo 1 empresa
+- Apps tienen `company_id` → pertenecen a 1 empresa
+- El usuario solo ve apps de SU empresa
+
+**Caso de uso del usuario**: "Trabajo para varios clientes, necesito ver las apps de cada uno"
+
+**Solución propuesta**: Tabla intermedia `user_companies`
+
+```sql
+-- Relación muchos a muchos: usuarios <-> empresas
+CREATE TABLE user_companies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    company_id INT NOT NULL,
+    role ENUM('viewer', 'member', 'admin') DEFAULT 'member',
+    is_default BOOLEAN DEFAULT FALSE,  -- Empresa por defecto al login
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_company (user_id, company_id),
+    INDEX idx_user (user_id),
+    INDEX idx_company (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**Cambios necesarios**:
+1. Migrar datos existentes: `INSERT INTO user_companies SELECT id, user_id, company_id, 'admin', true FROM users WHERE company_id IS NOT NULL`
+2. Modificar `get_user_apps()` para traer apps de TODAS las empresas del usuario
+3. Modificar sidebar para agrupar apps por empresa
+4. Añadir selector de "empresa activa" o mostrar todas agrupadas
+5. Panel admin: gestión de asignación usuario-empresa
+
+**UX del Sidebar con multi-empresa**:
+```
+🏢 Empresa A           [▼]
+   📱 App 1
+   📱 App 2
+   
+🏢 Empresa B           [▼]
+   📱 App 3
+   
+🏢 Empresa C           [▼]
+   📱 App 4
+   📱 App 5
+```
+
+---
 
 ### Análisis: Zona de Tareas Rápidas
 
@@ -134,44 +219,61 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 
 ## Project Status Board
 
-### Fase A: Zona de Tareas Rápidas
+### ✅ Fase A: Zona de Tareas Rápidas (COMPLETADA)
 - [x] A.1: DB - Crear tablas `tasks` y `task_attachments`
 - [x] A.2: API - `/api/tasks.php` CRUD
 - [x] A.3: UI - Quick Add inline en página de tareas
 - [x] A.4: UI - Sección "Mis Tareas" en sidebar + vista completa
 - [x] A.5: Adjuntos en tareas
 
-### Fase B: Archivos por Aplicación
+### ✅ Fase B: Archivos por Aplicación (COMPLETADA)
 - [x] B.1: DB - Crear tabla `app_files`
 - [x] B.2: API - `/api/app-files.php` CRUD
 - [x] B.3: UI - Sección archivos en vista de app (lista colapsable)
 
-### Tareas completadas hoy (20 Enero 2026)
-- [x] Archivos adjuntos visibles en mejoras (api/attachments.php + UI)
+### ✅ Fase C: Modularización Sidebar (COMPLETADA)
+- [x] C.1: Crear `includes/sidebar.php` con sidebar unificado
+- [x] C.2: Refactorizar las 5 páginas para usar el include
+- [x] C.3: Añadir búsqueda rápida de apps (filtro en tiempo real)
+- [x] C.4: Mejorar estilos del sidebar (grupos de empresa, buscador)
+
+### ✅ Fase D: Sistema Multi-Empresa (COMPLETADA)
+- [x] D.1: DB - Crear tabla `user_companies` (schema.sql actualizado)
+- [x] D.2: DB - SQL de migración preparado (ver abajo)
+- [x] D.3: Modificar `auth.php` - `get_user_apps()`, `get_user_companies()`, `can_access_app()`
+- [x] D.4: API - `/api/user-companies.php` para gestionar asignaciones
+- [x] D.5: UI - Sidebar con apps agrupadas por empresa (colapsables)
+- [x] D.6: UI - Panel admin con checkboxes para asignar múltiples empresas
+
+### Tareas completadas (20 Enero 2026)
+- [x] Archivos adjuntos visibles en mejoras
 - [x] Changelog restringido a apps del usuario
 - [x] Zona de tareas rápidas completa
 - [x] Archivos por aplicación completo
+- [x] Botón flotante de tareas a la derecha
 
 ---
 
 ## Executor's Feedback or Assistance Requests
 
-**✅ Implementación completada**. 
+### 🔄 Plan pendiente de aprobación (21 Enero 2026)
 
-Archivos creados/modificados:
-- `api/tasks.php` - CRUD de tareas
-- `api/task-attachments.php` - Adjuntos de tareas
-- `api/app-files.php` - Archivos de aplicación
-- `api/attachments.php` - Adjuntos de mejoras (nuevo)
-- `tasks.php` - Página de tareas
-- `assets/js/tasks.js` - Lógica de tareas
-- `assets/css/tasks.css` - Estilos de tareas
-- `index.php` - Añadida sección archivos de app + link tareas en sidebar
-- `changelog.php` - Añadido link tareas en sidebar
-- `assets/js/main.js` - Funciones de archivos de app
-- `assets/css/styles.css` - Estilos de archivos de app
+**Fase C: Modularización Sidebar**
+- Crear `includes/sidebar.php` reutilizable
+- Refactorizar 5 archivos para usar el include
+- Añadir búsqueda rápida de apps
+- Unificar estilos
 
-**Pendiente de verificación por el usuario**.
+**Fase D: Sistema Multi-Empresa**
+- Nueva tabla `user_companies` (relación N:M)
+- Migración de datos existentes
+- Apps agrupadas por empresa en sidebar (colapsables)
+- Panel admin para asignar empresas a usuarios
+
+**Preguntas para el usuario**:
+1. ¿Ejecuto primero la Fase C (sidebar) o prefieres empezar por la D (multi-empresa)?
+2. Para multi-empresa: ¿el superadmin ve TODAS las empresas, o solo las asignadas?
+3. ¿El rol del usuario es global o puede variar por empresa? (ej: admin en Empresa A, user en Empresa B)
 
 ---
 
