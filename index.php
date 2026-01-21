@@ -250,18 +250,22 @@ $company_name = $user['company_name'] ?? '';
                             <div class="modal-side-title">
                                 <i class="iconoir-user"></i> Solicitante externo
                             </div>
-                            <p class="text-small text-muted" style="margin-bottom: 1rem;">
-                                Si alguien te pidió esta mejora, añade sus datos para notificarle.
-                            </p>
-                            
                             <div class="form-group">
-                                <label for="request-requester-name">Nombre</label>
-                                <input type="text" id="request-requester-name" placeholder="Juan Pérez">
+                                <label for="request-has-requester">Solicitante externo</label>
+                                <select id="request-has-requester" onchange="toggleRequesterFields('new')">
+                                    <option value="no">No especificado</option>
+                                    <option value="yes">Sí, especificado</option>
+                                </select>
                             </div>
-
-                            <div class="form-group">
-                                <label for="request-requester-email">Email</label>
-                                <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com">
+                            <div id="request-requester-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label for="request-requester-name">Nombre</label>
+                                    <input type="text" id="request-requester-name" placeholder="Juan Pérez">
+                                </div>
+                                <div class="form-group">
+                                    <label for="request-requester-email">Email</label>
+                                    <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -319,8 +323,15 @@ $company_name = $user['company_name'] ?? '';
                                 </label>
                                 <span id="edit-attachment-count" class="badge-count-inline"></span>
                             </div>
-                            <div id="edit-attachments-list" class="attachments-grid">
-                                <!-- Attachments will be loaded here -->
+                            <div class="file-upload-area" id="edit-file-upload-area">
+                                <i class="iconoir-cloud-upload" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.5rem;"></i>
+                                <p>Arrastra archivos o haz clic para seleccionar</p>
+                                <p class="text-small text-muted">Máximo 5MB · Imágenes, PDF, documentos</p>
+                                <input type="file" id="edit-file-input" style="display: none;" multiple>
+                            </div>
+                            <div id="edit-file-list" class="file-list-preview"></div>
+                            <div id="edit-attachments-list" class="attachments-grid" style="margin-top: 0.75rem;">
+                                <!-- Existing attachments will be loaded here -->
                             </div>
                         </div>
                     </div>
@@ -369,18 +380,22 @@ $company_name = $user['company_name'] ?? '';
                             <div class="modal-side-title">
                                 <i class="iconoir-user"></i> Solicitante externo
                             </div>
-                            <p class="text-small text-muted" style="margin-bottom: 1rem;">
-                                Datos del solicitante para notificaciones.
-                            </p>
-                            
                             <div class="form-group">
-                                <label for="edit-request-requester-name">Nombre</label>
-                                <input type="text" id="edit-request-requester-name" placeholder="Juan Pérez">
+                                <label for="edit-has-requester">Solicitante externo</label>
+                                <select id="edit-has-requester" onchange="toggleRequesterFields('edit')">
+                                    <option value="no">No especificado</option>
+                                    <option value="yes">Sí, especificado</option>
+                                </select>
                             </div>
-
-                            <div class="form-group">
-                                <label for="edit-request-requester-email">Email</label>
-                                <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com">
+                            <div id="edit-requester-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label for="edit-request-requester-name">Nombre</label>
+                                    <input type="text" id="edit-request-requester-name" placeholder="Juan Pérez">
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-request-requester-email">Email</label>
+                                    <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com">
+                                </div>
                             </div>
                         </div>
 

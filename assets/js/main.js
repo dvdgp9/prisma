@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     setupFileUpload();
+    setupEditFileUpload();
     setupAppFilesUpload();
 
     // Cmd/Ctrl + Enter to submit new request form
@@ -793,26 +794,91 @@ function setupFileUpload() {
     const fileInput = document.getElementById('file-input');
     const fileList = document.getElementById('file-list');
 
-    uploadArea.addEventListener('click', () => fileInput.click());
+    if (uploadArea && fileInput && fileList) {
+        uploadArea.addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', (e) => {
-        handleFiles(e.target.files);
-    });
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
 
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
 
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        handleFiles(e.dataTransfer.files);
-    });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+    }
+}
+
+// Setup file upload for edit modal
+function setupEditFileUpload() {
+    const uploadArea = document.getElementById('edit-file-upload-area');
+    const fileInput = document.getElementById('edit-file-input');
+    const fileList = document.getElementById('edit-file-list');
+
+    if (uploadArea && fileInput && fileList) {
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleEditFiles(e.target.files);
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleEditFiles(e.dataTransfer.files);
+        });
+    }
+}
+
+// Handle file selection for edit modal
+let selectedEditFiles = [];
+function handleEditFiles(files) {
+    const fileList = document.getElementById('edit-file-list');
+    selectedEditFiles = Array.from(files);
+
+    fileList.innerHTML = selectedEditFiles.map((file, index) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
+            <span class="text-small">
+                <i class="iconoir-attachment"></i>
+                ${escapeHtml(file.name)} (${formatFileSize(file.size)})
+            </span>
+            <button type="button" class="btn btn-sm" onclick="removeEditFile(${index})" style="padding: 0.25rem 0.5rem;">×</button>
+        </div>
+    `).join('');
+}
+
+// Remove file from edit selection
+function removeEditFile(index) {
+    selectedEditFiles.splice(index, 1);
+    handleEditFiles(selectedEditFiles);
+}
+
+// Toggle requester fields based on dropdown
+function toggleRequesterFields(type) {
+    const hasRequester = document.getElementById(`${type}-has-requester`).value === 'yes';
+    const fieldsContainer = document.getElementById(`${type}-requester-fields`);
+    
+    if (fieldsContainer) {
+        fieldsContainer.style.display = hasRequester ? 'block' : 'none';
+    }
 }
 
 // Handle file selection
@@ -943,8 +1009,24 @@ async function openEditRequestModal(requestId) {
             // Set requester info if available
             const requesterNameField = document.getElementById('edit-request-requester-name');
             const requesterEmailField = document.getElementById('edit-request-requester-email');
-            if (requesterNameField) requesterNameField.value = request.requester_name || '';
-            if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
+            const hasRequesterField = document.getElementById('edit-has-requester');
+            
+            if (request.requester_name || request.requester_email) {
+                if (hasRequesterField) hasRequesterField.value = 'yes';
+                if (requesterNameField) requesterNameField.value = request.requester_name || '';
+                if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
+                toggleRequesterFields('edit');
+            } else {
+                if (hasRequesterField) hasRequesterField.value = 'no';
+                if (requesterNameField) requesterNameField.value = '';
+                if (requesterEmailField) requesterEmailField.value = '';
+                toggleRequesterFields('edit');
+            }
+
+            // Clear new file selection
+            selectedEditFiles = [];
+            const fileList = document.getElementById('edit-file-list');
+            if (fileList) fileList.innerHTML = '';
 
             // Load attachments
             await loadRequestAttachments(requestId);
