@@ -1375,6 +1375,210 @@ nav {
     color: white;
 }
 
+/* Wide Modal - Two Column Layout */
+.modal-wide {
+    max-width: 900px;
+}
+
+.modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-header-icon {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.modal-request-id {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+}
+
+.modal-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal-column-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-column-main .form-group {
+    margin-bottom: 0;
+}
+
+.modal-column-main textarea {
+    min-height: 160px;
+    resize: vertical;
+}
+
+.modal-column-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.modal-side-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+}
+
+.modal-side-section .form-group {
+    margin-bottom: 0.75rem;
+}
+
+.modal-side-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.modal-side-section label {
+    font-size: 0.8rem;
+    margin-bottom: 0.35rem;
+}
+
+.modal-side-section input,
+.modal-side-section select {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.modal-side-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-side-title i {
+    color: var(--text-muted);
+}
+
+.modal-danger-zone {
+    background: rgba(255, 77, 77, 0.08);
+    border: 1px solid rgba(255, 77, 77, 0.2);
+}
+
+.modal-danger-zone .modal-side-title {
+    color: var(--danger-color);
+    border-bottom-color: rgba(255, 77, 77, 0.2);
+}
+
+.modal-danger-zone .modal-side-title i {
+    color: var(--danger-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-ghost {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.btn-danger-outline {
+    background: transparent;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    width: 100%;
+}
+
+.btn-danger-outline:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.attachments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.badge-count-inline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.attachments-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 40px;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.attachments-grid:empty::after {
+    content: 'Sin archivos adjuntos';
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.file-list-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .modal-wide {
+        max-width: 100%;
+    }
+    
+    .modal-body-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .modal-column-side {
+        order: -1;
+    }
+}
+
 /* File Upload */
 .file-upload-area {
     border: 2px dashed var(--border-color);

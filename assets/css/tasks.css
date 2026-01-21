@@ -385,61 +385,6 @@
     background: rgba(var(--primary-rgb), 0.02);
 }
 
-/* Task Modal Redesign */
-.task-modal-content {
-    max-width: 800px;
-    width: 100%;
-}
-
-.task-modal-grid {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 2rem;
-    padding: 1.5rem;
-}
-
-.task-modal-main {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.task-modal-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.task-modal-sidebar-section {
-    background: var(--bg-secondary);
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-.sidebar-section-title {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    margin-bottom: 1rem;
-}
-
-.task-modal-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.task-modal-actions .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
     .header-actions {
@@ -453,14 +398,5 @@
     
     .task-actions {
         opacity: 1;
-    }
-    
-    .task-modal-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    .task-modal-sidebar {
-        order: -1;
     }
 }

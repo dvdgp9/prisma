@@ -168,84 +168,110 @@ $company_name = $user['company_name'] ?? '';
 
     <!-- New Request Modal -->
     <div class="modal" id="new-request-modal">
-        <div class="modal-content">
+        <div class="modal-content modal-wide">
             <div class="modal-header">
-                <h3 class="modal-title">Nueva Mejora</h3>
-                <button class="close-modal" onclick="closeModal('new-request-modal')">×</button>
+                <div class="modal-header-left">
+                    <i class="iconoir-plus-circle modal-header-icon"></i>
+                    <h3 class="modal-title">Nueva Petición</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('new-request-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
             </div>
 
             <form id="new-request-form" onsubmit="submitNewRequest(event)">
-                <div class="form-group">
-                    <label for="request-app">Aplicación *</label>
-                    <select id="request-app" required>
-                        <option value="">Selecciona una app</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="request-title">Título *</label>
-                    <input type="text" id="request-title" required placeholder="Ej: Error crítico en login móvil">
-                </div>
-
-                <div class="form-group">
-                    <label for="request-description">Descripción</label>
-                    <textarea id="request-description" rows="5"
-                        placeholder="Describe el problema o la funcionalidad solicitada..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="request-priority">Prioridad</label>
-                    <select id="request-priority">
-                        <option value="low">Baja</option>
-                        <option value="medium" selected>Media</option>
-                        <option value="high">Alta</option>
-                        <option value="critical">Crítica</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="request-difficulty">Dificultad</label>
-                    <select id="request-difficulty">
-                        <option value="" selected>Sin definir</option>
-                        <option value="low">Baja</option>
-                        <option value="medium">Media</option>
-                        <option value="high">Alta</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Adjuntos (opcional)</label>
-                    <div class="file-upload-area" id="file-upload-area">
-                        <p>📎 Arrastra archivos aquí o haz clic para seleccionar</p>
-                        <p class="text-small text-muted">Máximo 5MB - Imágenes, PDF, documentos</p>
-                        <input type="file" id="file-input" style="display: none;" multiple>
-                    </div>
-                    <div id="file-list" style="margin-top: 1rem;"></div>
-                </div>
-
-                <!-- Optional requester info -->
-                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
-                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                        <strong>Opcional:</strong> Si alguien te solicitó esta mejora, añade sus datos para notificarle:
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="request-requester-name">Nombre del solicitante</label>
-                            <input type="text" id="request-requester-name" placeholder="Ej: Juan Pérez">
+                <div class="modal-body-grid">
+                    <!-- Left Column: Main Content -->
+                    <div class="modal-column-main">
+                        <div class="form-group">
+                            <label for="request-title">
+                                <i class="iconoir-text"></i> Título *
+                            </label>
+                            <input type="text" id="request-title" required placeholder="Describe brevemente la mejora o problema">
                         </div>
 
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="request-requester-email">Email del solicitante</label>
-                            <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="request-description">
+                                <i class="iconoir-align-left"></i> Descripción
+                            </label>
+                            <textarea id="request-description" rows="8" placeholder="Explica con detalle el problema, la funcionalidad deseada o los pasos para reproducir un error..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <i class="iconoir-attachment"></i> Adjuntos
+                            </label>
+                            <div class="file-upload-area" id="file-upload-area">
+                                <i class="iconoir-cloud-upload" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.5rem;"></i>
+                                <p>Arrastra archivos o haz clic para seleccionar</p>
+                                <p class="text-small text-muted">Máximo 5MB · Imágenes, PDF, documentos</p>
+                                <input type="file" id="file-input" style="display: none;" multiple>
+                            </div>
+                            <div id="file-list" class="file-list-preview"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Metadata -->
+                    <div class="modal-column-side">
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <i class="iconoir-settings"></i> Configuración
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="request-app">Aplicación *</label>
+                                <select id="request-app" required>
+                                    <option value="">Selecciona una app</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="request-priority">Prioridad</label>
+                                <select id="request-priority">
+                                    <option value="low">🟢 Baja</option>
+                                    <option value="medium" selected>🟡 Media</option>
+                                    <option value="high">🟠 Alta</option>
+                                    <option value="critical">🔴 Crítica</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="request-difficulty">Dificultad estimada</label>
+                                <select id="request-difficulty">
+                                    <option value="" selected>Sin definir</option>
+                                    <option value="low">Baja</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <i class="iconoir-user"></i> Solicitante externo
+                            </div>
+                            <p class="text-small text-muted" style="margin-bottom: 1rem;">
+                                Si alguien te pidió esta mejora, añade sus datos para notificarle.
+                            </p>
+                            
+                            <div class="form-group">
+                                <label for="request-requester-name">Nombre</label>
+                                <input type="text" id="request-requester-name" placeholder="Juan Pérez">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="request-requester-email">Email</label>
+                                <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Crear Petición</button>
-                    <button type="button" class="btn btn-outline"
-                        onclick="closeModal('new-request-modal')">Cancelar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('new-request-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-plus"></i> Crear Petición
+                    </button>
                 </div>
             </form>
         </div>
@@ -253,96 +279,129 @@ $company_name = $user['company_name'] ?? '';
 
     <!-- Edit Request Modal (Admin/Superadmin) -->
     <div class="modal" id="edit-request-modal">
-        <div class="modal-content">
+        <div class="modal-content modal-wide">
             <div class="modal-header">
-                <h3 class="modal-title">Editar Petición</h3>
-                <button class="close-modal" onclick="closeModal('edit-request-modal')">×</button>
+                <div class="modal-header-left">
+                    <i class="iconoir-edit-pencil modal-header-icon"></i>
+                    <h3 class="modal-title">Editar Petición</h3>
+                    <span class="modal-request-id" id="edit-request-id-display"></span>
+                </div>
+                <button class="close-modal" onclick="closeModal('edit-request-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
             </div>
 
             <form id="edit-request-form" onsubmit="submitEditRequest(event)">
                 <input type="hidden" id="edit-request-id">
 
-                <div class="form-group">
-                    <label for="edit-request-title">Título *</label>
-                    <input type="text" id="edit-request-title" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-request-description">Descripción</label>
-                    <textarea id="edit-request-description" rows="5"></textarea>
-                </div>
-
-                <?php if (has_role('admin')): ?>
-                    <div class="form-group">
-                        <label for="edit-request-priority">Prioridad</label>
-                        <select id="edit-request-priority">
-                            <option value="low">Baja</option>
-                            <option value="medium">Media</option>
-                            <option value="high">Alta</option>
-                            <option value="critical">Crítica</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="edit-request-status">Estado</label>
-                        <select id="edit-request-status">
-                            <option value="pending">Pendiente</option>
-                            <option value="in_progress">En Progreso</option>
-                            <option value="completed">Completado</option>
-                            <option value="discarded">Descartado</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="edit-request-difficulty">Dificultad</label>
-                        <select id="edit-request-difficulty">
-                            <option value="">Sin definir</option>
-                            <option value="low">Baja</option>
-                            <option value="medium">Media</option>
-                            <option value="high">Alta</option>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Optional requester info -->
-                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
-                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                        <strong>Opcional:</strong> Si alguien te solicitó esta mejora, añade sus datos para notificarle:
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="edit-request-requester-name">Nombre del solicitante</label>
-                            <input type="text" id="edit-request-requester-name" placeholder="Ej: Juan Pérez">
+                <div class="modal-body-grid">
+                    <!-- Left Column: Main Content -->
+                    <div class="modal-column-main">
+                        <div class="form-group">
+                            <label for="edit-request-title">
+                                <i class="iconoir-text"></i> Título *
+                            </label>
+                            <input type="text" id="edit-request-title" required>
                         </div>
 
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="edit-request-requester-email">Email del solicitante</label>
-                            <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="edit-request-description">
+                                <i class="iconoir-align-left"></i> Descripción
+                            </label>
+                            <textarea id="edit-request-description" rows="8"></textarea>
+                        </div>
+
+                        <!-- Attachments section -->
+                        <div class="form-group">
+                            <div class="attachments-header">
+                                <label>
+                                    <i class="iconoir-attachment"></i> Archivos adjuntos
+                                </label>
+                                <span id="edit-attachment-count" class="badge-count-inline"></span>
+                            </div>
+                            <div id="edit-attachments-list" class="attachments-grid">
+                                <!-- Attachments will be loaded here -->
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Right Column: Metadata -->
+                    <div class="modal-column-side">
+                        <?php if (has_role('admin')): ?>
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <i class="iconoir-settings"></i> Estado y prioridad
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-request-status">Estado</label>
+                                <select id="edit-request-status">
+                                    <option value="pending">⏳ Pendiente</option>
+                                    <option value="in_progress">🔄 En Progreso</option>
+                                    <option value="completed">✅ Completado</option>
+                                    <option value="discarded">❌ Descartado</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="edit-request-priority">Prioridad</label>
+                                <select id="edit-request-priority">
+                                    <option value="low">🟢 Baja</option>
+                                    <option value="medium">🟡 Media</option>
+                                    <option value="high">🟠 Alta</option>
+                                    <option value="critical">🔴 Crítica</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="edit-request-difficulty">Dificultad</label>
+                                <select id="edit-request-difficulty">
+                                    <option value="">Sin definir</option>
+                                    <option value="low">Baja</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <i class="iconoir-user"></i> Solicitante externo
+                            </div>
+                            <p class="text-small text-muted" style="margin-bottom: 1rem;">
+                                Datos del solicitante para notificaciones.
+                            </p>
+                            
+                            <div class="form-group">
+                                <label for="edit-request-requester-name">Nombre</label>
+                                <input type="text" id="edit-request-requester-name" placeholder="Juan Pérez">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="edit-request-requester-email">Email</label>
+                                <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com">
+                            </div>
+                        </div>
+
+                        <?php if (has_role('superadmin')): ?>
+                        <div class="modal-side-section modal-danger-zone">
+                            <div class="modal-side-title">
+                                <i class="iconoir-warning-triangle"></i> Zona peligrosa
+                            </div>
+                            <button type="button" class="btn btn-danger-outline btn-sm" onclick="deleteRequest()">
+                                <i class="iconoir-trash"></i> Eliminar petición
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
-                <!-- Attachments section -->
-                <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <label style="margin: 0; font-weight: 500;">
-                            <i class="iconoir-attachment"></i> Archivos adjuntos
-                        </label>
-                        <span id="edit-attachment-count" class="text-muted text-small"></span>
-                    </div>
-                    <div id="edit-attachments-list" style="max-height: 200px; overflow-y: auto;">
-                        <!-- Attachments will be loaded here -->
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar Cambios</button>
-                    <?php if (has_role('superadmin')): ?>
-                        <button type="button" class="btn btn-secondary" onclick="deleteRequest()">Eliminar</button>
-                    <?php endif; ?>
-                    <button type="button" class="btn btn-outline"
-                        onclick="closeModal('edit-request-modal')">Cancelar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('edit-request-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-check"></i> Guardar Cambios
+                    </button>
                 </div>
             </form>
         </div>
