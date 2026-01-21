@@ -60,6 +60,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update pending count for admins
     if (userRole === 'admin' || userRole === 'superadmin') {
         updatePendingCount();
+        
+        // Check if we need to load pending approvals from hash
+        if (window.location.hash === '#pending') {
+            setTimeout(() => {
+                loadPendingApprovals();
+            }, 600);
+        }
     }
 });
 
@@ -109,7 +116,7 @@ function renderAppsNav() {
                 </div>
                 <div class="company-group-apps" style="max-height: 500px;">
                     ${group.apps.map(app => `
-                        <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})" data-app-id="${app.id}">
+                        <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                             <i class="iconoir-app-window"></i>
                             <span>${escapeHtml(app.name)}</span>
                         </a>
@@ -120,7 +127,7 @@ function renderAppsNav() {
     } else {
         // Single company or flat list
         navContent += apps.map(app => `
-            <a href="javascript:void(0)" class="nav-item" onclick="loadView('app', ${app.id})" data-app-id="${app.id}">
+            <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                 <i class="iconoir-app-window"></i>
                 <span>${escapeHtml(app.name)}</span>
             </a>
@@ -148,7 +155,7 @@ function populateAppSelects() {
 }
 
 // Switch view (global or specific app)
-function loadView(type, appId = null) {
+function loadView(type, appId = null, sourceEvent = null) {
     currentView = type;
     currentAppId = appId;
 
@@ -161,11 +168,28 @@ function loadView(type, appId = null) {
         pageTitle.textContent = app ? app.name : 'App';
     }
 
-    // Update active nav item
+    // Update active nav items and quick action buttons
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.target.closest('.nav-item').classList.add('active');
+    document.querySelectorAll('.quick-action-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active to the clicked element
+    const evt = sourceEvent || window.event;
+    if (evt && evt.target) {
+        const clickedElement = evt.target.closest('.nav-item, .quick-action-btn');
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+        }
+    } else if (type === 'global') {
+        // If no event (programmatic call), try to find and activate global view button
+        const globalBtn = document.querySelector('.quick-action-btn[onclick*="loadView(\'global\')"]');
+        if (globalBtn) {
+            globalBtn.classList.add('active');
+        }
+    }
 
     // Show/hide app files section
     const appFilesSection = document.getElementById('app-files-section');

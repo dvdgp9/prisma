@@ -29,7 +29,12 @@ async function loadPendingApprovals() {
 
     // Update UI
     document.getElementById('page-title').textContent = 'Solicitudes Pendientes de Aprobar';
+    
+    // Remove active from all nav items and quick action buttons
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.quick-action-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Add active to pending approvals button
     document.getElementById('pending-approvals-nav').classList.add('active');
 
     try {

@@ -37,7 +37,7 @@ $company_name = $user['company_name'] ?? '';
         <div class="nav-section">
             <div class="quick-actions-row">
                 <?php if ($current_page === 'index'): ?>
-                    <a href="javascript:void(0)" class="quick-action-btn <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="loadView('global')" title="Vista Global">
+                    <a href="javascript:void(0)" class="quick-action-btn <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('global', null, event); return false;" title="Vista Global">
                         <i class="iconoir-globe"></i>
                     </a>
                 <?php else: ?>
@@ -47,16 +47,14 @@ $company_name = $user['company_name'] ?? '';
                 <?php endif; ?>
                 
                 <?php if (has_role('admin')): ?>
-                    <?php if ($current_page === 'index'): ?>
-                        <a href="#" onclick="loadPendingApprovals(); return false;" class="quick-action-btn" id="pending-approvals-nav" title="Pendientes Aprobar">
-                            <i class="iconoir-clock"></i>
-                            <span class="badge-count" id="pending-count" style="display: none;"></span>
-                        </a>
-                    <?php else: ?>
-                        <a href="/index.php#pending" class="quick-action-btn" title="Pendientes Aprobar">
-                            <i class="iconoir-clock"></i>
-                        </a>
-                    <?php endif; ?>
+                    <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>" 
+                       onclick="<?php echo $current_page === 'index' ? 'loadPendingApprovals(); return false;' : 'return true;'; ?>" 
+                       class="quick-action-btn" 
+                       id="pending-approvals-nav" 
+                       title="Pendientes Aprobar">
+                        <i class="iconoir-clock"></i>
+                        <span class="badge-count" id="pending-count" style="display: none;"></span>
+                    </a>
                 <?php endif; ?>
                 
                 <a href="/changelog.php" class="quick-action-btn <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog">
