@@ -166,7 +166,7 @@ $userApps = get_user_apps();
                             
                             <!-- Upload area -->
                             <div class="file-upload-area" id="task-file-upload" style="padding: var(--spacing-lg); margin-bottom: 1rem; position: relative;">
-                                <div id="upload-progress-container" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
+                                <div id="upload-progress-container" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
                                     <i class="iconoir-loading animate-spin" style="font-size: 1.5rem; color: var(--primary-color); margin-bottom: 0.5rem;"></i>
                                     <p style="font-size: 0.875rem; font-weight: 500;">Subiendo archivo...</p>
                                 </div>
