@@ -290,29 +290,37 @@ function setupTaskModal() {
 
 // Handle file upload for task
 async function handleTaskFiles(files) {
-    if (!currentTaskId) return;
+    if (!currentTaskId || files.length === 0) return;
     
-    for (const file of files) {
-        const formData = new FormData();
-        formData.append('task_id', currentTaskId);
-        formData.append('file', file);
-        
-        try {
-            const response = await fetch('/api/task-attachments.php', {
-                method: 'POST',
-                body: formData
-            });
+    const progressContainer = document.getElementById('upload-progress-container');
+    if (progressContainer) progressContainer.style.display = 'flex';
+    
+    try {
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('task_id', currentTaskId);
+            formData.append('file', file);
             
-            const data = await response.json();
-            
-            if (data.success) {
-                await loadTaskAttachments(currentTaskId);
-            } else {
-                showToast({ title: 'Error', message: data.error, icon: 'iconoir-warning-circle' }, 'toast-error');
+            try {
+                const response = await fetch('/api/task-attachments.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadTaskAttachments(currentTaskId);
+                } else {
+                    showToast({ title: 'Error', message: data.error, icon: 'iconoir-warning-circle' }, 'toast-error');
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                showToast({ title: 'Error', message: 'Error de conexión al subir el archivo', icon: 'iconoir-warning-circle' }, 'toast-error');
             }
-        } catch (error) {
-            console.error('Error uploading file:', error);
         }
+    } finally {
+        if (progressContainer) progressContainer.style.display = 'none';
     }
 }
 
