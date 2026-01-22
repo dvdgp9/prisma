@@ -66,10 +66,10 @@ switch ($method) {
             error_response('File upload failed');
         }
         
-        // Validate file size (10MB max for app files)
-        $maxSize = 10 * 1024 * 1024;
+        // Validate file size (15MB max for app files)
+        $maxSize = 15 * 1024 * 1024;
         if ($file['size'] > $maxSize) {
-            error_response('El archivo excede 10MB');
+            error_response('El archivo excede 15MB');
         }
         
         // Get mime type

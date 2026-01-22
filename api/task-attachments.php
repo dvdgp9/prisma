@@ -58,10 +58,10 @@ switch ($method) {
             error_response('File upload failed');
         }
         
-        // Validate file size (5MB max)
-        $maxSize = 5 * 1024 * 1024;
+        // Validate file size (15MB max)
+        $maxSize = 15 * 1024 * 1024;
         if ($file['size'] > $maxSize) {
-            error_response('El archivo excede 5MB');
+            error_response('El archivo excede 15MB');
         }
         
         // Validate file type

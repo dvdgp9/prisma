@@ -43,10 +43,10 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
     error_response('File upload failed with error code: ' . $file['error']);
 }
 
-// Validate file size (5MB max)
-$max_size = 5 * 1024 * 1024; // 5MB
+// Validate file size (15MB max)
+$max_size = 15 * 1024 * 1024; // 15MB
 if ($file['size'] > $max_size) {
-    error_response('File size exceeds 5MB limit');
+    error_response('File size exceeds 15MB limit');
 }
 
 // Validate file type
