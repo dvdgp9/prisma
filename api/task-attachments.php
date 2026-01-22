@@ -71,7 +71,8 @@ switch ($method) {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip'
         ];
         
         $finfo = finfo_open(FILEINFO_MIME_TYPE);

@@ -60,7 +60,8 @@ $allowed_types = [
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/zip'
 ];
 
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -68,7 +69,7 @@ $mime_type = finfo_file($finfo, $file['tmp_name']);
 finfo_close($finfo);
 
 if (!in_array($mime_type, $allowed_types)) {
-    error_response('File type not allowed. Allowed: images, PDF, text, Word, Excel');
+    error_response('File type not allowed. Allowed: images, PDF, text, Word, Excel, ZIP');
 }
 
 // Create uploads directory if it doesn't exist
