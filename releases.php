@@ -690,12 +690,16 @@ $userApps = get_user_apps();
         let currentMonth = new Date();
         let currentFilter = '';
 
+        // Utility function - defined early for initialization
+        function getTodayString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            // Set default dates
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('qa-completed').value = today;
-            document.getElementById('qa-announce').value = today;
+            // Set default date
+            document.getElementById('qa-announce').value = getTodayString();
             
             loadReleases();
         });
@@ -1061,10 +1065,6 @@ $userApps = get_user_apps();
         }
 
         // Utility Functions
-        function getTodayString() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        }
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
