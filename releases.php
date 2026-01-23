@@ -813,8 +813,9 @@ $userApps = get_user_apps();
             
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             
             // Start from Monday (0 = Monday in our grid)
             let startOffset = firstDay.getDay() - 1;
@@ -823,16 +824,15 @@ $userApps = get_user_apps();
             // Previous month days
             const prevMonthLast = new Date(year, month, 0);
             for (let i = startOffset - 1; i >= 0; i--) {
-                const dayEl = createDayElement(prevMonthLast.getDate() - i, true, null, []);
+                const dayEl = createDayElement(prevMonthLast.getDate() - i, true, false, []);
                 grid.appendChild(dayEl);
             }
             
             // Current month days
             for (let day = 1; day <= lastDay.getDate(); day++) {
-                const date = new Date(year, month, day);
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayReleases = filteredReleases.filter(r => r.announce_at === dateStr);
-                const isToday = date.getTime() === today.getTime();
+                const isToday = dateStr === todayStr;
                 const dayEl = createDayElement(day, false, isToday, dayReleases);
                 grid.appendChild(dayEl);
             }

@@ -131,15 +131,18 @@ function renderTasks(tasks) {
     emptyState.style.display = 'none';
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use local date instead of UTC to avoid timezone shifts
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     
     container.innerHTML = tasks.map(task => {
         let dueDateHtml = '';
         let dueDateClass = '';
         
         if (task.due_date && !task.is_completed) {
-            const dueDate = new Date(task.due_date);
-            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+            // Parse date manually to avoid timezone shift from "YYYY-MM-DD" string
+            const [y, m, d] = task.due_date.split('-').map(Number);
+            const dueDate = new Date(y, m - 1, d);
+            const diffDays = Math.ceil((dueDate - localToday) / (1000 * 60 * 60 * 24));
             
             if (diffDays < 0) {
                 dueDateClass = 'overdue';
@@ -478,11 +481,12 @@ function closeTaskModal() {
 function formatDueDate(dateString) {
     if (!dateString) return '';
     
-    const date = new Date(dateString);
+    const [y, m, d] = dateString.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     
-    const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((date - localToday) / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return 'Hoy';
     if (diffDays === 1) return 'Mañana';
