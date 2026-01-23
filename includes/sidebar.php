@@ -84,6 +84,10 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-shield-check"></i>
                         <span>Panel Admin</span>
                     </a>
+                    <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
+                        <i class="iconoir-calendar"></i>
+                        <span>Release Planner</span>
+                    </a>
                 <?php endif; ?>
                 <a href="/manage-apps.php" class="nav-item <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>">
                     <i class="iconoir-settings"></i>

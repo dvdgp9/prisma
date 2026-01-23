@@ -237,6 +237,12 @@ CREATE TABLE user_companies (
 - [x] C.3: Añadir búsqueda rápida de apps (filtro en tiempo real)
 - [x] C.4: Mejorar estilos del sidebar (grupos de empresa, buscador)
 
+### ✅ Fase E: Release Planner (COMPLETADA - 22 Enero 2026)
+- [x] E.1: DB - Migración `009_scheduled_releases.sql`
+- [x] E.2: API - `/api/releases.php` CRUD (solo superadmin)
+- [x] E.3: UI - `releases.php` con vista calendario + lista
+- [x] E.4: Sidebar - Enlace solo para superadmin
+
 ### ✅ Fase D: Sistema Multi-Empresa (COMPLETADA)
 - [x] D.1: DB - Crear tabla `user_companies` (schema.sql actualizado)
 - [x] D.2: DB - SQL de migración preparado (ver abajo)
@@ -255,6 +261,43 @@ CREATE TABLE user_companies (
 ---
 
 ## Executor's Feedback or Assistance Requests
+
+### 🚀 Fase E: Release Planner - Panel de Anuncios Programados (22 Enero 2026)
+
+**Objetivo**: Panel exclusivo para SUPERADMIN donde programar cuándo anunciar funcionalidades completadas.
+
+**Requisitos**:
+- Solo accesible por superadmin
+- Vista calendario + vista lista
+- Marcar como "presentado" manualmente
+- Campo opcional de enlace
+
+**Tabla `scheduled_releases`**:
+```sql
+CREATE TABLE scheduled_releases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    internal_notes TEXT,
+    link VARCHAR(500),
+    completed_at DATE NOT NULL,
+    announce_at DATE NOT NULL,
+    status ENUM('draft','scheduled','announced') DEFAULT 'scheduled',
+    app_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE SET NULL,
+    INDEX idx_announce_at (announce_at),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**Archivos a crear**:
+- `migrations/006_scheduled_releases.sql`
+- `api/releases.php`
+- `releases.php`
+
+---
 
 ### 🔄 Plan pendiente de aprobación (21 Enero 2026)
 
