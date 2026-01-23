@@ -108,6 +108,7 @@
             border-bottom: 1px solid var(--border-light);
             background: var(--bg-primary);
             transition: background var(--transition-fast);
+            overflow: hidden;
         }
         .calendar-day:nth-child(7n) { border-right: none; }
         .calendar-day:hover { background: var(--bg-secondary); }
@@ -130,17 +131,21 @@
             justify-content: center;
         }
         .calendar-release {
-            font-size: 0.75rem;
-            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.7rem;
+            padding: 3px 6px;
             margin-bottom: 2px;
             border-radius: var(--radius-sm);
             cursor: pointer;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            transition: transform var(--transition-fast);
+            transition: all var(--transition-fast);
+            display: block;
+            max-width: 100%;
         }
-        .calendar-release:hover { transform: scale(1.02); }
+        .calendar-release:hover {
+            opacity: 0.85;
+        }
         .calendar-release.status-draft {
             background: var(--bg-secondary);
             color: var(--text-secondary);
@@ -289,11 +294,20 @@
 
         /* Quick Add */
         .quick-add-release {
-            background: var(--bg-primary);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
             padding: var(--spacing-lg);
             margin-bottom: var(--spacing-lg);
+        }
+        .quick-add-release .section-title {
+            font-size: 0.8rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--primary);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
         }
         .quick-add-row {
             display: grid;
@@ -306,7 +320,7 @@
             display: block;
             font-size: 0.75rem;
             font-weight: var(--font-weight-medium);
-            color: var(--text-muted);
+            color: var(--text-secondary);
             margin-bottom: var(--spacing-xs);
         }
         .form-group input, .form-group select, .form-group textarea {
@@ -327,7 +341,7 @@
             display: none;
             margin-top: var(--spacing-md);
             padding-top: var(--spacing-md);
-            border-top: 1px solid var(--border-light);
+            border-top: 1px dashed var(--border-light);
         }
         .quick-add-expanded.show { display: block; }
         .quick-add-expanded-grid {
@@ -347,32 +361,80 @@
         .empty-state h3 { color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
 
         /* Modal overrides */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
         .modal.show { display: flex; }
         .modal-content {
             background: var(--bg-primary);
             border-radius: var(--radius-lg);
             width: 100%;
-            max-width: 600px;
+            max-width: 560px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: var(--shadow-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalSlideIn 0.2s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: var(--spacing-lg);
+            padding: var(--spacing-lg) var(--spacing-xl);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
             border-bottom: 1px solid var(--border-light);
         }
-        .modal-title { font-size: 1.125rem; font-weight: var(--font-weight-semibold); }
-        .modal-body { padding: var(--spacing-lg); }
+        .modal-title {
+            font-size: 1.125rem;
+            font-weight: var(--font-weight-semibold);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        .modal-title i { color: var(--primary); }
+        .modal-body {
+            padding: var(--spacing-xl);
+            background: var(--bg-secondary);
+        }
+        .modal-body .form-group {
+            background: var(--bg-primary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+        }
+        .modal-body .form-group label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        .modal-body .form-group input,
+        .modal-body .form-group select,
+        .modal-body .form-group textarea {
+            border: none;
+            background: transparent;
+            padding: var(--spacing-xs) 0;
+            font-size: 0.9rem;
+        }
+        .modal-body .form-group input:focus,
+        .modal-body .form-group select:focus,
+        .modal-body .form-group textarea:focus {
+            box-shadow: none;
+            outline: none;
+        }
         .modal-footer {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             gap: var(--spacing-md);
-            padding: var(--spacing-lg);
+            padding: var(--spacing-lg) var(--spacing-xl);
             border-top: 1px solid var(--border-light);
+            background: var(--bg-primary);
+        }
+        .modal-footer-right {
+            display: flex;
+            gap: var(--spacing-sm);
         }
         .close-modal {
             background: none;
@@ -380,15 +442,22 @@
             cursor: pointer;
             color: var(--text-muted);
             font-size: 1.25rem;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
         }
-        .close-modal:hover { color: var(--text-primary); }
-        .btn { padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+        .close-modal:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .btn { padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); }
         .btn-primary { background: var(--primary); color: white; border: none; }
-        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-ghost { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); }
         .btn-ghost:hover { background: var(--bg-secondary); }
-        .btn-danger { background: var(--danger, #ef4444); color: white; border: none; }
-        .btn-danger:hover { opacity: 0.9; }
+        .btn-danger { background: transparent; color: #ef4444; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #fef2f2; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
         .form-group.full { grid-column: 1 / -1; }
         .modal .form-group { margin-bottom: var(--spacing-md); }
@@ -431,6 +500,9 @@ $userApps = get_user_apps();
 
             <!-- Quick Add Release -->
             <div class="quick-add-release">
+                <div class="section-title">
+                    <i class="iconoir-plus-circle"></i> Nuevo lanzamiento
+                </div>
                 <form id="quick-add-form" onsubmit="createRelease(event)">
                     <div class="quick-add-row">
                         <div class="form-group">
@@ -541,7 +613,7 @@ $userApps = get_user_apps();
     <div class="modal" id="release-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Editar Release</h3>
+                <h3 class="modal-title"><i class="iconoir-edit-pencil"></i> Editar Release</h3>
                 <button class="close-modal" onclick="closeModal()">
                     <i class="iconoir-xmark"></i>
                 </button>
@@ -599,11 +671,12 @@ $userApps = get_user_apps();
                     <button type="button" class="btn btn-danger" onclick="deleteRelease()">
                         <i class="iconoir-trash"></i> Eliminar
                     </button>
-                    <div style="flex: 1;"></div>
-                    <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="iconoir-check"></i> Guardar
-                    </button>
+                    <div class="modal-footer-right">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="iconoir-check"></i> Guardar
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
