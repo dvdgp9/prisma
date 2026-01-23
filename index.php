@@ -424,6 +424,11 @@ $company_name = $user['company_name'] ?? '';
                 </div>
 
                 <div class="modal-footer">
+                    <?php if (has_role('superadmin')): ?>
+                    <button type="button" class="btn btn-success" onclick="openCompleteAndScheduleModal()" style="margin-right: auto; background: #22c55e; color: white; border: none;">
+                        <i class="iconoir-rocket"></i> Completar y Programar
+                    </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-ghost" onclick="closeModal('edit-request-modal')">Cancelar</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="iconoir-check"></i> Guardar Cambios
@@ -432,6 +437,43 @@ $company_name = $user['company_name'] ?? '';
             </form>
         </div>
     </div>
+
+    <?php if (has_role('superadmin')): ?>
+    <!-- Complete and Schedule Modal -->
+    <div class="modal" id="complete-schedule-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="iconoir-rocket" style="color: #22c55e;"></i> Completar y Programar</h3>
+                <button class="close-modal" onclick="closeModal('complete-schedule-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.875rem;">
+                    Esto marcará la solicitud como <strong>completada</strong> y creará un release programado.
+                </p>
+                <div class="form-group">
+                    <label for="schedule-announce-date">
+                        <i class="iconoir-calendar"></i> Fecha de anuncio *
+                    </label>
+                    <input type="date" id="schedule-announce-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-description">
+                        <i class="iconoir-align-left"></i> Descripción del release (opcional)
+                    </label>
+                    <textarea id="schedule-description" rows="3" placeholder="Qué hace esta funcionalidad..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('complete-schedule-modal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="executeCompleteAndSchedule()" style="background: #22c55e;">
+                    <i class="iconoir-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Profile Modal -->
     <div class="modal" id="profile-modal">

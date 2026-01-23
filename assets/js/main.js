@@ -1571,3 +1571,88 @@ async function submitFloatingTask() {
         console.error('Error creating task:', error);
     }
 }
+
+// ===========================================
+// Complete and Schedule Release (Superadmin)
+// ===========================================
+
+function openCompleteAndScheduleModal() {
+    const modal = document.getElementById('complete-schedule-modal');
+    if (!modal) return;
+    
+    // Set default date to today
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    document.getElementById('schedule-announce-date').value = todayStr;
+    document.getElementById('schedule-description').value = '';
+    
+    modal.classList.add('active');
+}
+
+async function executeCompleteAndSchedule() {
+    const requestId = document.getElementById('edit-request-id').value;
+    const requestTitle = document.getElementById('edit-request-title').value;
+    const announceDate = document.getElementById('schedule-announce-date').value;
+    const description = document.getElementById('schedule-description').value;
+    
+    if (!announceDate) {
+        alert('Por favor selecciona una fecha de anuncio');
+        return;
+    }
+    
+    // Get the app_id from the current view if available
+    const appId = window.currentAppId || null;
+    
+    try {
+        // Step 1: Mark request as completed
+        const completeResponse = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: parseInt(requestId),
+                status: 'completed'
+            })
+        });
+        
+        if (!completeResponse.ok) {
+            throw new Error('Error al completar la solicitud');
+        }
+        
+        // Step 2: Create the release
+        const releaseResponse = await fetch('/api/releases.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: requestTitle,
+                announce_at: announceDate,
+                description: description || null,
+                app_id: appId
+            })
+        });
+        
+        if (!releaseResponse.ok) {
+            throw new Error('Error al crear el release');
+        }
+        
+        // Success!
+        closeModal('complete-schedule-modal');
+        closeModal('edit-request-modal');
+        loadRequests();
+        
+        showToast({
+            title: '¡Completado y programado!',
+            message: `Release programado para ${formatDateForToast(announceDate)}`,
+            icon: 'iconoir-rocket'
+        }, 'toast-completed');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error.message || 'Error al procesar la solicitud');
+    }
+}
+
+function formatDateForToast(dateStr) {
+    const [year, month, day] = dateStr.split('-');
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
+}
