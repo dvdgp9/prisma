@@ -458,8 +458,8 @@
         }
         .close-modal:hover { background: var(--bg-secondary); color: var(--text-primary); }
         .btn { padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); }
-        .btn-primary { background: var(--primary); color: white; border: none; box-shadow: 0 1px 3px rgba(var(--primary-rgb), 0.3); }
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-primary { background: #3b82f6; color: white; border: none; box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3); }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
         .btn-ghost { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); }
         .btn-ghost:hover { background: var(--bg-secondary); }
         .btn-danger { background: transparent; color: #ef4444; border: 1px solid #fecaca; }
