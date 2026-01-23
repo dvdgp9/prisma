@@ -473,6 +473,12 @@ function createRequestCard(request, isFinished = false) {
 
                 ${isAdminOrSuperadmin ? `
                     <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-left: auto;">
+                        ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
+                            <button class="quick-action-btn" onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})" 
+                                    title="Completar y Programar" style="color: #22c55e;">
+                                <i class="iconoir-rocket"></i>
+                            </button>
+                        ` : ''}
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                             <i class="iconoir-edit"></i>
                         </button>
@@ -940,6 +946,9 @@ async function openEditRequestModal(requestId) {
             if (priorityField) priorityField.value = request.priority;
             if (statusField) statusField.value = request.status;
             if (difficultyField) difficultyField.value = request.difficulty || '';
+
+            // Store current request's app_id for "Complete and Schedule" flow
+            window.currentRequestAppId = request.app_id;
 
             // Set requester info if available
             const requesterNameField = document.getElementById('edit-request-requester-name');
@@ -1580,6 +1589,10 @@ function openCompleteAndScheduleModal() {
     const modal = document.getElementById('complete-schedule-modal');
     if (!modal) return;
     
+    // Use the stored app_id from the edit modal or from quick action
+    const appId = window.currentRequestAppId || window.currentAppId || null;
+    window.currentProcessingAppId = appId;
+    
     // Set default date to today
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1587,6 +1600,18 @@ function openCompleteAndScheduleModal() {
     document.getElementById('schedule-description').value = '';
     
     modal.classList.add('active');
+}
+
+function openQuickCompleteAndSchedule(requestId, title, appId) {
+    // Populate the hidden fields in the edit modal just in case (we need the ID and Title)
+    document.getElementById('edit-request-id').value = requestId;
+    document.getElementById('edit-request-title').value = title;
+    
+    // Store the specific app_id for this request
+    window.currentProcessingAppId = appId;
+    
+    // Open the schedule modal directly
+    openCompleteAndScheduleModal();
 }
 
 async function executeCompleteAndSchedule() {
@@ -1600,8 +1625,8 @@ async function executeCompleteAndSchedule() {
         return;
     }
     
-    // Get the app_id from the current view if available
-    const appId = window.currentAppId || null;
+    // Use the specific app_id we stored
+    const appId = window.currentProcessingAppId;
     
     try {
         // Step 1: Mark request as completed
