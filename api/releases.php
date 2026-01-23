@@ -55,18 +55,15 @@ switch ($method) {
         if (empty($input['title'])) {
             error_response('El título es obligatorio');
         }
-        if (empty($input['completed_at'])) {
-            error_response('La fecha de completado es obligatoria');
-        }
         if (empty($input['announce_at'])) {
             error_response('La fecha de anuncio es obligatoria');
         }
         
         $stmt = $db->prepare("
             INSERT INTO scheduled_releases 
-            (title, description, internal_notes, link, completed_at, announce_at, status, app_id)
+            (title, description, internal_notes, link, announce_at, status, app_id)
             VALUES 
-            (:title, :description, :internal_notes, :link, :completed_at, :announce_at, :status, :app_id)
+            (:title, :description, :internal_notes, :link, :announce_at, :status, :app_id)
         ");
         
         $stmt->execute([
@@ -74,7 +71,6 @@ switch ($method) {
             ':description' => $input['description'] ?? null,
             ':internal_notes' => $input['internal_notes'] ?? null,
             ':link' => $input['link'] ?? null,
-            ':completed_at' => $input['completed_at'],
             ':announce_at' => $input['announce_at'],
             ':status' => $input['status'] ?? 'scheduled',
             ':app_id' => $input['app_id'] ?? null

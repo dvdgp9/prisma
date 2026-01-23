@@ -119,23 +119,27 @@
             font-weight: var(--font-weight-medium);
             color: var(--text-secondary);
             margin-bottom: var(--spacing-xs);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .calendar-day.today .calendar-day-number {
             background: var(--primary);
             color: white;
-            width: 24px;
-            height: 24px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        }
+        .calendar-day.drop-target {
+            background: rgba(var(--primary-rgb), 0.1);
+            outline: 2px dashed var(--primary);
         }
         .calendar-release {
             font-size: 0.7rem;
             padding: 3px 6px;
             margin-bottom: 2px;
             border-radius: var(--radius-sm);
-            cursor: pointer;
+            cursor: grab;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -143,6 +147,8 @@
             display: block;
             max-width: 100%;
         }
+        .calendar-release:active { cursor: grabbing; }
+        .calendar-release.dragging { opacity: 0.5; }
         .calendar-release:hover {
             opacity: 0.85;
         }
@@ -452,7 +458,7 @@
         }
         .close-modal:hover { background: var(--bg-secondary); color: var(--text-primary); }
         .btn { padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); }
-        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary { background: var(--primary); color: white; border: none; box-shadow: 0 1px 3px rgba(var(--primary-rgb), 0.3); }
         .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-ghost { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); }
         .btn-ghost:hover { background: var(--bg-secondary); }
@@ -505,16 +511,12 @@ $userApps = get_user_apps();
                 </div>
                 <form id="quick-add-form" onsubmit="createRelease(event)">
                     <div class="quick-add-row">
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1;">
                             <label for="qa-title">Título *</label>
                             <input type="text" id="qa-title" placeholder="Ej: Generador de cursos con IA" required>
                         </div>
                         <div class="form-group">
-                            <label for="qa-completed">Completado</label>
-                            <input type="date" id="qa-completed" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="qa-announce">Anunciar el</label>
+                            <label for="qa-announce">Fecha de anuncio *</label>
                             <input type="date" id="qa-announce" required>
                         </div>
                         <div class="form-group" style="display: flex; align-items: end; gap: var(--spacing-sm);">
@@ -627,12 +629,16 @@ $userApps = get_user_apps();
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="edit-completed">Fecha completado *</label>
-                            <input type="date" id="edit-completed" required>
+                            <label for="edit-announce">Fecha de anuncio *</label>
+                            <input type="date" id="edit-announce" required>
                         </div>
                         <div class="form-group">
-                            <label for="edit-announce">Fecha anuncio *</label>
-                            <input type="date" id="edit-announce" required>
+                            <label for="edit-status">Estado</label>
+                            <select id="edit-status">
+                                <option value="draft">Borrador</option>
+                                <option value="scheduled">Programado</option>
+                                <option value="announced">Anunciado</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-row">
@@ -646,17 +652,9 @@ $userApps = get_user_apps();
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="edit-status">Estado</label>
-                            <select id="edit-status">
-                                <option value="draft">Borrador</option>
-                                <option value="scheduled">Programado</option>
-                                <option value="announced">Anunciado</option>
-                            </select>
+                            <label for="edit-link">Enlace</label>
+                            <input type="url" id="edit-link" placeholder="https://...">
                         </div>
-                    </div>
-                    <div class="form-group full">
-                        <label for="edit-link">Enlace</label>
-                        <input type="url" id="edit-link" placeholder="https://...">
                     </div>
                     <div class="form-group full">
                         <label for="edit-description">Descripción</label>
@@ -720,7 +718,6 @@ $userApps = get_user_apps();
             
             const payload = {
                 title: document.getElementById('qa-title').value,
-                completed_at: document.getElementById('qa-completed').value,
                 announce_at: document.getElementById('qa-announce').value,
                 app_id: document.getElementById('qa-app').value || null,
                 link: document.getElementById('qa-link').value || null,
@@ -738,8 +735,7 @@ $userApps = get_user_apps();
                 if (response.ok) {
                     showToast('Release programado', 'success');
                     document.getElementById('quick-add-form').reset();
-                    document.getElementById('qa-completed').value = new Date().toISOString().split('T')[0];
-                    document.getElementById('qa-announce').value = new Date().toISOString().split('T')[0];
+                    document.getElementById('qa-announce').value = getTodayString();
                     document.getElementById('quick-add-expanded').classList.remove('show');
                     loadReleases();
                 } else {
@@ -757,7 +753,6 @@ $userApps = get_user_apps();
             const payload = {
                 id: document.getElementById('edit-id').value,
                 title: document.getElementById('edit-title').value,
-                completed_at: document.getElementById('edit-completed').value,
                 announce_at: document.getElementById('edit-announce').value,
                 status: document.getElementById('edit-status').value,
                 app_id: document.getElementById('edit-app').value || null,
@@ -906,7 +901,7 @@ $userApps = get_user_apps();
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayReleases = filteredReleases.filter(r => r.announce_at === dateStr);
                 const isToday = dateStr === todayStr;
-                const dayEl = createDayElement(day, false, isToday, dayReleases);
+                const dayEl = createDayElement(day, false, isToday, dayReleases, dateStr);
                 grid.appendChild(dayEl);
             }
             
@@ -919,26 +914,67 @@ $userApps = get_user_apps();
             }
         }
 
-        function createDayElement(day, isOtherMonth, isToday, dayReleases) {
+        function createDayElement(day, isOtherMonth, isToday, dayReleases, dateStr = null) {
             const div = document.createElement('div');
             div.className = 'calendar-day';
             if (isOtherMonth) div.classList.add('other-month');
             if (isToday) div.classList.add('today');
+            if (dateStr) div.dataset.date = dateStr;
             
             const dayNum = document.createElement('div');
             dayNum.className = 'calendar-day-number';
             dayNum.textContent = day;
             div.appendChild(dayNum);
             
+            // Double click to create new release on this date
+            if (!isOtherMonth && dateStr) {
+                div.ondblclick = () => focusQuickAddWithDate(dateStr);
+            }
+            
+            // Drag & Drop target
+            if (!isOtherMonth && dateStr) {
+                div.ondragover = (e) => { e.preventDefault(); div.classList.add('drop-target'); };
+                div.ondragleave = () => div.classList.remove('drop-target');
+                div.ondrop = (e) => {
+                    e.preventDefault();
+                    div.classList.remove('drop-target');
+                    const releaseId = e.dataTransfer.getData('text/plain');
+                    if (releaseId) updateReleaseDate(releaseId, dateStr);
+                };
+            }
+            
             dayReleases.forEach(release => {
                 const releaseEl = document.createElement('div');
                 releaseEl.className = `calendar-release status-${release.status}`;
                 releaseEl.textContent = release.title;
-                releaseEl.onclick = () => openEditModal(release);
+                releaseEl.draggable = true;
+                releaseEl.onclick = (e) => { e.stopPropagation(); openEditModal(release); };
+                releaseEl.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', release.id);
+                    releaseEl.classList.add('dragging');
+                };
+                releaseEl.ondragend = () => releaseEl.classList.remove('dragging');
                 div.appendChild(releaseEl);
             });
             
             return div;
+        }
+
+        // Update release date via drag & drop
+        async function updateReleaseDate(releaseId, newDate) {
+            try {
+                const response = await fetch('/api/releases.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: releaseId, announce_at: newDate })
+                });
+                if (response.ok) {
+                    showToast('Fecha actualizada', 'success');
+                    loadReleases();
+                }
+            } catch (error) {
+                showToast('Error', 'error');
+            }
         }
 
         function changeMonth(delta) {
@@ -979,7 +1015,6 @@ $userApps = get_user_apps();
                             ${release.description ? `<div class="release-description">${escapeHtml(release.description)}</div>` : ''}
                             <div class="release-meta">
                                 ${release.app_name ? `<span class="release-meta-item"><i class="iconoir-app-window"></i> ${escapeHtml(release.app_name)}</span>` : ''}
-                                <span class="release-meta-item"><i class="iconoir-check-circle"></i> Completado: ${formatDate(release.completed_at)}</span>
                                 ${release.link ? `<span class="release-meta-item"><i class="iconoir-link"></i> Con enlace</span>` : ''}
                             </div>
                         </div>
@@ -1000,7 +1035,6 @@ $userApps = get_user_apps();
         function openEditModal(release) {
             document.getElementById('edit-id').value = release.id;
             document.getElementById('edit-title').value = release.title;
-            document.getElementById('edit-completed').value = release.completed_at;
             document.getElementById('edit-announce').value = release.announce_at;
             document.getElementById('edit-status').value = release.status;
             document.getElementById('edit-app').value = release.app_id || '';
@@ -1019,7 +1053,18 @@ $userApps = get_user_apps();
             document.getElementById('quick-add-expanded').classList.toggle('show');
         }
 
+        // Focus quick add with date
+        function focusQuickAddWithDate(dateStr) {
+            document.getElementById('qa-announce').value = dateStr;
+            document.getElementById('qa-title').focus();
+            document.querySelector('.quick-add-release').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         // Utility Functions
+        function getTodayString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;

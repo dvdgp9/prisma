@@ -67,6 +67,12 @@ $company_name = $user['company_name'] ?? '';
                 <span>Mis Tareas</span>
                 <span class="badge-count" id="tasks-count" style="display: none;"></span>
             </a>
+            <?php if (has_role('superadmin')): ?>
+            <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
+                <i class="iconoir-calendar"></i>
+                <span>Release Planner</span>
+            </a>
+            <?php endif; ?>
         </div>
 
         <!-- Apps Section - Will be loaded dynamically and grouped by company -->
@@ -83,10 +89,6 @@ $company_name = $user['company_name'] ?? '';
                     <a href="/admin.php" class="nav-item <?php echo $current_page === 'admin' ? 'active' : ''; ?>">
                         <i class="iconoir-shield-check"></i>
                         <span>Panel Admin</span>
-                    </a>
-                    <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
-                        <i class="iconoir-calendar"></i>
-                        <span>Release Planner</span>
                     </a>
                 <?php endif; ?>
                 <a href="/manage-apps.php" class="nav-item <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>">
