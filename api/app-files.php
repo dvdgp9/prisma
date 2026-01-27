@@ -114,6 +114,34 @@ switch ($method) {
         ], 'Archivo subido correctamente');
         break;
         
+    case 'PUT':
+        $input = get_json_input();
+        
+        if (empty($input['id']) || empty($input['original_filename'])) {
+            error_response('ID and new filename are required');
+        }
+        
+        // Get file info
+        $stmt = $db->prepare("SELECT * FROM app_files WHERE id = ?");
+        $stmt->execute([$input['id']]);
+        $fileInfo = $stmt->fetch();
+        
+        if (!$fileInfo) {
+            error_response('Archivo no encontrado', 404);
+        }
+        
+        // Verify user has access to app
+        if (!can_access_app($fileInfo['app_id'])) {
+            error_response('No tienes acceso a esta aplicación', 403);
+        }
+        
+        // Update original_filename in database
+        $stmt = $db->prepare("UPDATE app_files SET original_filename = ? WHERE id = ?");
+        $stmt->execute([$input['original_filename'], $input['id']]);
+        
+        success_response(null, 'Archivo renombrado correctamente');
+        break;
+        
     case 'DELETE':
         $input = get_json_input();
         
@@ -146,37 +174,6 @@ switch ($method) {
         $stmt->execute([$input['id']]);
         
         success_response(null, 'Archivo eliminado');
-        break;
-        
-    case 'PATCH':
-        $input = get_json_input();
-        
-        if (empty($input['id']) || empty($input['original_filename'])) {
-            error_response('File ID and new filename required');
-        }
-        
-        // Get file info
-        $stmt = $db->prepare("SELECT * FROM app_files WHERE id = ?");
-        $stmt->execute([$input['id']]);
-        $fileInfo = $stmt->fetch();
-        
-        if (!$fileInfo) {
-            error_response('Archivo no encontrado', 404);
-        }
-        
-        // Verify user has access to app
-        if (!can_access_app($fileInfo['app_id'])) {
-            error_response('No tienes acceso a esta aplicación', 403);
-        }
-        
-        // Update filename in database
-        $stmt = $db->prepare("UPDATE app_files SET original_filename = ? WHERE id = ?");
-        $stmt->execute([$input['original_filename'], $input['id']]);
-        
-        success_response([
-            'id' => $input['id'],
-            'original_filename' => $input['original_filename']
-        ], 'Nombre de archivo actualizado');
         break;
         
     default:

@@ -623,54 +623,43 @@ $company_name = $user['company_name'] ?? '';
 
     <!-- View Note Modal -->
     <div class="modal" id="view-note-modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-header-left">
                     <i class="iconoir-notes modal-header-icon"></i>
-                    <h3 class="modal-title" id="view-note-title">Nota</h3>
+                    <h3 class="modal-title" id="view-note-title"></h3>
                 </div>
-                <button class="close-modal" onclick="closeModal('view-note-modal')">
-                    <i class="iconoir-xmark"></i>
-                </button>
+                <button class="modal-close" onclick="closeModal('view-note-modal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="view-note-content" class="note-content-display"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-ghost" onclick="closeModal('view-note-modal')">Cerrar</button>
-            </div>
         </div>
     </div>
 
-    <!-- Edit File Name Modal -->
-    <div class="modal" id="edit-file-name-modal">
-        <div class="modal-content" style="max-width: 400px;">
+    <!-- Edit App File Modal -->
+    <div class="modal" id="edit-app-file-modal">
+        <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-header-left">
                     <i class="iconoir-edit-pencil modal-header-icon"></i>
-                    <h3 class="modal-title">Editar Nombre de Archivo</h3>
+                    <h3 class="modal-title">Editar nombre del archivo</h3>
                 </div>
-                <button class="close-modal" onclick="closeModal('edit-file-name-modal')">
-                    <i class="iconoir-xmark"></i>
-                </button>
+                <button class="modal-close" onclick="closeModal('edit-app-file-modal')">&times;</button>
             </div>
-            <form id="edit-file-name-form" onsubmit="submitEditFileName(event)">
-                <div class="modal-body">
+            <div class="modal-body">
+                <form onsubmit="submitEditAppFile(event)">
+                    <input type="hidden" id="edit-app-file-id">
                     <div class="form-group">
-                        <label for="edit-file-name">
-                            <i class="iconoir-text"></i> Nuevo nombre *
-                        </label>
-                        <input type="text" id="edit-file-name" required placeholder="Ej: documento_v2.pdf">
-                        <input type="hidden" id="edit-file-id">
+                        <label for="edit-app-file-name">Nombre del archivo</label>
+                        <input type="text" id="edit-app-file-name" required class="form-control">
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-ghost" onclick="closeModal('edit-file-name-modal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="iconoir-check"></i> Guardar
-                    </button>
-                </div>
-            </form>
+                    <div class="modal-footer" style="padding: var(--spacing-md) 0 0 0; border: none;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('edit-app-file-modal')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
