@@ -2292,11 +2292,13 @@ nav {
 }
 
 .app-note-card {
-    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-    border: 1px solid #fde68a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid #f59e0b;
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
     position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .app-note-card-header {
@@ -2308,7 +2310,7 @@ nav {
 
 .app-note-card-title {
     font-weight: var(--font-weight-semibold);
-    color: #92400e;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -2319,16 +2321,16 @@ nav {
 }
 
 .app-note-card-content {
-    color: #78350f;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
 }
 
 .app-note-card-meta {
-    font-size: 0.7rem;
-    color: #b45309;
+    font-size: 0.75rem;
+    color: var(--text-muted);
     margin-top: var(--spacing-sm);
     display: flex;
     gap: var(--spacing-sm);
@@ -2346,28 +2348,30 @@ nav {
 }
 
 .app-note-card-btn {
-    background: rgba(255, 255, 255, 0.7);
-    border: none;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     padding: 4px 8px;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    color: #92400e;
+    color: var(--text-secondary);
     font-size: 0.8rem;
     transition: all 0.15s ease;
 }
 
 .app-note-card-btn:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 .app-note-card-btn.delete:hover {
     color: var(--danger-color);
+    border-color: var(--danger-color);
 }
 
 .btn-add-note {
     background: transparent;
-    border: 2px dashed #fde68a;
-    color: #b45309;
+    border: 2px dashed var(--border-color);
+    color: var(--text-muted);
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -2379,8 +2383,9 @@ nav {
 }
 
 .btn-add-note:hover {
-    background: #fffbeb;
-    border-color: #f59e0b;
+    background: var(--bg-secondary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* Quick Actions Row */

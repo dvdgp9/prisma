@@ -47,6 +47,52 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
+            <!-- App Info Section (visible only when viewing specific app) -->
+            <div class="app-info-section" id="app-info-section" style="display: none;">
+                <!-- Notes Section - Prominent, below app name -->
+                <div class="app-notes-section" id="app-notes-section">
+                    <div class="app-notes-display" id="app-notes-display">
+                        <!-- Notes will be loaded here as cards -->
+                    </div>
+                    <button class="btn-add-note" onclick="openAddNoteModal()" title="Añadir nota">
+                        <i class="iconoir-plus"></i> Añadir nota
+                    </button>
+                </div>
+                
+                <!-- Quick Actions Row: Links dropdown + Files upload -->
+                <div class="app-quick-actions">
+                    <!-- Links Dropdown -->
+                    <div class="app-links-dropdown" id="app-links-dropdown">
+                        <button class="btn-links-toggle" onclick="toggleLinksDropdown()">
+                            <i class="iconoir-link"></i>
+                            <span>Enlaces</span>
+                            <span class="links-count" id="links-count"></span>
+                            <i class="iconoir-nav-arrow-down dropdown-arrow"></i>
+                        </button>
+                        <div class="links-dropdown-content" id="links-dropdown-content">
+                            <div class="links-list" id="app-links-list">
+                                <!-- Links will be loaded here -->
+                            </div>
+                            <button class="btn-add-link" onclick="openAddLinkModal()">
+                                <i class="iconoir-plus"></i> Añadir enlace
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Files Section - Compact -->
+                    <div class="app-files-compact">
+                        <div class="app-files-list-compact" id="app-files-list">
+                            <!-- Files will be loaded here -->
+                        </div>
+                        <div class="app-files-upload-compact" id="app-files-upload">
+                            <i class="iconoir-cloud-upload"></i>
+                            <span>Subir archivo</span>
+                            <input type="file" id="app-file-input" style="display: none;" multiple>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Multi-level Sorting Bar -->
             <div class="sorting-bar">
                 <div class="sorting-controls">
@@ -131,52 +177,6 @@ $company_name = $user['company_name'] ?? '';
                         <option value="medium">Media</option>
                         <option value="high">Alta</option>
                     </select>
-                </div>
-            </div>
-
-            <!-- App Info Section (visible only when viewing specific app) -->
-            <div class="app-info-section" id="app-info-section" style="display: none;">
-                <!-- Notes Section - Prominent, below app name -->
-                <div class="app-notes-section" id="app-notes-section">
-                    <div class="app-notes-display" id="app-notes-display">
-                        <!-- Notes will be loaded here as cards -->
-                    </div>
-                    <button class="btn-add-note" onclick="openAddNoteModal()" title="Añadir nota">
-                        <i class="iconoir-plus"></i> Añadir nota
-                    </button>
-                </div>
-                
-                <!-- Quick Actions Row: Links dropdown + Files upload -->
-                <div class="app-quick-actions">
-                    <!-- Links Dropdown -->
-                    <div class="app-links-dropdown" id="app-links-dropdown">
-                        <button class="btn-links-toggle" onclick="toggleLinksDropdown()">
-                            <i class="iconoir-link"></i>
-                            <span>Enlaces</span>
-                            <span class="links-count" id="links-count"></span>
-                            <i class="iconoir-nav-arrow-down dropdown-arrow"></i>
-                        </button>
-                        <div class="links-dropdown-content" id="links-dropdown-content">
-                            <div class="links-list" id="app-links-list">
-                                <!-- Links will be loaded here -->
-                            </div>
-                            <button class="btn-add-link" onclick="openAddLinkModal()">
-                                <i class="iconoir-plus"></i> Añadir enlace
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Files Section - Compact -->
-                    <div class="app-files-compact">
-                        <div class="app-files-list-compact" id="app-files-list">
-                            <!-- Files will be loaded here -->
-                        </div>
-                        <div class="app-files-upload-compact" id="app-files-upload">
-                            <i class="iconoir-cloud-upload"></i>
-                            <span>Subir archivo</span>
-                            <input type="file" id="app-file-input" style="display: none;" multiple>
-                        </div>
-                    </div>
                 </div>
             </div>
 
