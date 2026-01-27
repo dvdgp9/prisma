@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
         updateActiveNavItem(currentAppId);
         loadRequests();
-        loadAppFiles();
+        loadAppResources();
     } else {
         loadRequests();
     }
@@ -207,12 +207,12 @@ function loadView(type, appId = null, sourceEvent = null) {
     }
 
     // Show/hide app files section
-    const appFilesSection = document.getElementById('app-files-section');
-    if (appFilesSection) {
+    const appResourcesSection = document.getElementById('app-resources-section');
+    if (appResourcesSection) {
         if (type === 'app' && appId) {
-            loadAppFiles();
+            loadAppResources();
         } else {
-            appFilesSection.style.display = 'none';
+            appResourcesSection.style.display = 'none';
         }
     }
 
@@ -1312,7 +1312,7 @@ async function handleAppFileUpload(files) {
         }
     }
     
-    await loadAppFiles();
+    await loadAppResources();
 }
 
 // Setup file upload for edit modal
@@ -1402,97 +1402,6 @@ function setupEditModalFileUpload() {
             }
         };
     }
-}
-
-// Load app files
-async function loadAppFiles() {
-    const section = document.getElementById('app-files-section');
-    const list = document.getElementById('app-files-list');
-    const countEl = document.getElementById('app-files-count');
-    
-    if (!currentAppId) {
-        section.style.display = 'none';
-        return;
-    }
-    
-    section.style.display = 'block';
-    
-    try {
-        const response = await fetch(`/api/app-files.php?app_id=${currentAppId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const files = data.data;
-            
-            countEl.textContent = files.length > 0 ? `(${files.length})` : '';
-            
-            if (files.length === 0) {
-                list.innerHTML = '<div class="app-files-empty">No hay archivos todavía</div>';
-            } else {
-                list.innerHTML = files.map(file => `
-                    <div class="app-file-item">
-                        <a href="/${file.file_path}" target="_blank" class="app-file-info">
-                            <i class="${getFileIconClass(file.mime_type)} app-file-icon"></i>
-                            <div class="app-file-details">
-                                <div class="app-file-name" title="${escapeHtml(file.original_filename)}">${escapeHtml(file.original_filename)}</div>
-                                <div class="app-file-meta">
-                                    <span>${formatFileSize(file.file_size)}</span>
-                                    <span>${file.uploaded_by_name || file.uploaded_by_username || 'Usuario'}</span>
-                                    <span>${formatDate(file.created_at)}</span>
-                                </div>
-                            </div>
-                        </a>
-                        <div class="app-file-actions">
-                            <button class="app-file-btn delete" onclick="deleteAppFile(${file.id})" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-    } catch (error) {
-        console.error('Error loading app files:', error);
-        list.innerHTML = '<div class="app-files-empty">Error al cargar archivos</div>';
-    }
-}
-
-// Delete app file
-async function deleteAppFile(fileId) {
-    if (!confirm('¿Eliminar este archivo?')) return;
-    
-    try {
-        const response = await fetch('/api/app-files.php', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: fileId })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            await loadAppFiles();
-            showToast({
-                title: 'Eliminado',
-                message: 'Archivo eliminado',
-                icon: 'iconoir-check'
-            }, 'toast-completed');
-        } else {
-            alert(data.error || 'Error al eliminar');
-        }
-    } catch (error) {
-        console.error('Error deleting file:', error);
-    }
-}
-
-// Toggle app files section
-function toggleAppFiles() {
-    const content = document.getElementById('app-files-content');
-    const icon = document.getElementById('app-files-toggle-icon');
-    
-    content.classList.toggle('collapsed');
-    icon.classList.toggle('iconoir-nav-arrow-down');
-    icon.classList.toggle('iconoir-nav-arrow-right');
 }
 
 // Get file icon class based on mime type
@@ -1680,4 +1589,360 @@ function formatDateForToast(dateStr) {
     const [year, month, day] = dateStr.split('-');
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
+}
+
+// ===========================================
+// App Resources (Files, Links, Notes)
+// ===========================================
+
+let appResourcesData = { files: [], links: [], notes: [] };
+
+// Toggle app resources section
+function toggleAppResources() {
+    const content = document.getElementById('app-resources-content');
+    const icon = document.getElementById('app-resources-toggle-icon');
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('iconoir-nav-arrow-down');
+    icon.classList.toggle('iconoir-nav-arrow-right');
+}
+
+// Switch between resource tabs
+function switchResourceTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.app-resources-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.app-resources-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `tab-${tabName}`);
+    });
+}
+
+// Load all app resources (files, links, notes)
+async function loadAppResources() {
+    const section = document.getElementById('app-resources-section');
+    
+    if (!currentAppId) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    
+    // Load files
+    await loadAppFiles();
+    
+    // Load links and notes
+    await loadAppLinksAndNotes();
+    
+    // Update total count
+    updateResourcesCount();
+}
+
+// Load app files
+async function loadAppFiles() {
+    const list = document.getElementById('app-files-list');
+    const countEl = document.getElementById('files-count');
+    
+    if (!currentAppId) return;
+    
+    try {
+        const response = await fetch(`/api/app-files.php?app_id=${currentAppId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            appResourcesData.files = data.data;
+            const files = data.data;
+            
+            countEl.textContent = files.length > 0 ? files.length : '';
+            
+            if (files.length === 0) {
+                list.innerHTML = '<div class="app-files-empty">No hay archivos todavía</div>';
+            } else {
+                list.innerHTML = files.map(file => `
+                    <div class="app-file-item">
+                        <a href="/${file.file_path}" target="_blank" class="app-file-info">
+                            <i class="${getFileIconClass(file.mime_type)} app-file-icon"></i>
+                            <div class="app-file-details">
+                                <div class="app-file-name" title="${escapeHtml(file.original_filename)}">${escapeHtml(file.original_filename)}</div>
+                                <div class="app-file-meta">
+                                    <span>${formatFileSize(file.file_size)}</span>
+                                    <span>${file.uploaded_by_name || file.uploaded_by_username || 'Usuario'}</span>
+                                    <span>${formatDate(file.created_at)}</span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="app-file-actions">
+                            <button class="app-file-btn delete" onclick="deleteAppFile(${file.id})" title="Eliminar">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading app files:', error);
+        list.innerHTML = '<div class="app-files-empty">Error al cargar archivos</div>';
+    }
+}
+
+// Load app links and notes
+async function loadAppLinksAndNotes() {
+    const linksList = document.getElementById('app-links-list');
+    const notesList = document.getElementById('app-notes-list');
+    const linksCount = document.getElementById('links-count');
+    const notesCount = document.getElementById('notes-count');
+    
+    if (!currentAppId) return;
+    
+    try {
+        const response = await fetch(`/api/app-resources.php?app_id=${currentAppId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const resources = data.data;
+            const links = resources.filter(r => r.type === 'link');
+            const notes = resources.filter(r => r.type === 'note');
+            
+            appResourcesData.links = links;
+            appResourcesData.notes = notes;
+            
+            // Update links count
+            linksCount.textContent = links.length > 0 ? links.length : '';
+            
+            // Render links
+            if (links.length === 0) {
+                linksList.innerHTML = '<div class="app-resources-empty">No hay enlaces todavía</div>';
+            } else {
+                linksList.innerHTML = links.map(link => `
+                    <div class="app-link-item">
+                        <a href="${escapeHtml(link.content)}" target="_blank" class="app-link-info">
+                            <i class="iconoir-link app-link-icon"></i>
+                            <div class="app-link-details">
+                                <div class="app-link-title">${escapeHtml(link.title)}</div>
+                                <div class="app-link-url">${escapeHtml(link.content)}</div>
+                                <div class="app-link-meta">
+                                    <span>${link.created_by_name || link.created_by_username || 'Usuario'}</span>
+                                    <span>${formatDate(link.created_at)}</span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="app-link-actions">
+                            <button class="app-link-btn delete" onclick="event.stopPropagation(); deleteAppResource(${link.id}, 'link')" title="Eliminar">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // Update notes count
+            notesCount.textContent = notes.length > 0 ? notes.length : '';
+            
+            // Render notes
+            if (notes.length === 0) {
+                notesList.innerHTML = '<div class="app-resources-empty">No hay notas todavía</div>';
+            } else {
+                notesList.innerHTML = notes.map(note => `
+                    <div class="app-note-item" onclick="viewNote(${note.id})">
+                        <div class="app-note-info">
+                            <i class="iconoir-notes app-note-icon"></i>
+                            <div class="app-note-details">
+                                <div class="app-note-title">${escapeHtml(note.title)}</div>
+                                <div class="app-note-preview">${escapeHtml(note.content || '').substring(0, 60)}${(note.content || '').length > 60 ? '...' : ''}</div>
+                                <div class="app-note-meta">
+                                    <span>${note.created_by_name || note.created_by_username || 'Usuario'}</span>
+                                    <span>${formatDate(note.created_at)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="app-note-actions">
+                            <button class="app-note-btn delete" onclick="event.stopPropagation(); deleteAppResource(${note.id}, 'note')" title="Eliminar">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading app resources:', error);
+        linksList.innerHTML = '<div class="app-resources-empty">Error al cargar enlaces</div>';
+        notesList.innerHTML = '<div class="app-resources-empty">Error al cargar notas</div>';
+    }
+}
+
+// Update total resources count
+function updateResourcesCount() {
+    const totalCount = appResourcesData.files.length + appResourcesData.links.length + appResourcesData.notes.length;
+    const countEl = document.getElementById('app-resources-count');
+    if (countEl) {
+        countEl.textContent = totalCount > 0 ? `(${totalCount})` : '';
+    }
+}
+
+// Delete app file
+async function deleteAppFile(fileId) {
+    if (!confirm('¿Eliminar este archivo?')) return;
+    
+    try {
+        const response = await fetch('/api/app-files.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: fileId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadAppResources();
+            showToast({
+                title: 'Eliminado',
+                message: 'Archivo eliminado',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al eliminar');
+        }
+    } catch (error) {
+        console.error('Error deleting file:', error);
+    }
+}
+
+// Delete app resource (link or note)
+async function deleteAppResource(resourceId, type) {
+    const typeLabel = type === 'link' ? 'enlace' : 'nota';
+    if (!confirm(`¿Eliminar este ${typeLabel}?`)) return;
+    
+    try {
+        const response = await fetch('/api/app-resources.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: resourceId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadAppResources();
+            showToast({
+                title: 'Eliminado',
+                message: data.message || `${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} eliminado`,
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al eliminar');
+        }
+    } catch (error) {
+        console.error('Error deleting resource:', error);
+    }
+}
+
+// Open add link modal
+function openAddLinkModal() {
+    document.getElementById('link-title').value = '';
+    document.getElementById('link-url').value = '';
+    document.getElementById('add-link-modal').classList.add('active');
+    document.getElementById('link-title').focus();
+}
+
+// Open add note modal
+function openAddNoteModal() {
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-content').value = '';
+    document.getElementById('add-note-modal').classList.add('active');
+    document.getElementById('note-title').focus();
+}
+
+// Submit add link
+async function submitAddLink(event) {
+    event.preventDefault();
+    
+    const title = document.getElementById('link-title').value.trim();
+    const url = document.getElementById('link-url').value.trim();
+    
+    if (!title || !url) return;
+    
+    try {
+        const response = await fetch('/api/app-resources.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                app_id: currentAppId,
+                type: 'link',
+                title: title,
+                content: url
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('add-link-modal');
+            await loadAppResources();
+            switchResourceTab('links');
+            showToast({
+                title: 'Enlace añadido',
+                message: title,
+                icon: 'iconoir-link'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al añadir enlace');
+        }
+    } catch (error) {
+        console.error('Error adding link:', error);
+    }
+}
+
+// Submit add note
+async function submitAddNote(event) {
+    event.preventDefault();
+    
+    const title = document.getElementById('note-title').value.trim();
+    const content = document.getElementById('note-content').value.trim();
+    
+    if (!title) return;
+    
+    try {
+        const response = await fetch('/api/app-resources.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                app_id: currentAppId,
+                type: 'note',
+                title: title,
+                content: content
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('add-note-modal');
+            await loadAppResources();
+            switchResourceTab('notes');
+            showToast({
+                title: 'Nota añadida',
+                message: title,
+                icon: 'iconoir-notes'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al añadir nota');
+        }
+    } catch (error) {
+        console.error('Error adding note:', error);
+    }
+}
+
+// View note in modal
+function viewNote(noteId) {
+    const note = appResourcesData.notes.find(n => n.id == noteId);
+    if (!note) return;
+    
+    document.getElementById('view-note-title').textContent = note.title;
+    document.getElementById('view-note-content').textContent = note.content || '(Sin contenido)';
+    document.getElementById('view-note-modal').classList.add('active');
 }

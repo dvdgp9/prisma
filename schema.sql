@@ -97,6 +97,22 @@ CREATE TABLE IF NOT EXISTS attachments (
     INDEX idx_request (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- App Resources (links and notes for applications)
+CREATE TABLE IF NOT EXISTS app_resources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    app_id INT NOT NULL,
+    type ENUM('link', 'note') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_app (app_id),
+    INDEX idx_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- User-Company relationship (many-to-many for multi-company support)
 CREATE TABLE IF NOT EXISTS user_companies (
     id INT AUTO_INCREMENT PRIMARY KEY,

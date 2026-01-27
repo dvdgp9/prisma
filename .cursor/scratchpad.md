@@ -16,6 +16,7 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 2. ✅ **Changelog restringido** - Solo muestra apps del usuario
 3. ✅ **Zona de Tareas Rápidas** - Botón flotante + página Mis Tareas
 4. ✅ **Archivos por Aplicación** - Sección colapsable en vista de app
+5. ✅ **Recursos del proyecto (27 Enero 2026)** - Añadir enlaces y notas a las apps
 
 ### Nuevas Funcionalidades Solicitadas (21 Enero 2026)
 
@@ -230,6 +231,13 @@ CREATE TABLE user_companies (
 - [x] B.1: DB - Crear tabla `app_files`
 - [x] B.2: API - `/api/app-files.php` CRUD
 - [x] B.3: UI - Sección archivos en vista de app (lista colapsable)
+
+### ✅ Fase F: Recursos del Proyecto - Enlaces y Notas (COMPLETADA - 27 Enero 2026)
+- [x] F.1: DB - Migración `010_app_resources.sql` para tabla `app_resources`
+- [x] F.2: API - `/api/app-resources.php` CRUD (links y notes)
+- [x] F.3: UI - Sección "Recursos del proyecto" con tabs (Archivos, Enlaces, Notas)
+- [x] F.4: CSS - Estilos para tabs, enlaces y notas
+- [x] F.5: JS - Funciones para gestionar recursos (añadir, ver, eliminar)
 
 ### ✅ Fase C: Modularización Sidebar (COMPLETADA)
 - [x] C.1: Crear `includes/sidebar.php` con sidebar unificado

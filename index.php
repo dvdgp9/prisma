@@ -134,27 +134,70 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- App Files Section (visible only when viewing specific app) -->
-            <div class="app-files-section" id="app-files-section" style="display: none;">
-                <div class="app-files-header" onclick="toggleAppFiles()" style="cursor: pointer;">
-                    <div class="app-files-title">
+            <!-- App Resources Section (visible only when viewing specific app) -->
+            <div class="app-resources-section" id="app-resources-section" style="display: none;">
+                <div class="app-resources-header" onclick="toggleAppResources()" style="cursor: pointer;">
+                    <div class="app-resources-title">
                         <i class="iconoir-folder"></i>
-                        <span>Archivos del proyecto</span>
-                        <span class="app-files-count" id="app-files-count"></span>
+                        <span>Recursos del proyecto</span>
+                        <span class="app-resources-count" id="app-resources-count"></span>
                     </div>
                     <button class="btn btn-sm btn-outline">
-                        <i class="iconoir-nav-arrow-right" id="app-files-toggle-icon"></i>
+                        <i class="iconoir-nav-arrow-right" id="app-resources-toggle-icon"></i>
                     </button>
                 </div>
-                <div class="app-files-content collapsed" id="app-files-content">
-                    <div class="app-files-list" id="app-files-list">
-                        <!-- Files will be loaded here -->
+                <div class="app-resources-content collapsed" id="app-resources-content">
+                    <!-- Tabs for different resource types -->
+                    <div class="app-resources-tabs">
+                        <button class="app-resources-tab active" data-tab="files" onclick="switchResourceTab('files')">
+                            <i class="iconoir-folder"></i> Archivos
+                            <span class="tab-count" id="files-count"></span>
+                        </button>
+                        <button class="app-resources-tab" data-tab="links" onclick="switchResourceTab('links')">
+                            <i class="iconoir-link"></i> Enlaces
+                            <span class="tab-count" id="links-count"></span>
+                        </button>
+                        <button class="app-resources-tab" data-tab="notes" onclick="switchResourceTab('notes')">
+                            <i class="iconoir-notes"></i> Notas
+                            <span class="tab-count" id="notes-count"></span>
+                        </button>
                     </div>
-                    <div class="app-files-upload" id="app-files-upload">
-                        <i class="iconoir-cloud-upload"></i>
-                        <span>Arrastra archivos aquí o haz clic para subir</span>
-                        <span class="text-small text-muted">Máximo 10MB por archivo</span>
-                        <input type="file" id="app-file-input" style="display: none;" multiple>
+                    
+                    <!-- Files Tab -->
+                    <div class="app-resources-tab-content active" id="tab-files">
+                        <div class="app-files-list" id="app-files-list">
+                            <!-- Files will be loaded here -->
+                        </div>
+                        <div class="app-files-upload" id="app-files-upload">
+                            <i class="iconoir-cloud-upload"></i>
+                            <span>Arrastra archivos aquí o haz clic para subir</span>
+                            <span class="text-small text-muted">Máximo 10MB por archivo</span>
+                            <input type="file" id="app-file-input" style="display: none;" multiple>
+                        </div>
+                    </div>
+                    
+                    <!-- Links Tab -->
+                    <div class="app-resources-tab-content" id="tab-links">
+                        <div class="app-links-list" id="app-links-list">
+                            <!-- Links will be loaded here -->
+                        </div>
+                        <div class="app-resource-add">
+                            <button class="btn btn-sm btn-outline" onclick="openAddLinkModal()">
+                                <i class="iconoir-plus"></i> Añadir enlace
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes Tab -->
+                    <div class="app-resources-tab-content" id="tab-notes">
+                        <div class="app-notes-list" id="app-notes-list">
+                            <!-- Notes will be loaded here -->
+                        </div>
+                        <div class="app-resource-add">
+                            <button class="btn btn-sm btn-outline" onclick="openAddNoteModal()">
+                                <i class="iconoir-plus"></i> Añadir nota
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -523,6 +566,101 @@ $company_name = $user['company_name'] ?? '';
                         onclick="closeModal('profile-modal')">Cancelar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Add Link Modal -->
+    <div class="modal" id="add-link-modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-link modal-header-icon"></i>
+                    <h3 class="modal-title">Añadir Enlace</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('add-link-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <form id="add-link-form" onsubmit="submitAddLink(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="link-title">
+                            <i class="iconoir-text"></i> Título *
+                        </label>
+                        <input type="text" id="link-title" required placeholder="Ej: Documentación API">
+                    </div>
+                    <div class="form-group">
+                        <label for="link-url">
+                            <i class="iconoir-link"></i> URL *
+                        </label>
+                        <input type="url" id="link-url" required placeholder="https://...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('add-link-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-plus"></i> Añadir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div class="modal" id="add-note-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-notes modal-header-icon"></i>
+                    <h3 class="modal-title">Añadir Nota</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('add-note-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <form id="add-note-form" onsubmit="submitAddNote(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="note-title">
+                            <i class="iconoir-text"></i> Título *
+                        </label>
+                        <input type="text" id="note-title" required placeholder="Ej: Credenciales de acceso">
+                    </div>
+                    <div class="form-group">
+                        <label for="note-content">
+                            <i class="iconoir-align-left"></i> Contenido
+                        </label>
+                        <textarea id="note-content" rows="5" placeholder="Escribe aquí la información..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('add-note-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-plus"></i> Añadir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Note Modal -->
+    <div class="modal" id="view-note-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-notes modal-header-icon"></i>
+                    <h3 class="modal-title" id="view-note-title">Nota</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('view-note-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="view-note-content" class="note-content-display"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('view-note-modal')">Cerrar</button>
+            </div>
         </div>
     </div>
 
