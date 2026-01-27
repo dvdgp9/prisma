@@ -642,6 +642,38 @@ $company_name = $user['company_name'] ?? '';
         </div>
     </div>
 
+    <!-- Edit File Name Modal -->
+    <div class="modal" id="edit-file-name-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-edit-pencil modal-header-icon"></i>
+                    <h3 class="modal-title">Editar Nombre de Archivo</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('edit-file-name-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <form id="edit-file-name-form" onsubmit="submitEditFileName(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-file-name">
+                            <i class="iconoir-text"></i> Nuevo nombre *
+                        </label>
+                        <input type="text" id="edit-file-name" required placeholder="Ej: documento_v2.pdf">
+                        <input type="hidden" id="edit-file-id">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('edit-file-name-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-check"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Floating Task Button -->
     <div class="floating-task-btn" id="floating-task-btn" onclick="toggleFloatingTaskInput()">
         <i class="iconoir-plus"></i>

@@ -1636,6 +1636,9 @@ async function loadAppFiles() {
                     <div class="app-file-chip" title="${escapeHtml(file.original_filename)} - ${formatFileSize(file.file_size)}">
                         <i class="${getFileIconClass(file.mime_type)}"></i>
                         <a href="/${file.file_path}" target="_blank" class="app-file-chip-name">${escapeHtml(file.original_filename)}</a>
+                        <button class="app-file-chip-edit" onclick="event.preventDefault(); openEditFileNameModal(${file.id}, '${escapeHtml(file.original_filename).replace(/'/g, "\\'")}')" title="Editar nombre">
+                            <i class="iconoir-edit-pencil"></i>
+                        </button>
                         <button class="app-file-chip-delete" onclick="event.preventDefault(); deleteAppFile(${file.id})" title="Eliminar">
                             <i class="iconoir-xmark"></i>
                         </button>
@@ -1772,6 +1775,51 @@ async function deleteAppFile(fileId) {
         }
     } catch (error) {
         console.error('Error deleting file:', error);
+    }
+}
+
+// Open edit file name modal
+function openEditFileNameModal(fileId, currentName) {
+    document.getElementById('edit-file-id').value = fileId;
+    document.getElementById('edit-file-name').value = currentName;
+    document.getElementById('edit-file-name-modal').classList.add('active');
+    document.getElementById('edit-file-name').focus();
+}
+
+// Submit edit file name
+async function submitEditFileName(event) {
+    event.preventDefault();
+    
+    const fileId = document.getElementById('edit-file-id').value;
+    const newName = document.getElementById('edit-file-name').value.trim();
+    
+    if (!fileId || !newName) return;
+    
+    try {
+        const response = await fetch('/api/app-files.php', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: fileId,
+                original_filename: newName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('edit-file-name-modal');
+            await loadAppResources();
+            showToast({
+                title: 'Actualizado',
+                message: 'Nombre de archivo actualizado',
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al actualizar nombre');
+        }
+    } catch (error) {
+        console.error('Error updating file name:', error);
     }
 }
 
