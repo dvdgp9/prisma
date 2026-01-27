@@ -1597,32 +1597,9 @@ function formatDateForToast(dateStr) {
 
 let appResourcesData = { files: [], links: [], notes: [] };
 
-// Toggle app resources section
-function toggleAppResources() {
-    const content = document.getElementById('app-resources-content');
-    const icon = document.getElementById('app-resources-toggle-icon');
-    
-    content.classList.toggle('collapsed');
-    icon.classList.toggle('iconoir-nav-arrow-down');
-    icon.classList.toggle('iconoir-nav-arrow-right');
-}
-
-// Switch between resource tabs
-function switchResourceTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.app-resources-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabName);
-    });
-    
-    // Update tab content
-    document.querySelectorAll('.app-resources-tab-content').forEach(content => {
-        content.classList.toggle('active', content.id === `tab-${tabName}`);
-    });
-}
-
 // Load all app resources (files, links, notes)
 async function loadAppResources() {
-    const section = document.getElementById('app-resources-section');
+    const section = document.getElementById('app-info-section');
     
     if (!currentAppId) {
         if (section) section.style.display = 'none';
@@ -1636,17 +1613,13 @@ async function loadAppResources() {
     
     // Load links and notes
     await loadAppLinksAndNotes();
-    
-    // Update total count
-    updateResourcesCount();
 }
 
-// Load app files
+// Load app files (compact chips)
 async function loadAppFiles() {
     const list = document.getElementById('app-files-list');
-    const countEl = document.getElementById('files-count');
     
-    if (!currentAppId) return;
+    if (!currentAppId || !list) return;
     
     try {
         const response = await fetch(`/api/app-files.php?app_id=${currentAppId}`);
@@ -1656,45 +1629,30 @@ async function loadAppFiles() {
             appResourcesData.files = data.data;
             const files = data.data;
             
-            countEl.textContent = files.length > 0 ? files.length : '';
-            
             if (files.length === 0) {
-                list.innerHTML = '<div class="app-files-empty">No hay archivos todavía</div>';
+                list.innerHTML = '';
             } else {
                 list.innerHTML = files.map(file => `
-                    <div class="app-file-item">
-                        <a href="/${file.file_path}" target="_blank" class="app-file-info">
-                            <i class="${getFileIconClass(file.mime_type)} app-file-icon"></i>
-                            <div class="app-file-details">
-                                <div class="app-file-name" title="${escapeHtml(file.original_filename)}">${escapeHtml(file.original_filename)}</div>
-                                <div class="app-file-meta">
-                                    <span>${formatFileSize(file.file_size)}</span>
-                                    <span>${file.uploaded_by_name || file.uploaded_by_username || 'Usuario'}</span>
-                                    <span>${formatDate(file.created_at)}</span>
-                                </div>
-                            </div>
-                        </a>
-                        <div class="app-file-actions">
-                            <button class="app-file-btn delete" onclick="deleteAppFile(${file.id})" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        </div>
+                    <div class="app-file-chip" title="${escapeHtml(file.original_filename)} - ${formatFileSize(file.file_size)}">
+                        <i class="${getFileIconClass(file.mime_type)}"></i>
+                        <a href="/${file.file_path}" target="_blank" class="app-file-chip-name">${escapeHtml(file.original_filename)}</a>
+                        <button class="app-file-chip-delete" onclick="event.preventDefault(); deleteAppFile(${file.id})" title="Eliminar">
+                            <i class="iconoir-xmark"></i>
+                        </button>
                     </div>
                 `).join('');
             }
         }
     } catch (error) {
         console.error('Error loading app files:', error);
-        list.innerHTML = '<div class="app-files-empty">Error al cargar archivos</div>';
     }
 }
 
 // Load app links and notes
 async function loadAppLinksAndNotes() {
     const linksList = document.getElementById('app-links-list');
-    const notesList = document.getElementById('app-notes-list');
+    const notesDisplay = document.getElementById('app-notes-display');
     const linksCount = document.getElementById('links-count');
-    const notesCount = document.getElementById('notes-count');
     
     if (!currentAppId) return;
     
@@ -1711,78 +1669,83 @@ async function loadAppLinksAndNotes() {
             appResourcesData.notes = notes;
             
             // Update links count
-            linksCount.textContent = links.length > 0 ? links.length : '';
-            
-            // Render links
-            if (links.length === 0) {
-                linksList.innerHTML = '<div class="app-resources-empty">No hay enlaces todavía</div>';
-            } else {
-                linksList.innerHTML = links.map(link => `
-                    <div class="app-link-item">
-                        <a href="${escapeHtml(link.content)}" target="_blank" class="app-link-info">
-                            <i class="iconoir-link app-link-icon"></i>
-                            <div class="app-link-details">
-                                <div class="app-link-title">${escapeHtml(link.title)}</div>
-                                <div class="app-link-url">${escapeHtml(link.content)}</div>
-                                <div class="app-link-meta">
-                                    <span>${link.created_by_name || link.created_by_username || 'Usuario'}</span>
-                                    <span>${formatDate(link.created_at)}</span>
-                                </div>
-                            </div>
-                        </a>
-                        <div class="app-link-actions">
-                            <button class="app-link-btn delete" onclick="event.stopPropagation(); deleteAppResource(${link.id}, 'link')" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+            if (linksCount) {
+                linksCount.textContent = links.length > 0 ? links.length : '';
             }
             
-            // Update notes count
-            notesCount.textContent = notes.length > 0 ? notes.length : '';
-            
-            // Render notes
-            if (notes.length === 0) {
-                notesList.innerHTML = '<div class="app-resources-empty">No hay notas todavía</div>';
-            } else {
-                notesList.innerHTML = notes.map(note => `
-                    <div class="app-note-item" onclick="viewNote(${note.id})">
-                        <div class="app-note-info">
-                            <i class="iconoir-notes app-note-icon"></i>
-                            <div class="app-note-details">
-                                <div class="app-note-title">${escapeHtml(note.title)}</div>
-                                <div class="app-note-preview">${escapeHtml(note.content || '').substring(0, 60)}${(note.content || '').length > 60 ? '...' : ''}</div>
-                                <div class="app-note-meta">
-                                    <span>${note.created_by_name || note.created_by_username || 'Usuario'}</span>
-                                    <span>${formatDate(note.created_at)}</span>
+            // Render links in dropdown
+            if (linksList) {
+                if (links.length === 0) {
+                    linksList.innerHTML = '<div class="app-resources-empty" style="padding: 12px; text-align: center;">No hay enlaces</div>';
+                } else {
+                    linksList.innerHTML = links.map(link => `
+                        <div class="app-link-item">
+                            <a href="${escapeHtml(link.content)}" target="_blank" class="app-link-info">
+                                <i class="iconoir-link app-link-icon"></i>
+                                <div class="app-link-details">
+                                    <div class="app-link-title">${escapeHtml(link.title)}</div>
+                                    <div class="app-link-url">${escapeHtml(link.content)}</div>
                                 </div>
+                            </a>
+                            <div class="app-link-actions">
+                                <button class="app-link-btn delete" onclick="event.stopPropagation(); event.preventDefault(); deleteAppResource(${link.id}, 'link')" title="Eliminar">
+                                    <i class="iconoir-trash"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="app-note-actions">
-                            <button class="app-note-btn delete" onclick="event.stopPropagation(); deleteAppResource(${note.id}, 'note')" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
+                    `).join('');
+                }
+            }
+            
+            // Render notes as prominent cards
+            if (notesDisplay) {
+                if (notes.length === 0) {
+                    notesDisplay.innerHTML = '';
+                } else {
+                    notesDisplay.innerHTML = notes.map(note => `
+                        <div class="app-note-card">
+                            <div class="app-note-card-header">
+                                <div class="app-note-card-title">
+                                    <i class="iconoir-notes"></i>
+                                    ${escapeHtml(note.title)}
+                                </div>
+                                <div class="app-note-card-actions">
+                                    <button class="app-note-card-btn delete" onclick="deleteAppResource(${note.id}, 'note')" title="Eliminar">
+                                        <i class="iconoir-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="app-note-card-content">${escapeHtml(note.content || '')}</div>
+                            <div class="app-note-card-meta">
+                                <span>${note.created_by_name || note.created_by_username || 'Usuario'}</span>
+                                <span>${formatDate(note.created_at)}</span>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                }
             }
         }
     } catch (error) {
         console.error('Error loading app resources:', error);
-        linksList.innerHTML = '<div class="app-resources-empty">Error al cargar enlaces</div>';
-        notesList.innerHTML = '<div class="app-resources-empty">Error al cargar notas</div>';
     }
 }
 
-// Update total resources count
-function updateResourcesCount() {
-    const totalCount = appResourcesData.files.length + appResourcesData.links.length + appResourcesData.notes.length;
-    const countEl = document.getElementById('app-resources-count');
-    if (countEl) {
-        countEl.textContent = totalCount > 0 ? `(${totalCount})` : '';
+// Toggle links dropdown
+function toggleLinksDropdown() {
+    const dropdown = document.getElementById('app-links-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('open');
     }
 }
+
+// Close links dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('app-links-dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+        dropdown.classList.remove('open');
+    }
+});
+
 
 // Delete app file
 async function deleteAppFile(fileId) {

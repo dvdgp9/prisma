@@ -134,69 +134,47 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- App Resources Section (visible only when viewing specific app) -->
-            <div class="app-resources-section" id="app-resources-section" style="display: none;">
-                <div class="app-resources-header" onclick="toggleAppResources()" style="cursor: pointer;">
-                    <div class="app-resources-title">
-                        <i class="iconoir-folder"></i>
-                        <span>Recursos del proyecto</span>
-                        <span class="app-resources-count" id="app-resources-count"></span>
+            <!-- App Info Section (visible only when viewing specific app) -->
+            <div class="app-info-section" id="app-info-section" style="display: none;">
+                <!-- Notes Section - Prominent, below app name -->
+                <div class="app-notes-section" id="app-notes-section">
+                    <div class="app-notes-display" id="app-notes-display">
+                        <!-- Notes will be loaded here as cards -->
                     </div>
-                    <button class="btn btn-sm btn-outline">
-                        <i class="iconoir-nav-arrow-right" id="app-resources-toggle-icon"></i>
+                    <button class="btn-add-note" onclick="openAddNoteModal()" title="Añadir nota">
+                        <i class="iconoir-plus"></i> Añadir nota
                     </button>
                 </div>
-                <div class="app-resources-content collapsed" id="app-resources-content">
-                    <!-- Tabs for different resource types -->
-                    <div class="app-resources-tabs">
-                        <button class="app-resources-tab active" data-tab="files" onclick="switchResourceTab('files')">
-                            <i class="iconoir-folder"></i> Archivos
-                            <span class="tab-count" id="files-count"></span>
+                
+                <!-- Quick Actions Row: Links dropdown + Files upload -->
+                <div class="app-quick-actions">
+                    <!-- Links Dropdown -->
+                    <div class="app-links-dropdown" id="app-links-dropdown">
+                        <button class="btn-links-toggle" onclick="toggleLinksDropdown()">
+                            <i class="iconoir-link"></i>
+                            <span>Enlaces</span>
+                            <span class="links-count" id="links-count"></span>
+                            <i class="iconoir-nav-arrow-down dropdown-arrow"></i>
                         </button>
-                        <button class="app-resources-tab" data-tab="links" onclick="switchResourceTab('links')">
-                            <i class="iconoir-link"></i> Enlaces
-                            <span class="tab-count" id="links-count"></span>
-                        </button>
-                        <button class="app-resources-tab" data-tab="notes" onclick="switchResourceTab('notes')">
-                            <i class="iconoir-notes"></i> Notas
-                            <span class="tab-count" id="notes-count"></span>
-                        </button>
-                    </div>
-                    
-                    <!-- Files Tab -->
-                    <div class="app-resources-tab-content active" id="tab-files">
-                        <div class="app-files-list" id="app-files-list">
-                            <!-- Files will be loaded here -->
-                        </div>
-                        <div class="app-files-upload" id="app-files-upload">
-                            <i class="iconoir-cloud-upload"></i>
-                            <span>Arrastra archivos aquí o haz clic para subir</span>
-                            <span class="text-small text-muted">Máximo 10MB por archivo</span>
-                            <input type="file" id="app-file-input" style="display: none;" multiple>
-                        </div>
-                    </div>
-                    
-                    <!-- Links Tab -->
-                    <div class="app-resources-tab-content" id="tab-links">
-                        <div class="app-links-list" id="app-links-list">
-                            <!-- Links will be loaded here -->
-                        </div>
-                        <div class="app-resource-add">
-                            <button class="btn btn-sm btn-outline" onclick="openAddLinkModal()">
+                        <div class="links-dropdown-content" id="links-dropdown-content">
+                            <div class="links-list" id="app-links-list">
+                                <!-- Links will be loaded here -->
+                            </div>
+                            <button class="btn-add-link" onclick="openAddLinkModal()">
                                 <i class="iconoir-plus"></i> Añadir enlace
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Notes Tab -->
-                    <div class="app-resources-tab-content" id="tab-notes">
-                        <div class="app-notes-list" id="app-notes-list">
-                            <!-- Notes will be loaded here -->
+                    <!-- Files Section - Compact -->
+                    <div class="app-files-compact">
+                        <div class="app-files-list-compact" id="app-files-list">
+                            <!-- Files will be loaded here -->
                         </div>
-                        <div class="app-resource-add">
-                            <button class="btn btn-sm btn-outline" onclick="openAddNoteModal()">
-                                <i class="iconoir-plus"></i> Añadir nota
-                            </button>
+                        <div class="app-files-upload-compact" id="app-files-upload">
+                            <i class="iconoir-cloud-upload"></i>
+                            <span>Subir archivo</span>
+                            <input type="file" id="app-file-input" style="display: none;" multiple>
                         </div>
                     </div>
                 </div>

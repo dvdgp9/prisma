@@ -2274,111 +2274,303 @@ nav {
     color: var(--text-muted);
 }
 
-/* ========== App Resources Section ========== */
-.app-resources-section {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
+/* ========== App Info Section (Notes, Links, Files) ========== */
+.app-info-section {
     margin-bottom: var(--spacing-lg);
-    overflow: hidden;
 }
 
-.app-resources-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md);
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
+/* Notes Section - Prominent display */
+.app-notes-section {
+    margin-bottom: var(--spacing-md);
 }
 
-.app-resources-title {
+.app-notes-display {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: var(--spacing-sm);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
 }
 
-.app-resources-title i {
+.app-note-card {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    position: relative;
+}
+
+.app-note-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xs);
+}
+
+.app-note-card-title {
+    font-weight: var(--font-weight-semibold);
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.app-note-card-title i {
+    color: #f59e0b;
+}
+
+.app-note-card-content {
+    color: #78350f;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.app-note-card-meta {
+    font-size: 0.7rem;
+    color: #b45309;
+    margin-top: var(--spacing-sm);
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.app-note-card-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.app-note-card:hover .app-note-card-actions {
+    opacity: 1;
+}
+
+.app-note-card-btn {
+    background: rgba(255, 255, 255, 0.7);
+    border: none;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: #92400e;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+}
+
+.app-note-card-btn:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.app-note-card-btn.delete:hover {
+    color: var(--danger-color);
+}
+
+.btn-add-note {
+    background: transparent;
+    border: 2px dashed #fde68a;
+    color: #b45309;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    transition: all 0.15s ease;
+}
+
+.btn-add-note:hover {
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+
+/* Quick Actions Row */
+.app-quick-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+/* Links Dropdown */
+.app-links-dropdown {
+    position: relative;
+}
+
+.btn-links-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+}
+
+.btn-links-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+.btn-links-toggle i:first-child {
     color: var(--primary-color);
 }
 
-.app-resources-count {
-    font-size: 0.75rem;
+.btn-links-toggle .links-count {
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    font-weight: 400;
 }
 
-.app-resources-content {
-    padding: 0;
+.btn-links-toggle .dropdown-arrow {
+    margin-left: var(--spacing-xs);
+    transition: transform 0.15s ease;
 }
 
-.app-resources-content.collapsed {
+.app-links-dropdown.open .btn-links-toggle .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.links-dropdown-content {
     display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 300px;
+    max-width: 400px;
+    z-index: 100;
+    overflow: hidden;
 }
 
-.app-resources-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-secondary);
+.app-links-dropdown.open .links-dropdown-content {
+    display: block;
 }
 
-.app-resources-tab {
-    flex: 1;
+.links-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.btn-add-link {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--spacing-xs);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: transparent;
+    width: 100%;
+    background: var(--bg-secondary);
     border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.875rem;
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
     cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.app-resources-tab:hover {
-    color: var(--text-primary);
-    background: var(--bg-primary);
-}
-
-.app-resources-tab.active {
     color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-    background: var(--bg-primary);
+    font-size: 0.875rem;
+    transition: background 0.15s ease;
 }
 
-.app-resources-tab .tab-count {
-    font-size: 0.7rem;
+.btn-add-link:hover {
     background: var(--bg-tertiary);
-    padding: 2px 6px;
-    border-radius: 10px;
-    color: var(--text-muted);
 }
 
-.app-resources-tab.active .tab-count {
-    background: rgba(66, 160, 209, 0.1);
+/* Files Compact Section */
+.app-files-compact {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.app-files-list-compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.app-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+    max-width: 200px;
+}
+
+.app-file-chip:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+.app-file-chip i {
     color: var(--primary-color);
+    flex-shrink: 0;
 }
 
-.app-resources-tab-content {
-    display: none;
-    padding: var(--spacing-md);
+.app-file-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.app-resources-tab-content.active {
-    display: block;
+.app-file-chip-delete {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.15s ease;
 }
 
-.app-resource-add {
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    border-top: 1px dashed var(--border-color);
-    text-align: center;
+.app-file-chip:hover .app-file-chip-delete {
+    opacity: 1;
+}
+
+.app-file-chip-delete:hover {
+    color: var(--danger-color);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.app-files-upload-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 2px dashed var(--border-color);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.app-files-upload-compact:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(66, 160, 209, 0.05);
+}
+
+.app-files-upload-compact i {
+    font-size: 1rem;
 }
 
 /* Links list */
