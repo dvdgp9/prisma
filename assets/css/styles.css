@@ -2294,8 +2294,8 @@ nav {
 .app-note-card {
     background: var(--bg-secondary);
     border: none;
-    border-top: 4px solid #f59e0b;
-    border-radius: var(--radius-md);
+    border-top: 1px solid #f59e0b;
+    border-radius: 0;
     padding: var(--spacing-md);
     position: relative;
 }
