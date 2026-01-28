@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prisma - Panel Administración</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="icon" type="image/png" href="/favicon.png?v=2">
+
+    <?php include __DIR__ . '/includes/pwa-head.php'; ?>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -413,6 +417,7 @@ $user = get_logged_user();
     </div>
 
     <script src="/assets/js/admin.js"></script>
+    <script src="/assets/js/pwa.js"></script>
 </body>
 
 </html>

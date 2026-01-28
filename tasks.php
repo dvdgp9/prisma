@@ -8,6 +8,8 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="icon" type="image/png" href="/favicon.png?v=2">
 
+    <?php include __DIR__ . '/includes/pwa-head.php'; ?>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -263,6 +265,7 @@ $userApps = get_user_apps();
     <div id="toast-container"></div>
 
     <script src="/assets/js/tasks.js"></script>
+    <script src="/assets/js/pwa.js"></script>
 </body>
 
 </html>
