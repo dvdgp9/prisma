@@ -1960,3 +1960,32 @@ function viewNote(noteId) {
     document.getElementById('view-note-content').textContent = note.content || '(Sin contenido)';
     document.getElementById('view-note-modal').classList.add('active');
 }
+
+// ===================
+// Export Functions
+// ===================
+
+function openExportModal() {
+    document.getElementById('export-company').value = '';
+    document.getElementById('export-modal').classList.add('active');
+}
+
+function exportRequests() {
+    const companyId = document.getElementById('export-company').value;
+    
+    if (!companyId) {
+        alert('Por favor, selecciona una empresa');
+        return;
+    }
+    
+    // Trigger download via direct navigation
+    window.location.href = `/api/export-requests.php?company_id=${companyId}`;
+    
+    closeModal('export-modal');
+    
+    showToast({
+        title: 'Exportación iniciada',
+        message: 'El archivo CSV se descargará automáticamente',
+        icon: 'iconoir-download'
+    }, 'toast-completed');
+}

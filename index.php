@@ -42,6 +42,10 @@ $company_name = $user['company_name'] ?? '';
             <div class="content-header">
                 <h1 class="page-title" id="page-title">Vista Global</h1>
                 <div class="actions">
+                    <button class="btn btn-outline" onclick="openExportModal()">
+                        <i class="iconoir-download"></i>
+                        Exportar
+                    </button>
                     <button class="btn btn-primary" onclick="openNewRequestModal()">
                         <i class="iconoir-plus"></i>
                         Nueva Mejora
@@ -661,6 +665,48 @@ $company_name = $user['company_name'] ?? '';
                         <button type="submit" class="btn btn-primary">Guardar cambios</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-download modal-header-icon"></i>
+                    <h3 class="modal-title">Exportar Mejoras</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('export-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="margin-bottom: var(--spacing-lg);">
+                    Selecciona la empresa de la que quieres exportar las mejoras pendientes.
+                </p>
+                <div class="form-group">
+                    <label for="export-company">
+                        <i class="iconoir-building"></i> Empresa *
+                    </label>
+                    <select id="export-company" required>
+                        <option value="">Selecciona una empresa</option>
+                        <?php 
+                        $user_companies = get_user_companies();
+                        foreach ($user_companies as $company): 
+                        ?>
+                            <option value="<?php echo $company['id']; ?>">
+                                <?php echo htmlspecialchars($company['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('export-modal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="exportRequests()">
+                    <i class="iconoir-download"></i> Exportar CSV
+                </button>
             </div>
         </div>
     </div>

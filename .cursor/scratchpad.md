@@ -232,6 +232,12 @@ CREATE TABLE user_companies (
 - [x] B.2: API - `/api/app-files.php` CRUD
 - [x] B.3: UI - Sección archivos en vista de app (lista colapsable)
 
+### ✅ Fase G: Exportar Mejoras a CSV (COMPLETADA - 30 Enero 2026)
+- [x] G.1: Botón "Exportar" junto a "Nueva Mejora" en index.php
+- [x] G.2: Modal de selección de empresa
+- [x] G.3: API `/api/export-requests.php` para generar CSV
+- [x] G.4: Funciones JS para manejar exportación
+
 ### ✅ Fase F: Recursos del Proyecto - Enlaces y Notas (COMPLETADA - 27 Enero 2026)
 - [x] F.1: DB - Migración `010_app_resources.sql` para tabla `app_resources`
 - [x] F.2: API - `/api/app-resources.php` CRUD (links y notes)
