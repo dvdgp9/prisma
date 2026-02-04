@@ -206,13 +206,14 @@ function loadView(type, appId = null, sourceEvent = null) {
         updateActiveNavItem(appId);
     }
 
-    // Show/hide app files section
-    const appResourcesSection = document.getElementById('app-resources-section');
-    if (appResourcesSection) {
+    // Show/hide app info section (links, notes, files)
+    const appInfoSection = document.getElementById('app-info-section');
+    if (appInfoSection) {
         if (type === 'app' && appId) {
+            appInfoSection.style.display = 'block';
             loadAppResources();
         } else {
-            appResourcesSection.style.display = 'none';
+            appInfoSection.style.display = 'none';
         }
     }
 
