@@ -15,29 +15,55 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Get files for an app
+        // Get files for an app or all files for a company
         $appId = $_GET['app_id'] ?? null;
+        $companyId = $_GET['company_id'] ?? null;
         
-        if (!$appId) {
-            error_response('App ID is required');
+        if (!$appId && !$companyId) {
+            error_response('App ID or Company ID is required');
         }
-        
-        // Verify user has access to app
-        if (!can_access_app($appId)) {
-            error_response('No tienes acceso a esta aplicación', 403);
+
+        if ($companyId) {
+            if (!can_access_company($companyId)) {
+                error_response('No tienes acceso a esta empresa', 403);
+            }
+
+            $stmt = $db->prepare("
+                SELECT 
+                    af.*,
+                    a.name as app_name,
+                    a.company_id,
+                    u.username as uploaded_by_username,
+                    u.full_name as uploaded_by_name
+                FROM app_files af
+                INNER JOIN apps a ON af.app_id = a.id
+                LEFT JOIN users u ON af.uploaded_by = u.id
+                WHERE a.company_id = ?
+                ORDER BY af.created_at DESC
+            ");
+            $stmt->execute([$companyId]);
+        } else {
+            // Verify user has access to app
+            if (!can_access_app($appId)) {
+                error_response('No tienes acceso a esta aplicación', 403);
+            }
+
+            $stmt = $db->prepare("
+                SELECT 
+                    af.*,
+                    a.name as app_name,
+                    a.company_id,
+                    u.username as uploaded_by_username,
+                    u.full_name as uploaded_by_name
+                FROM app_files af
+                INNER JOIN apps a ON af.app_id = a.id
+                LEFT JOIN users u ON af.uploaded_by = u.id
+                WHERE af.app_id = ?
+                ORDER BY af.created_at DESC
+            ");
+            $stmt->execute([$appId]);
         }
-        
-        $stmt = $db->prepare("
-            SELECT 
-                af.*,
-                u.username as uploaded_by_username,
-                u.full_name as uploaded_by_name
-            FROM app_files af
-            LEFT JOIN users u ON af.uploaded_by = u.id
-            WHERE af.app_id = ?
-            ORDER BY af.created_at DESC
-        ");
-        $stmt->execute([$appId]);
+
         $files = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         success_response($files);

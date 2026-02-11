@@ -448,3 +448,22 @@ function can_access_app($app_id)
     
     return in_array($app['company_id'], $user_company_ids);
 }
+
+/**
+ * Check if user can access a specific company
+ */
+function can_access_company($company_id)
+{
+    $user = get_logged_user();
+    if (!$user) {
+        return false;
+    }
+
+    if ($user['role'] === 'superadmin') {
+        return true;
+    }
+
+    $companies = get_user_companies();
+    $company_ids = array_column($companies, 'id');
+    return in_array((int)$company_id, array_map('intval', $company_ids), true);
+}

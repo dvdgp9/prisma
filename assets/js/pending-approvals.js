@@ -27,6 +27,7 @@ async function updatePendingCount() {
 async function loadPendingApprovals() {
     currentView = 'pending';
     currentAppId = null;
+    currentCompanyId = null;
 
     // Update URL without reload
     history.pushState({view: 'pending'}, '', '/index.php#pending');
@@ -36,6 +37,7 @@ async function loadPendingApprovals() {
     
     // Remove active from all nav items and quick action buttons
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.company-nav-item').forEach(item => item.classList.remove('active'));
     document.querySelectorAll('.quick-action-btn').forEach(btn => btn.classList.remove('active'));
     
     // Add active to pending approvals button

@@ -4,6 +4,7 @@ let apps = [];
 let requests = [];
 let currentView = 'global';
 let currentAppId = null;
+let currentCompanyId = null;
 let selectedFiles = [];
 let showFinished = false;
 
@@ -11,15 +12,19 @@ const userRole = document.body.dataset.userRole;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function () {
-    // Check for app in URL (supports both 'app' and 'app_id' params)
+    // Check for app/company in URL (supports both 'app' and 'app_id' params)
     const urlParams = new URLSearchParams(window.location.search);
     const appIdParam = urlParams.get('app') || urlParams.get('app_id');
+    const companyIdParam = urlParams.get('company');
     const isPending = window.location.hash === '#pending';
 
     // Set initial state based on URL
     if (isPending && (userRole === 'admin' || userRole === 'superadmin')) {
         currentView = 'pending';
         document.getElementById('page-title').textContent = 'Solicitudes Pendientes de Aprobar';
+    } else if (companyIdParam) {
+        currentView = 'company';
+        currentCompanyId = parseInt(companyIdParam);
     } else if (appIdParam) {
         currentView = 'app';
         currentAppId = parseInt(appIdParam);
@@ -31,13 +36,21 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Now update based on current view
     if (currentView === 'pending') {
         loadPendingApprovals();
+    } else if (currentView === 'company' && currentCompanyId) {
+        const company = appsGrouped.find(g => g.id == currentCompanyId);
+        if (company) {
+            document.getElementById('page-title').textContent = company.name;
+        }
+        updateActiveNavItem(null, currentCompanyId);
+        loadRequests();
+        loadAppResources();
     } else if (currentView === 'app' && currentAppId) {
         // Update title and active state now that apps are loaded
         const app = apps.find(a => a.id == currentAppId);
         if (app) {
             document.getElementById('page-title').textContent = app.name;
         }
-        updateActiveNavItem(currentAppId);
+        updateActiveNavItem(currentAppId, null);
         loadRequests();
         loadAppResources();
     } else {
@@ -65,15 +78,23 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 });
 
-// Helper to update active nav item by app ID
-function updateActiveNavItem(appId) {
+// Helper to update active nav state by app/company
+function updateActiveNavItem(appId, companyId = null) {
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.company-nav-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.quick-action-btn').forEach(b => b.classList.remove('active'));
     
     if (appId) {
         const navItem = document.querySelector(`.nav-item[data-app-id="${appId}"]`);
         if (navItem) {
             navItem.classList.add('active');
+        }
+    }
+
+    if (companyId) {
+        const companyNavItem = document.querySelector(`.company-nav-item[data-company-id="${companyId}"]`);
+        if (companyNavItem) {
+            companyNavItem.classList.add('active');
         }
     }
 }
@@ -105,22 +126,22 @@ async function loadApps() {
 // Render apps in sidebar navigation (grouped by company)
 function renderAppsNav() {
     const appsNav = document.getElementById('apps-nav');
-    
-    // Check if we have multiple companies
-    const hasMultipleCompanies = appsGrouped.length > 1;
-    
+
     let navContent = '<div class="nav-section-title">Aplicaciones</div>';
-    
-    if (hasMultipleCompanies) {
-        // Render grouped by company
+
+    if (appsGrouped.length > 0) {
         navContent += appsGrouped.map(group => `
-            <div class="company-group" data-company-id="${group.id}">
-                <div class="company-group-header" onclick="toggleCompanyGroup(${group.id})">
-                    <div class="company-group-title">
-                        <i class="iconoir-building"></i>
-                        <span>${escapeHtml(group.name)}</span>
-                    </div>
-                    <i class="iconoir-nav-arrow-down company-group-toggle"></i>
+            <div class="company-group ${appsGrouped.length === 1 ? 'single-company' : ''}" data-company-id="${group.id}">
+                <div class="company-group-header">
+                    <a href="javascript:void(0)" class="company-nav-item" onclick="event.preventDefault(); loadView('company', ${group.id}, event); return false;" data-company-id="${group.id}">
+                        <div class="company-group-title">
+                            <i class="iconoir-building"></i>
+                            <span>${escapeHtml(group.name)}</span>
+                        </div>
+                    </a>
+                    <button type="button" class="company-group-toggle-btn" onclick="event.stopPropagation(); toggleCompanyGroup(${group.id})" title="Expandir/contraer apps">
+                        <i class="iconoir-nav-arrow-down company-group-toggle"></i>
+                    </button>
                 </div>
                 <div class="company-group-apps" style="max-height: none;">
                     ${group.apps.map(app => `
@@ -133,7 +154,6 @@ function renderAppsNav() {
             </div>
         `).join('');
     } else {
-        // Single company or flat list
         navContent += apps.map(app => `
             <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                 <i class="iconoir-app-window"></i>
@@ -162,10 +182,11 @@ function populateAppSelects() {
     });
 }
 
-// Switch view (global or specific app)
-function loadView(type, appId = null, sourceEvent = null) {
+// Switch view (global, company or specific app)
+function loadView(type, entityId = null, sourceEvent = null) {
     currentView = type;
-    currentAppId = appId;
+    currentAppId = type === 'app' ? entityId : null;
+    currentCompanyId = type === 'company' ? entityId : null;
 
     // Update page title
     const pageTitle = document.getElementById('page-title');
@@ -173,15 +194,22 @@ function loadView(type, appId = null, sourceEvent = null) {
         pageTitle.textContent = 'Vista Global';
         // Update URL without reload
         history.pushState({view: 'global'}, '', '/index.php');
+    } else if (type === 'company') {
+        const company = appsGrouped.find(g => g.id == entityId);
+        pageTitle.textContent = company ? company.name : 'Empresa';
+        history.pushState({view: 'company', companyId: entityId}, '', `/index.php?company=${entityId}`);
     } else {
-        const app = apps.find(a => a.id == appId);
+        const app = apps.find(a => a.id == entityId);
         pageTitle.textContent = app ? app.name : 'App';
         // Update URL without reload
-        history.pushState({view: 'app', appId: appId}, '', `/index.php?app=${appId}`);
+        history.pushState({view: 'app', appId: entityId}, '', `/index.php?app=${entityId}`);
     }
 
     // Update active nav items and quick action buttons
     document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelectorAll('.company-nav-item').forEach(item => {
         item.classList.remove('active');
     });
     document.querySelectorAll('.quick-action-btn').forEach(btn => {
@@ -191,7 +219,7 @@ function loadView(type, appId = null, sourceEvent = null) {
     // Add active to the clicked element or find it by data attribute
     const evt = sourceEvent || window.event;
     if (evt && evt.target) {
-        const clickedElement = evt.target.closest('.nav-item, .quick-action-btn');
+        const clickedElement = evt.target.closest('.nav-item, .quick-action-btn, .company-nav-item');
         if (clickedElement) {
             clickedElement.classList.add('active');
         }
@@ -201,15 +229,16 @@ function loadView(type, appId = null, sourceEvent = null) {
         if (globalBtn) {
             globalBtn.classList.add('active');
         }
-    } else if (type === 'app' && appId) {
-        // Activate the app nav item
-        updateActiveNavItem(appId);
+    } else if (type === 'app' && currentAppId) {
+        updateActiveNavItem(currentAppId, null);
+    } else if (type === 'company' && currentCompanyId) {
+        updateActiveNavItem(null, currentCompanyId);
     }
 
     // Show/hide app info section (links, notes, files)
     const appInfoSection = document.getElementById('app-info-section');
     if (appInfoSection) {
-        if (type === 'app' && appId) {
+        if ((type === 'app' && currentAppId) || (type === 'company' && currentCompanyId)) {
             appInfoSection.style.display = 'block';
             loadAppResources();
         } else {
@@ -236,6 +265,9 @@ async function loadRequests() {
 
         if (currentView === 'app' && currentAppId) {
             params.push(`app_id=${currentAppId}`);
+        }
+        if (currentView === 'company' && currentCompanyId) {
+            params.push(`company_id=${currentCompanyId}`);
         }
 
         // Multi-level sorting
@@ -394,7 +426,7 @@ function createRequestCard(request, isFinished = false) {
                 </div>
                 
                 <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">
-                    ${(currentView === 'global' && request.app_name) ? escapeHtml(request.app_name) + ' - ' : ''}${escapeHtml(request.title)}
+                    ${(currentView !== 'app' && request.app_name) ? escapeHtml(request.app_name) + ' - ' : ''}${escapeHtml(request.title)}
                 </h3>
             </div>
             
@@ -1598,16 +1630,34 @@ function formatDateForToast(dateStr) {
 
 let appResourcesData = { files: [], links: [], notes: [] };
 
+function updateResourceActionsVisibility() {
+    const canCreate = currentView === 'app' && !!currentAppId;
+    const addLinkBtn = document.querySelector('.btn-add-link');
+    const addNoteBtn = document.querySelector('.btn-add-note');
+    const uploadBox = document.getElementById('app-files-upload');
+
+    if (addLinkBtn) {
+        addLinkBtn.style.display = canCreate ? 'flex' : 'none';
+    }
+    if (addNoteBtn) {
+        addNoteBtn.style.display = canCreate ? 'inline-flex' : 'none';
+    }
+    if (uploadBox) {
+        uploadBox.style.display = canCreate ? 'inline-flex' : 'none';
+    }
+}
+
 // Load all app resources (files, links, notes)
 async function loadAppResources() {
     const section = document.getElementById('app-info-section');
     
-    if (!currentAppId) {
+    if (!currentAppId && !currentCompanyId) {
         if (section) section.style.display = 'none';
         return;
     }
     
     section.style.display = 'block';
+    updateResourceActionsVisibility();
     
     // Load files
     await loadAppFiles();
@@ -1620,10 +1670,13 @@ async function loadAppResources() {
 async function loadAppFiles() {
     const list = document.getElementById('app-files-list');
     
-    if (!currentAppId || !list) return;
+    if ((!currentAppId && !currentCompanyId) || !list) return;
     
     try {
-        const response = await fetch(`/api/app-files.php?app_id=${currentAppId}`);
+        const query = currentView === 'company' && currentCompanyId
+            ? `company_id=${currentCompanyId}`
+            : `app_id=${currentAppId}`;
+        const response = await fetch(`/api/app-files.php?${query}`);
         const data = await response.json();
         
         if (data.success) {
@@ -1636,7 +1689,12 @@ async function loadAppFiles() {
                 list.innerHTML = files.map(file => `
                     <div class="app-file-chip" title="${escapeHtml(file.original_filename)} - ${formatFileSize(file.file_size)}">
                         <i class="${getFileIconClass(file.mime_type)}"></i>
-                        <a href="/${file.file_path}" target="_blank" class="app-file-chip-name">${escapeHtml(file.original_filename)}</a>
+                        <a href="/${file.file_path}" target="_blank" class="app-file-chip-name">
+                            ${escapeHtml(file.original_filename)}
+                        </a>
+                        ${currentView === 'company' && file.app_name ? `
+                            <span class="app-file-chip-app">${escapeHtml(file.app_name)}</span>
+                        ` : ''}
                         <div class="app-file-chip-actions">
                             <button class="app-file-chip-btn edit" onclick="event.preventDefault(); openEditAppFileModal(${file.id}, '${escapeHtml(file.original_filename)}')" title="Editar nombre">
                                 <i class="iconoir-edit-pencil"></i>
@@ -1706,10 +1764,13 @@ async function loadAppLinksAndNotes() {
     const notesDisplay = document.getElementById('app-notes-display');
     const linksCount = document.getElementById('links-count');
     
-    if (!currentAppId) return;
+    if (!currentAppId && !currentCompanyId) return;
     
     try {
-        const response = await fetch(`/api/app-resources.php?app_id=${currentAppId}`);
+        const query = currentView === 'company' && currentCompanyId
+            ? `company_id=${currentCompanyId}`
+            : `app_id=${currentAppId}`;
+        const response = await fetch(`/api/app-resources.php?${query}`);
         const data = await response.json();
         
         if (data.success) {
@@ -1737,6 +1798,7 @@ async function loadAppLinksAndNotes() {
                                 <div class="app-link-details">
                                     <div class="app-link-title">${escapeHtml(link.title)}</div>
                                     <div class="app-link-url">${escapeHtml(link.content)}</div>
+                                    ${currentView === 'company' && link.app_name ? `<div class="app-link-meta">${escapeHtml(link.app_name)}</div>` : ''}
                                 </div>
                             </a>
                             <div class="app-link-actions">
@@ -1769,6 +1831,7 @@ async function loadAppLinksAndNotes() {
                             </div>
                             <div class="app-note-card-content">${escapeHtml(note.content || '')}</div>
                             <div class="app-note-card-meta">
+                                ${currentView === 'company' && note.app_name ? `<span>${escapeHtml(note.app_name)}</span>` : ''}
                                 <span>${note.created_by_name || note.created_by_username || 'Usuario'}</span>
                                 <span>${formatDate(note.created_at)}</span>
                             </div>
@@ -1858,6 +1921,10 @@ async function deleteAppResource(resourceId, type) {
 
 // Open add link modal
 function openAddLinkModal() {
+    if (!currentAppId) {
+        alert('Selecciona una aplicación para añadir enlaces');
+        return;
+    }
     document.getElementById('link-title').value = '';
     document.getElementById('link-url').value = '';
     document.getElementById('add-link-modal').classList.add('active');
@@ -1866,6 +1933,10 @@ function openAddLinkModal() {
 
 // Open add note modal
 function openAddNoteModal() {
+    if (!currentAppId) {
+        alert('Selecciona una aplicación para añadir notas');
+        return;
+    }
     document.getElementById('note-title').value = '';
     document.getElementById('note-content').value = '';
     document.getElementById('add-note-modal').classList.add('active');

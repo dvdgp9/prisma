@@ -15,29 +15,55 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Get resources for an app
+        // Get resources for an app or all resources for a company
         $appId = $_GET['app_id'] ?? null;
+        $companyId = $_GET['company_id'] ?? null;
         
-        if (!$appId) {
-            error_response('App ID is required');
+        if (!$appId && !$companyId) {
+            error_response('App ID or Company ID is required');
         }
-        
-        // Verify user has access to app
-        if (!can_access_app($appId)) {
-            error_response('No tienes acceso a esta aplicación', 403);
+
+        if ($companyId) {
+            if (!can_access_company($companyId)) {
+                error_response('No tienes acceso a esta empresa', 403);
+            }
+
+            $stmt = $db->prepare("
+                SELECT 
+                    ar.*,
+                    a.name as app_name,
+                    a.company_id,
+                    u.username as created_by_username,
+                    u.full_name as created_by_name
+                FROM app_resources ar
+                INNER JOIN apps a ON ar.app_id = a.id
+                LEFT JOIN users u ON ar.created_by = u.id
+                WHERE a.company_id = ?
+                ORDER BY ar.created_at DESC
+            ");
+            $stmt->execute([$companyId]);
+        } else {
+            // Verify user has access to app
+            if (!can_access_app($appId)) {
+                error_response('No tienes acceso a esta aplicación', 403);
+            }
+
+            $stmt = $db->prepare("
+                SELECT 
+                    ar.*,
+                    a.name as app_name,
+                    a.company_id,
+                    u.username as created_by_username,
+                    u.full_name as created_by_name
+                FROM app_resources ar
+                INNER JOIN apps a ON ar.app_id = a.id
+                LEFT JOIN users u ON ar.created_by = u.id
+                WHERE ar.app_id = ?
+                ORDER BY ar.created_at DESC
+            ");
+            $stmt->execute([$appId]);
         }
-        
-        $stmt = $db->prepare("
-            SELECT 
-                ar.*,
-                u.username as created_by_username,
-                u.full_name as created_by_name
-            FROM app_resources ar
-            LEFT JOIN users u ON ar.created_by = u.id
-            WHERE ar.app_id = ?
-            ORDER BY ar.created_at DESC
-        ");
-        $stmt->execute([$appId]);
+
         $resources = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         success_response($resources);

@@ -34,10 +34,26 @@ switch ($method) {
                 $params[] = $_GET['app_id'];
             }
 
-            // Filter by company (non-superadmins only see their company's requests)
-            if ($user['role'] !== 'superadmin') {
+            // Filter by company
+            if (!empty($_GET['company_id'])) {
+                $companyId = (int) $_GET['company_id'];
+                if (!can_access_company($companyId)) {
+                    error_response('No tienes acceso a esta empresa', 403);
+                }
                 $where[] = 'a.company_id = ?';
-                $params[] = $user['company_id'];
+                $params[] = $companyId;
+            }
+
+            // Scope non-superadmins to their allowed companies when no company filter is provided
+            if ($user['role'] !== 'superadmin' && empty($_GET['company_id'])) {
+                $companies = get_user_companies();
+                $companyIds = array_map('intval', array_column($companies, 'id'));
+                if (empty($companyIds)) {
+                    $companyIds = [(int)$user['company_id']];
+                }
+                $placeholders = implode(',', array_fill(0, count($companyIds), '?'));
+                $where[] = "a.company_id IN ($placeholders)";
+                $params = array_merge($params, $companyIds);
             }
 
             // Filter by priority
