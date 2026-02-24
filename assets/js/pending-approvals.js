@@ -7,15 +7,26 @@ async function updatePendingCount() {
         const response = await fetch('/api/pending-approvals.php');
         const data = await response.json();
 
+        console.log('Pending approvals response:', data);
+
         if (data.success) {
             const count = data.data.length;
             const badge = document.getElementById('pending-count');
 
+            console.log('Pending count:', count, 'Badge element:', badge);
+
+            if (!badge) {
+                console.error('Badge element not found: pending-count');
+                return;
+            }
+
             if (count > 0) {
                 badge.textContent = count;
                 badge.style.display = 'inline-block';
+                console.log('Badge updated with count:', count);
             } else {
                 badge.style.display = 'none';
+                console.log('Badge hidden (no pending requests)');
             }
         }
     } catch (error) {
