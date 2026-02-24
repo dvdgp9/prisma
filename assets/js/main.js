@@ -246,6 +246,11 @@ function loadView(type, entityId = null, sourceEvent = null) {
         }
     }
 
+    // Update pending count for admins
+    if (userRole === 'admin' || userRole === 'superadmin') {
+        updatePendingCount();
+    }
+
     // Reload requests
     loadRequests();
 }

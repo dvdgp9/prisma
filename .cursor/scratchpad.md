@@ -232,9 +232,6 @@ CREATE TABLE user_companies (
 - [x] B.2: API - `/api/app-files.php` CRUD
 - [x] B.3: UI - Sección archivos en vista de app (lista colapsable)
 
-### ✅ Tareas completadas (24 Febrero 2026)
-- [x] Mostrar contador de "Solicitudes Pendientes de Aprobar" en el sidebar en todas las páginas cargándolo desde PHP.
-
 ### ✅ Fase G: Exportar Mejoras a CSV (COMPLETADA - 30 Enero 2026)
 - [x] G.1: Botón "Exportar" junto a "Nueva Mejora" en index.php
 - [x] G.2: Modal de selección de empresa
