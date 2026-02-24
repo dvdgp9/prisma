@@ -72,9 +72,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    // Update pending count for admins
+    // Update pending count for admins (with slight delay to ensure DOM is ready)
     if (userRole === 'admin' || userRole === 'superadmin') {
-        updatePendingCount();
+        setTimeout(() => {
+            if (typeof updatePendingCount === 'function') {
+                updatePendingCount();
+            }
+        }, 100);
     }
 });
 
@@ -247,7 +251,7 @@ function loadView(type, entityId = null, sourceEvent = null) {
     }
 
     // Update pending count for admins
-    if (userRole === 'admin' || userRole === 'superadmin') {
+    if ((userRole === 'admin' || userRole === 'superadmin') && typeof updatePendingCount === 'function') {
         updatePendingCount();
     }
 
