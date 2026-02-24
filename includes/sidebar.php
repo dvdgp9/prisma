@@ -46,14 +46,41 @@ $company_name = $user['company_name'] ?? '';
                     </a>
                 <?php endif; ?>
                 
-                <?php if (has_role('admin')): ?>
+                <?php if (has_role('admin')): 
+                    // Get pending count
+                    $db = getDB();
+                    $where_pending = ["r.is_public_request = 1", "r.status = 'pending_approval'"];
+                    $params_pending = [];
+                    
+                    if ($user['role'] !== 'superadmin') {
+                        $user_comps = get_user_companies();
+                        $comp_ids = array_column($user_comps, 'id');
+                        if (!empty($comp_ids)) {
+                            $placeholders = implode(',', array_fill(0, count($comp_ids), '?'));
+                            $where_pending[] = "a.company_id IN ($placeholders)";
+                            $params_pending = $comp_ids;
+                        } else {
+                            $where_pending[] = "a.company_id = ?";
+                            $params_pending[] = $user['company_id'] ?? 0;
+                        }
+                    }
+                    
+                    $stmt_pending = $db->prepare("
+                        SELECT COUNT(*) 
+                        FROM requests r
+                        INNER JOIN apps a ON r.app_id = a.id
+                        WHERE " . implode(' AND ', $where_pending)
+                    );
+                    $stmt_pending->execute($params_pending);
+                    $pending_count = $stmt_pending->fetchColumn();
+                ?>
                     <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>" 
                        onclick="<?php echo $current_page === 'index' ? 'loadPendingApprovals(); return false;' : 'return true;'; ?>" 
                        class="quick-action-btn" 
                        id="pending-approvals-nav" 
                        title="Pendientes Aprobar">
                         <i class="iconoir-clock"></i>
-                        <span class="badge-count" id="pending-count" style="display: none;"></span>
+                        <span class="badge-count" id="pending-count" <?php echo $pending_count > 0 ? '' : 'style="display: none;"'; ?>><?php echo $pending_count; ?></span>
                     </a>
                 <?php endif; ?>
                 
