@@ -922,12 +922,12 @@ nav {
 
 .quick-action-btn .badge-count {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: -4px;
+    right: -4px;
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
-    background: var(--secondary);
+    background: var(--secondary-color);
     color: white;
     border-radius: 9px;
     font-size: 0.625rem;
@@ -935,6 +935,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 /* Company Groups in Sidebar */
