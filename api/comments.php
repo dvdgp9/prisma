@@ -93,13 +93,51 @@ switch ($method) {
                 $stmt->execute($mentioned_usernames);
                 $mentioned_users = $stmt->fetchAll();
 
-                // Insert mentions
+                // Insert mentions and create notifications
                 foreach ($mentioned_users as $mentioned_user) {
                     $stmtMention = $db->prepare("
                         INSERT INTO comment_mentions (comment_id, mentioned_user_id)
                         VALUES (?, ?)
                     ");
                     $stmtMention->execute([$comment_id, $mentioned_user['id']]);
+
+                    // Create mention notification (don't notify yourself)
+                    if ($mentioned_user['id'] != $user['id']) {
+                        $stmtNotif = $db->prepare("
+                            INSERT INTO notifications (user_id, type, request_id, triggered_by, message)
+                            VALUES (?, 'mention', ?, ?, ?)
+                        ");
+                        $stmtNotif->execute([
+                            $mentioned_user['id'],
+                            $input['request_id'],
+                            $user['id'],
+                            $user['full_name'] . ' te ha mencionado en un comentario'
+                        ]);
+                    }
+                }
+            }
+
+            // Notify assigned users about the comment (except commenter and already-mentioned)
+            $mentionedIds = !empty($mentioned_users) ? array_column($mentioned_users, 'id') : [];
+            $stmtAssigned = $db->prepare("
+                SELECT user_id FROM request_assignments 
+                WHERE request_id = ? AND user_id != ?
+            ");
+            $stmtAssigned->execute([$input['request_id'], $user['id']]);
+            $assignedUsers = $stmtAssigned->fetchAll(PDO::FETCH_COLUMN);
+
+            foreach ($assignedUsers as $assignedUserId) {
+                if (!in_array($assignedUserId, $mentionedIds)) {
+                    $stmtNotif = $db->prepare("
+                        INSERT INTO notifications (user_id, type, request_id, triggered_by, message)
+                        VALUES (?, 'comment', ?, ?, ?)
+                    ");
+                    $stmtNotif->execute([
+                        $assignedUserId,
+                        $input['request_id'],
+                        $user['id'],
+                        $user['full_name'] . ' ha comentado en una tarea asignada a ti'
+                    ]);
                 }
             }
 

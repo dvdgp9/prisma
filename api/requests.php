@@ -164,6 +164,18 @@ switch ($method) {
             $stmt->execute($params);
             $requests = $stmt->fetchAll();
 
+            // Fetch assignments for each request from the multi-assignment table
+            foreach ($requests as &$request) {
+                $stmtAssign = $db->prepare("
+                    SELECT u.id, u.username, u.full_name 
+                    FROM request_assignments ra 
+                    INNER JOIN users u ON ra.user_id = u.id 
+                    WHERE ra.request_id = ?
+                ");
+                $stmtAssign->execute([$request['id']]);
+                $request['assignments'] = $stmtAssign->fetchAll();
+            }
+
             success_response($requests);
         } catch (Exception $e) {
             error_response('Failed to fetch requests: ' . $e->getMessage(), 500);

@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const urlParams = new URLSearchParams(window.location.search);
     const appIdParam = urlParams.get('app') || urlParams.get('app_id');
     const companyIdParam = urlParams.get('company');
+    const openRequestId = urlParams.get('open_request');
     const isPending = window.location.hash === '#pending';
 
     // Set initial state based on URL
@@ -55,6 +56,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         loadAppResources();
     } else {
         loadRequests();
+    }
+
+    // Open request from notification link
+    if (openRequestId) {
+        setTimeout(() => openEditRequestModal(parseInt(openRequestId)), 500);
     }
 
     setupFileUpload();
@@ -508,18 +514,19 @@ function createRequestCard(request, isFinished = false) {
             </div>
         ` : ''}
 
-        <div class="card-footer">
-            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; flex: 1;">
-                <div style="display: flex; align-items: center; gap: var(--spacing-sm);" title="Creado por">
-                    <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.875rem;"></i>
+        <div class="card-footer" style="flex-direction: column; gap: var(--spacing-sm);">
+            <div style="display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 4px;" title="Creado por">
+                    <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.75rem;"></i>
                     <span class="text-small text-muted">${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
                 </div>
 
-                ${request.assigned_to ? `
-                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 2px 8px; background: var(--primary-color); border-radius: 12px;" title="Asignado a">
-                        <i class="iconoir-user-badge-check" style="color: white; font-size: 0.75rem;"></i>
-                        <span class="text-small" style="color: white; font-weight: 500;">${escapeHtml(request.assigned_name || request.assigned_username)}</span>
-                    </div>
+                ${request.assignments && request.assignments.length > 0 ? `
+                    ${request.assignments.map(a => `
+                        <span class="assigned-tag" title="Asignado a ${escapeHtml(a.full_name || a.username)}">
+                            ${escapeHtml(a.full_name || a.username)}
+                        </span>
+                    `).join('')}
                 ` : (canEdit ? `
                     <button class="btn-assign-quick" onclick="openAssignModal(${request.id}, event)" title="Asignar">
                         <i class="iconoir-user-plus"></i>
@@ -528,14 +535,37 @@ function createRequestCard(request, isFinished = false) {
                 ` : '')}
 
                 ${request.comment_count > 0 ? `
-                    <div style="display: flex; align-items: center; gap: var(--spacing-xs);" title="${request.comment_count} comentario(s)">
-                        <i class="iconoir-chat-bubble" style="color: var(--text-muted); font-size: 0.875rem;"></i>
+                    <div style="display: flex; align-items: center; gap: 2px;" title="${request.comment_count} comentario(s)">
+                        <i class="iconoir-chat-bubble" style="color: var(--text-muted); font-size: 0.75rem;"></i>
                         <span class="text-small text-muted">${request.comment_count}</span>
                     </div>
                 ` : ''}
 
+                ${request.attachment_count > 0 ? `
+                    <div style="display: flex; align-items: center; gap: 2px;" title="${request.attachment_count} adjunto(s)">
+                        <i class="iconoir-attachment" style="color: var(--text-muted); font-size: 0.75rem;"></i>
+                        <span class="text-small text-muted">${request.attachment_count}</span>
+                    </div>
+                ` : ''}
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div class="vote-section" style="margin: 0;">
+                    <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
+                            onclick="vote(${request.id}, 'up')"
+                            title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
+                        <i class="iconoir-arrow-up"></i>
+                    </button>
+                    <span class="vote-count">${request.vote_count || 0}</span>
+                    ${isAdminOrSuperadmin ? `
+                        <button class="vote-btn vote-down" 
+                                onclick="vote(${request.id}, 'down')"
+                                title="Reducir votos">
+                            <i class="iconoir-arrow-down"></i>
+                        </button>
+                    ` : ''}
+                </div>
                 ${canEdit ? `
-                    <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-left: auto;">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
                         ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
                             <button class="quick-action-btn" onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})" 
                                     title="Completar y Programar" style="color: #22c55e;">
@@ -551,21 +581,6 @@ function createRequestCard(request, isFinished = false) {
                             </button>
                         ` : ''}
                     </div>
-                ` : ''}
-            </div>
-            <div class="vote-section">
-                <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
-                        onclick="vote(${request.id}, 'up')"
-                        title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
-                    <i class="iconoir-arrow-up"></i>
-                </button>
-                <span class="vote-count">${request.vote_count || 0}</span>
-                ${isAdminOrSuperadmin ? `
-                    <button class="vote-btn vote-down" 
-                            onclick="vote(${request.id}, 'down')"
-                            title="Reducir votos">
-                        <i class="iconoir-arrow-down"></i>
-                    </button>
                 ` : ''}
             </div>
         </div>
@@ -1045,30 +1060,18 @@ async function openEditRequestModal(requestId) {
                 setupMentionsAutocomplete(commentInput, mentionsDropdown);
             }
 
-            // Populate assigned user select
-            const assignedSelect = document.getElementById('edit-request-assigned');
-            if (assignedSelect) {
-                assignedSelect.innerHTML = '<option value="">Sin asignar</option>' + 
-                    availableUsers.map(user => `
-                        <option value="${user.id}" ${request.assigned_to == user.id ? 'selected' : ''}>
-                            ${escapeHtml(user.full_name || user.username)}
-                        </option>
-                    `).join('');
-            }
-
-            // Update assigned display
-            const assignedDisplay = document.getElementById('edit-assigned-display');
-            if (assignedDisplay) {
-                if (request.assigned_to) {
-                    assignedDisplay.innerHTML = `
-                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--primary-color); border-radius: 12px; color: white; font-size: 0.875rem;">
-                            <i class="iconoir-user-badge-check" style="font-size: 0.75rem;"></i>
-                            ${escapeHtml(request.assigned_name || request.assigned_username)}
-                        </span>
-                    `;
-                } else {
-                    assignedDisplay.innerHTML = '<span class="text-muted text-small">Sin asignar</span>';
-                }
+            // Setup multi-select assignments
+            const assignedTags = document.getElementById('edit-assigned-tags');
+            const assignSearch = document.getElementById('edit-assign-search');
+            if (assignedTags && assignSearch) {
+                // Store current assignments
+                window.currentAssignments = (request.assignments || []).map(a => ({
+                    id: a.id,
+                    username: a.username,
+                    full_name: a.full_name
+                }));
+                renderAssignedTags();
+                setupAssignSearchInput();
             }
 
             // Open modal
@@ -1191,12 +1194,6 @@ async function submitEditRequest(event) {
         payload.requester_email = requesterEmailField.value;
     }
 
-    // Add assigned user if field exists
-    const assignedField = document.getElementById('edit-request-assigned');
-    if (assignedField) {
-        payload.assigned_to = assignedField.value ? parseInt(assignedField.value) : null;
-    }
-
     try {
         const response = await fetch('/api/requests.php', {
             method: 'PUT',
@@ -1207,6 +1204,19 @@ async function submitEditRequest(event) {
         const data = await response.json();
 
         if (data.success) {
+            // Save assignments via separate API
+            if (window.currentAssignments !== undefined) {
+                const assignmentIds = window.currentAssignments.map(a => a.id);
+                await fetch('/api/assignments.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        request_id: parseInt(requestId),
+                        user_ids: assignmentIds
+                    })
+                });
+            }
+
             closeModal('edit-request-modal');
             loadRequests();
         } else {
@@ -2137,7 +2147,7 @@ function exportRequests() {
 }
 
 // ===================
-// Assignment Functions
+// Assignment Functions (Multi-select)
 // ===================
 
 let availableUsers = [];
@@ -2162,15 +2172,20 @@ function openAssignModal(requestId, event) {
     
     const modal = document.getElementById('assign-modal');
     document.getElementById('assign-request-id').value = requestId;
+    window.assignModalRequestId = requestId;
     
-    // Populate user list
+    // Load current assignments for this request
+    window.currentAssignments = [];
+    
     const userList = document.getElementById('assign-user-list');
     userList.innerHTML = availableUsers.map(user => `
-        <div class="mention-item" onclick="assignUser(${requestId}, ${user.id})">
-            <div class="comment-avatar">${(user.full_name || user.username).charAt(0).toUpperCase()}</div>
+        <div class="assign-dropdown-item" onclick="quickAssignUser(${requestId}, ${user.id}, '${escapeHtml(user.full_name || user.username)}')">
+            <div class="comment-avatar" style="width: 24px; height: 24px; font-size: 0.625rem;">
+                ${(user.full_name || user.username).charAt(0).toUpperCase()}
+            </div>
             <div>
                 <div class="mention-item-name">${escapeHtml(user.full_name || user.username)}</div>
-                <div class="mention-item-username">@${escapeHtml(user.username)}</div>
+                <div class="mention-item-username" style="font-size: 0.75rem;">${escapeHtml(user.username)}</div>
             </div>
         </div>
     `).join('');
@@ -2178,15 +2193,22 @@ function openAssignModal(requestId, event) {
     modal.classList.add('active');
 }
 
-async function assignUser(requestId, userId) {
+async function quickAssignUser(requestId, userId, name) {
     try {
-        const response = await fetch('/api/requests.php', {
-            method: 'PUT',
+        // Get current assignments first
+        const resp = await fetch(`/api/assignments.php?request_id=${requestId}`);
+        const current = await resp.json();
+        const currentIds = current.success ? current.data.map(a => a.user_id) : [];
+        
+        // Add new user if not already assigned
+        if (!currentIds.includes(userId)) {
+            currentIds.push(userId);
+        }
+        
+        const response = await fetch('/api/assignments.php', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: requestId,
-                assigned_to: userId
-            })
+            body: JSON.stringify({ request_id: requestId, user_ids: currentIds })
         });
         
         const data = await response.json();
@@ -2196,41 +2218,97 @@ async function assignUser(requestId, userId) {
             loadRequests();
             showToast({
                 title: 'Asignado',
-                message: 'La tarea ha sido asignada correctamente',
+                message: name + ' asignado correctamente',
                 icon: 'iconoir-user-badge-check'
             }, 'toast-completed');
-        } else {
-            alert(data.error || 'Error al asignar');
         }
     } catch (error) {
         console.error('Error assigning user:', error);
     }
 }
 
-async function unassignUser(requestId) {
-    try {
-        const response = await fetch('/api/requests.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: requestId,
-                assigned_to: null
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            loadRequests();
-            showToast({
-                title: 'Desasignado',
-                message: 'La asignación ha sido eliminada',
-                icon: 'iconoir-user-xmark'
-            }, 'toast-completed');
-        }
-    } catch (error) {
-        console.error('Error unassigning user:', error);
+// Multi-select assignment in edit modal
+function renderAssignedTags() {
+    const container = document.getElementById('edit-assigned-tags');
+    if (!container) return;
+    
+    if (!window.currentAssignments || window.currentAssignments.length === 0) {
+        container.innerHTML = '<span class="text-muted text-small">Sin asignar</span>';
+        return;
     }
+    
+    container.innerHTML = window.currentAssignments.map(a => `
+        <span class="assigned-tag">
+            ${escapeHtml(a.full_name || a.username)}
+            <span class="remove-tag" onclick="removeAssignment(${a.id})">
+                <i class="iconoir-xmark" style="font-size: 0.625rem;"></i>
+            </span>
+        </span>
+    `).join('');
+}
+
+function removeAssignment(userId) {
+    window.currentAssignments = window.currentAssignments.filter(a => a.id !== userId);
+    renderAssignedTags();
+}
+
+function setupAssignSearchInput() {
+    const input = document.getElementById('edit-assign-search');
+    const dropdown = document.getElementById('edit-assign-dropdown');
+    if (!input || !dropdown) return;
+    
+    // Remove old listeners by cloning
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+    
+    newInput.addEventListener('input', () => {
+        const search = newInput.value.toLowerCase().trim();
+        if (search.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        const assignedIds = (window.currentAssignments || []).map(a => a.id);
+        const filtered = availableUsers.filter(u => 
+            !assignedIds.includes(u.id) &&
+            (u.username.toLowerCase().includes(search) ||
+             (u.full_name && u.full_name.toLowerCase().includes(search)))
+        );
+        
+        if (filtered.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        dropdown.innerHTML = filtered.slice(0, 5).map(user => `
+            <div class="assign-dropdown-item" data-user-id="${user.id}" data-username="${user.username}" data-fullname="${escapeHtml(user.full_name || '')}">
+                <div class="comment-avatar" style="width: 20px; height: 20px; font-size: 0.5rem;">
+                    ${(user.full_name || user.username).charAt(0).toUpperCase()}
+                </div>
+                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
+            </div>
+        `).join('');
+        dropdown.style.display = 'block';
+        
+        dropdown.querySelectorAll('.assign-dropdown-item').forEach(item => {
+            item.onclick = () => {
+                const userId = parseInt(item.dataset.userId);
+                const username = item.dataset.username;
+                const fullName = item.dataset.fullname;
+                
+                if (!window.currentAssignments) window.currentAssignments = [];
+                window.currentAssignments.push({ id: userId, username, full_name: fullName });
+                renderAssignedTags();
+                
+                newInput.value = '';
+                dropdown.style.display = 'none';
+            };
+        });
+    });
+    
+    newInput.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+    });
 }
 
 // ===================
@@ -2255,7 +2333,10 @@ async function loadComments(requestId) {
 
 function renderComments(requestId) {
     const container = document.getElementById('edit-comments-list');
+    const countEl = document.getElementById('edit-comments-count');
     if (!container) return;
+    
+    if (countEl) countEl.textContent = currentComments.length > 0 ? `${currentComments.length}` : '';
     
     if (currentComments.length === 0) {
         container.innerHTML = '<p class="text-muted text-small">No hay comentarios todavía</p>';
@@ -2273,7 +2354,7 @@ function renderComments(requestId) {
         const currentUserId = parseInt(document.body.dataset.userId);
         const canModify = comment.user_id === currentUserId || ['admin', 'superadmin'].includes(document.body.dataset.userRole);
         
-        // Parse mentions in content
+        // Parse mentions in content - highlight with name
         const contentWithMentions = escapeHtml(comment.content).replace(
             /@(\w+)/g, 
             '<span class="mention">@$1</span>'
@@ -2321,12 +2402,13 @@ async function submitComment(requestId) {
         
         if (data.success) {
             input.value = '';
+            hideMentionsDropdown(document.getElementById('edit-mentions-dropdown'));
             await loadComments(requestId);
             
             // Update comment count in card
             const card = document.querySelector(`[data-request-id="${requestId}"]`);
             if (card) {
-                loadRequests(); // Refresh to update count
+                loadRequests();
             }
         } else {
             alert(data.error || 'Error al añadir comentario');
@@ -2358,22 +2440,30 @@ async function deleteComment(commentId, requestId) {
     }
 }
 
-// Mentions autocomplete
+// ===================
+// Mentions Autocomplete
+// ===================
+
 function setupMentionsAutocomplete(inputElement, dropdownElement) {
     let mentionStart = -1;
     
-    inputElement.addEventListener('input', (e) => {
+    // Remove old listeners by cloning
+    const newInput = inputElement.cloneNode(true);
+    inputElement.parentNode.replaceChild(newInput, inputElement);
+    
+    // Update references
+    newInput.id = inputElement.id;
+    
+    newInput.addEventListener('input', (e) => {
         const value = e.target.value;
         const cursorPos = e.target.selectionStart;
         
-        // Find @ before cursor
         const beforeCursor = value.substring(0, cursorPos);
         const lastAtIndex = beforeCursor.lastIndexOf('@');
         
         if (lastAtIndex !== -1) {
             const afterAt = beforeCursor.substring(lastAtIndex + 1);
             
-            // Check if we're in a mention (no spaces after @)
             if (!afterAt.includes(' ')) {
                 mentionStart = lastAtIndex;
                 const searchTerm = afterAt.toLowerCase();
@@ -2384,7 +2474,7 @@ function setupMentionsAutocomplete(inputElement, dropdownElement) {
                 );
                 
                 if (filtered.length > 0) {
-                    showMentionsDropdown(dropdownElement, filtered, inputElement, mentionStart);
+                    showMentionsDropdown(dropdownElement, filtered, newInput, mentionStart);
                     return;
                 }
             }
@@ -2393,7 +2483,7 @@ function setupMentionsAutocomplete(inputElement, dropdownElement) {
         hideMentionsDropdown(dropdownElement);
     });
     
-    inputElement.addEventListener('keydown', (e) => {
+    newInput.addEventListener('keydown', (e) => {
         if (dropdownElement.style.display === 'block') {
             if (e.key === 'Escape') {
                 hideMentionsDropdown(dropdownElement);
@@ -2405,19 +2495,15 @@ function setupMentionsAutocomplete(inputElement, dropdownElement) {
 function showMentionsDropdown(dropdown, users, input, startPos) {
     dropdown.innerHTML = users.slice(0, 5).map(user => `
         <div class="mention-item" data-username="${user.username}">
-            <div class="comment-avatar" style="width: 24px; height: 24px; font-size: 0.625rem;">
+            <div class="comment-avatar" style="width: 20px; height: 20px; font-size: 0.5rem;">
                 ${(user.full_name || user.username).charAt(0).toUpperCase()}
             </div>
-            <div>
-                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
-                <span class="mention-item-username">@${escapeHtml(user.username)}</span>
-            </div>
+            <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
         </div>
     `).join('');
     
     dropdown.style.display = 'block';
     
-    // Handle click on mention
     dropdown.querySelectorAll('.mention-item').forEach(item => {
         item.onclick = () => {
             const username = item.dataset.username;
@@ -2431,5 +2517,7 @@ function showMentionsDropdown(dropdown, users, input, startPos) {
 }
 
 function hideMentionsDropdown(dropdown) {
-    dropdown.style.display = 'none';
+    if (dropdown) dropdown.style.display = 'none';
 }
+
+// Inbox/notification functions are in sidebar.js (shared across pages)

@@ -405,20 +405,20 @@ $company_name = $user['company_name'] ?? '';
                                 <div class="form-group">
                                     <label for="edit-request-status">Estado</label>
                                     <select id="edit-request-status">
-                                        <option value="pending">⏳ Pendiente</option>
-                                        <option value="in_progress">🔄 En Progreso</option>
-                                        <option value="completed">✅ Completado</option>
-                                        <option value="discarded">❌ Descartado</option>
+                                        <option value="pending">Pendiente</option>
+                                        <option value="in_progress">En Progreso</option>
+                                        <option value="completed">Completado</option>
+                                        <option value="discarded">Descartado</option>
                                     </select>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="edit-request-priority">Prioridad</label>
                                     <select id="edit-request-priority">
-                                        <option value="low">🟢 Baja</option>
-                                        <option value="medium">🟡 Media</option>
-                                        <option value="high">🟠 Alta</option>
-                                        <option value="critical">🔴 Crítica</option>
+                                        <option value="low">Baja</option>
+                                        <option value="medium">Media</option>
+                                        <option value="high">Alta</option>
+                                        <option value="critical">Crítica</option>
                                     </select>
                                 </div>
 
@@ -439,16 +439,15 @@ $company_name = $user['company_name'] ?? '';
                         <div class="modal-side-section">
                             <div class="modal-side-title">
                                 <div class="modal-side-title-content">
-                                    <i class="iconoir-user-badge-check"></i> Asignado
+                                    <i class="iconoir-user-badge-check"></i> Asignados
                                 </div>
                             </div>
                             <div class="modal-side-content">
-                                <div id="edit-assigned-display" style="margin-bottom: 0.5rem;">
-                                    <span class="text-muted text-small">Sin asignar</span>
+                                <div id="edit-assigned-tags" class="assigned-tags"></div>
+                                <div class="assign-search-wrapper">
+                                    <input type="text" id="edit-assign-search" class="assign-search-input" placeholder="Buscar usuario..." autocomplete="off">
+                                    <div id="edit-assign-dropdown" class="assign-dropdown" style="display: none;"></div>
                                 </div>
-                                <select id="edit-request-assigned" class="form-control" style="font-size: 0.875rem;">
-                                    <option value="">Sin asignar</option>
-                                </select>
                             </div>
                         </div>
                         <?php endif; ?>

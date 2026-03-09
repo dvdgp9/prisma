@@ -57,6 +57,11 @@ $company_name = $user['company_name'] ?? '';
                     </a>
                 <?php endif; ?>
                 
+                <a href="javascript:void(0)" class="quick-action-btn" onclick="toggleInbox()" title="Notificaciones" id="inbox-nav-btn">
+                    <i class="iconoir-bell"></i>
+                    <span class="badge-count" id="inbox-count" style="display: none;"></span>
+                </a>
+
                 <a href="/changelog.php" class="quick-action-btn <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog">
                     <i class="iconoir-list"></i>
                 </a>
@@ -111,5 +116,24 @@ $company_name = $user['company_name'] ?? '';
         </div>
     </nav>
 </aside>
+
+<!-- Inbox Panel -->
+<div class="inbox-overlay" id="inbox-overlay" onclick="toggleInbox()"></div>
+<div class="inbox-panel" id="inbox-panel">
+    <div class="inbox-header">
+        <h3><i class="iconoir-bell"></i> Notificaciones</h3>
+        <div style="display: flex; gap: var(--spacing-sm);">
+            <button class="comment-action-btn" onclick="markAllNotificationsRead()" title="Marcar todo como leído">
+                <i class="iconoir-check-circle"></i>
+            </button>
+            <button class="comment-action-btn" onclick="toggleInbox()" title="Cerrar">
+                <i class="iconoir-xmark"></i>
+            </button>
+        </div>
+    </div>
+    <div class="inbox-body" id="inbox-body">
+        <!-- Notifications loaded dynamically -->
+    </div>
+</div>
 
 <script src="/assets/js/sidebar.js"></script>
