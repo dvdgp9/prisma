@@ -33,6 +33,7 @@ $company_name = $user['company_name'] ?? '';
 ?>
 
 <body data-user-role="<?php echo htmlspecialchars($user['role']); ?>"
+    data-user-id="<?php echo htmlspecialchars($user['id']); ?>"
     data-company-name="<?php echo htmlspecialchars($company_name); ?>">
     <div class="dashboard-container">
         <?php $current_page = 'index'; include __DIR__ . '/includes/sidebar.php'; ?>
@@ -367,6 +368,28 @@ $company_name = $user['company_name'] ?? '';
                                 <!-- Attachments will be loaded here -->
                             </div>
                         </div>
+
+                        <!-- Comments section -->
+                        <div class="comments-section">
+                            <div class="attachments-header" style="margin-bottom: 1rem;">
+                                <label>
+                                    <i class="iconoir-chat-bubble"></i> Comentarios
+                                </label>
+                                <span id="edit-comments-count" class="badge-count-inline"></span>
+                            </div>
+                            
+                            <div id="edit-comments-list" class="comments-list">
+                                <!-- Comments will be loaded here -->
+                            </div>
+                            
+                            <div class="comment-input-wrapper" style="position: relative;">
+                                <textarea id="edit-comment-input" class="comment-input" placeholder="Escribe un comentario... Usa @usuario para mencionar" rows="2"></textarea>
+                                <div id="edit-mentions-dropdown" class="mentions-dropdown" style="display: none;"></div>
+                                <button type="button" class="comment-submit-btn" onclick="submitComment(document.getElementById('edit-request-id').value)">
+                                    <i class="iconoir-send"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Right Column: Metadata -->
@@ -408,6 +431,24 @@ $company_name = $user['company_name'] ?? '';
                                         <option value="high">Alta</option>
                                     </select>
                                 </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (has_role('programador')): ?>
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <div class="modal-side-title-content">
+                                    <i class="iconoir-user-badge-check"></i> Asignado
+                                </div>
+                            </div>
+                            <div class="modal-side-content">
+                                <div id="edit-assigned-display" style="margin-bottom: 0.5rem;">
+                                    <span class="text-muted text-small">Sin asignar</span>
+                                </div>
+                                <select id="edit-request-assigned" class="form-control" style="font-size: 0.875rem;">
+                                    <option value="">Sin asignar</option>
+                                </select>
                             </div>
                         </div>
                         <?php endif; ?>
@@ -707,6 +748,28 @@ $company_name = $user['company_name'] ?? '';
                 <button type="button" class="btn btn-primary" onclick="exportRequests()">
                     <i class="iconoir-download"></i> Exportar CSV
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign User Modal -->
+    <div class="modal" id="assign-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-user-plus modal-header-icon"></i>
+                    <h3 class="modal-title">Asignar tarea</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('assign-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <input type="hidden" id="assign-request-id">
+            <div class="modal-body">
+                <p class="text-small text-muted" style="margin-bottom: 1rem;">Selecciona quién trabajará en esta tarea:</p>
+                <div id="assign-user-list" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Users will be loaded here -->
+                </div>
             </div>
         </div>
     </div>

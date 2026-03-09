@@ -148,10 +148,14 @@ switch ($method) {
                     a.name as app_name,
                     COALESCE(u.username, r.requester_name, 'Anónimo') as creator_username,
                     COALESCE(u.full_name, r.requester_name, 'Anónimo') as creator_name,
-                    (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count
+                    assigned.username as assigned_username,
+                    assigned.full_name as assigned_name,
+                    (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count,
+                    (SELECT COUNT(*) FROM request_comments WHERE request_id = r.id) as comment_count
                 FROM requests r
                 INNER JOIN apps a ON r.app_id = a.id
                 LEFT JOIN users u ON r.created_by = u.id
+                LEFT JOIN users assigned ON r.assigned_to = assigned.id
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY {$sort}
             ";
@@ -210,8 +214,8 @@ switch ($method) {
             error_response('Request ID is required');
         }
 
-        // Check if user has permission (must be admin/superadmin)
-        if (!has_role('admin') && !has_role('superadmin')) {
+        // Check if user has permission (programador, admin, superadmin can edit)
+        if (!can_edit_requests()) {
             error_response('Unauthorized', 403);
         }
 
@@ -248,6 +252,12 @@ switch ($method) {
             if (array_key_exists('difficulty', $input)) {
                 $fields[] = 'difficulty = ?';
                 $values[] = $input['difficulty'];
+            }
+
+            // Assigned to
+            if (array_key_exists('assigned_to', $input)) {
+                $fields[] = 'assigned_to = ?';
+                $values[] = $input['assigned_to'] ?: null;
             }
 
             // Status with completed_at handling
@@ -305,8 +315,8 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        // Delete request (admin and superadmin)
-        if (!has_role('admin') && !has_role('superadmin')) {
+        // Delete request (admin and superadmin only - programador cannot delete)
+        if (!can_delete_requests()) {
             error_response('Unauthorized', 403);
         }
 

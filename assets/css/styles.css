@@ -2124,6 +2124,200 @@ nav {
     margin-left: auto;
 }
 
+/* Quick Assign Button */
+.btn-assign-quick {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: transparent;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-assign-quick:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-assign-quick i {
+    font-size: 0.875rem;
+}
+
+/* Comments Section */
+.comments-section {
+    margin-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-lg);
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.comment-item {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.comment-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: 4px;
+}
+
+.comment-author {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.comment-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.comment-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.comment-text .mention {
+    color: var(--primary-color);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.comment-text .mention:hover {
+    text-decoration: underline;
+}
+
+.comment-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.comment-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.comment-action-btn:hover {
+    color: var(--primary-color);
+}
+
+/* Comment Input */
+.comment-input-wrapper {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.comment-input {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    resize: none;
+    min-height: 40px;
+    max-height: 120px;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.comment-submit-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.comment-submit-btn:hover {
+    background: var(--primary-dark);
+}
+
+/* Mentions Dropdown */
+.mentions-dropdown {
+    position: absolute;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    min-width: 200px;
+}
+
+.mention-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.mention-item:hover {
+    background: var(--bg-hover);
+}
+
+.mention-item-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.mention-item-username {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
 /* Responsive Changelog */
 @media (max-width: 768px) {
     .changelog-date-header {

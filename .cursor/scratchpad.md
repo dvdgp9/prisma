@@ -393,3 +393,55 @@ CREATE TABLE app_files (
     INDEX idx_app (app_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+---
+
+## Nueva Funcionalidad: Rol Programador + Comentarios (9 Marzo 2026)
+
+### Requisitos
+1. **Rol "Programador"**: Permisos CRU de mejoras (sin Delete)
+2. **Asignación de tareas**: Campo para saber quién tiene asignada cada mejora
+3. **Comentarios con menciones**: Sistema de comentarios con @menciones en las mejoras
+4. **Mejora de interfaz**: Rediseño de cards para mostrar asignación clara
+
+### Jerarquía de Roles (actualizada)
+- `superadmin`: Todo (CRUD completo + admin panel)
+- `admin`: CRUD de mejoras + gestión de usuarios de su empresa
+- `programador`: CRU de mejoras (sin delete) + ver apps asignadas
+- `user`: Solo lectura + crear mejoras + votar
+
+### SQL a ejecutar
+
+```sql
+-- 1. Añadir campo assigned_to a requests
+ALTER TABLE requests 
+ADD COLUMN assigned_to INT NULL AFTER created_by,
+ADD CONSTRAINT fk_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
+
+-- 2. Crear tabla de comentarios
+CREATE TABLE request_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_request (request_id),
+    INDEX idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Crear tabla de menciones (para notificaciones futuras)
+CREATE TABLE comment_mentions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    comment_id INT NOT NULL,
+    mentioned_user_id INT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comment_id) REFERENCES request_comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (mentioned_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_comment (comment_id),
+    INDEX idx_mentioned_user (mentioned_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```

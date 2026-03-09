@@ -320,6 +320,7 @@ $user = get_logged_user();
                     <label for="user-role">Rol *</label>
                     <select id="user-role" required>
                         <option value="user">Usuario</option>
+                        <option value="programador">Programador</option>
                         <option value="admin">Admin</option>
                         <option value="superadmin">Superadmin</option>
                     </select>

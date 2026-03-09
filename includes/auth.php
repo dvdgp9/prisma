@@ -174,6 +174,7 @@ function get_logged_user()
 
 /**
  * Check if current user has a specific role
+ * Role hierarchy: superadmin > admin > programador > user
  */
 function has_role($role)
 {
@@ -185,11 +186,29 @@ function has_role($role)
         return $_SESSION['role'] === 'superadmin';
     } else if ($role === 'admin') {
         return in_array($_SESSION['role'], ['superadmin', 'admin']);
+    } else if ($role === 'programador') {
+        return in_array($_SESSION['role'], ['superadmin', 'admin', 'programador']);
     } else if ($role === 'user') {
-        return in_array($_SESSION['role'], ['superadmin', 'admin', 'user']);
+        return in_array($_SESSION['role'], ['superadmin', 'admin', 'programador', 'user']);
     }
 
     return false;
+}
+
+/**
+ * Check if current user can edit requests (CRU - no delete)
+ */
+function can_edit_requests()
+{
+    return has_role('programador');
+}
+
+/**
+ * Check if current user can delete requests
+ */
+function can_delete_requests()
+{
+    return has_role('admin');
 }
 
 /**

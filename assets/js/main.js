@@ -422,6 +422,8 @@ function createRequestCard(request, isFinished = false) {
 
     const userRole = document.body.dataset.userRole;
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
+    const canEdit = ['admin', 'superadmin', 'programador'].includes(userRole);
+    const canDelete = ['admin', 'superadmin'].includes(userRole);
 
     card.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
@@ -507,13 +509,32 @@ function createRequestCard(request, isFinished = false) {
         ` : ''}
 
         <div class="card-footer">
-            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; flex: 1;">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);" title="Creado por">
                     <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.875rem;"></i>
-                    <span class="text-small text-muted">${escapeHtml(request.creator_username || request.created_by)}</span>
+                    <span class="text-small text-muted">${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
                 </div>
 
-                ${isAdminOrSuperadmin ? `
+                ${request.assigned_to ? `
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 2px 8px; background: var(--primary-color); border-radius: 12px;" title="Asignado a">
+                        <i class="iconoir-user-badge-check" style="color: white; font-size: 0.75rem;"></i>
+                        <span class="text-small" style="color: white; font-weight: 500;">${escapeHtml(request.assigned_name || request.assigned_username)}</span>
+                    </div>
+                ` : (canEdit ? `
+                    <button class="btn-assign-quick" onclick="openAssignModal(${request.id}, event)" title="Asignar">
+                        <i class="iconoir-user-plus"></i>
+                        <span>Asignar</span>
+                    </button>
+                ` : '')}
+
+                ${request.comment_count > 0 ? `
+                    <div style="display: flex; align-items: center; gap: var(--spacing-xs);" title="${request.comment_count} comentario(s)">
+                        <i class="iconoir-chat-bubble" style="color: var(--text-muted); font-size: 0.875rem;"></i>
+                        <span class="text-small text-muted">${request.comment_count}</span>
+                    </div>
+                ` : ''}
+
+                ${canEdit ? `
                     <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-left: auto;">
                         ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
                             <button class="quick-action-btn" onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})" 
@@ -524,9 +545,11 @@ function createRequestCard(request, isFinished = false) {
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                             <i class="iconoir-edit"></i>
                         </button>
-                        <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar" style="color: var(--color-red);">
-                            <i class="iconoir-xmark"></i>
-                        </button>
+                        ${canDelete ? `
+                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar" style="color: var(--color-red);">
+                                <i class="iconoir-xmark"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 ` : ''}
             </div>
@@ -1012,6 +1035,42 @@ async function openEditRequestModal(requestId) {
             // Load attachments
             await loadRequestAttachments(requestId);
 
+            // Load comments
+            await loadComments(requestId);
+
+            // Setup mentions autocomplete
+            const commentInput = document.getElementById('edit-comment-input');
+            const mentionsDropdown = document.getElementById('edit-mentions-dropdown');
+            if (commentInput && mentionsDropdown) {
+                setupMentionsAutocomplete(commentInput, mentionsDropdown);
+            }
+
+            // Populate assigned user select
+            const assignedSelect = document.getElementById('edit-request-assigned');
+            if (assignedSelect) {
+                assignedSelect.innerHTML = '<option value="">Sin asignar</option>' + 
+                    availableUsers.map(user => `
+                        <option value="${user.id}" ${request.assigned_to == user.id ? 'selected' : ''}>
+                            ${escapeHtml(user.full_name || user.username)}
+                        </option>
+                    `).join('');
+            }
+
+            // Update assigned display
+            const assignedDisplay = document.getElementById('edit-assigned-display');
+            if (assignedDisplay) {
+                if (request.assigned_to) {
+                    assignedDisplay.innerHTML = `
+                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--primary-color); border-radius: 12px; color: white; font-size: 0.875rem;">
+                            <i class="iconoir-user-badge-check" style="font-size: 0.75rem;"></i>
+                            ${escapeHtml(request.assigned_name || request.assigned_username)}
+                        </span>
+                    `;
+                } else {
+                    assignedDisplay.innerHTML = '<span class="text-muted text-small">Sin asignar</span>';
+                }
+            }
+
             // Open modal
             document.getElementById('edit-request-modal').classList.add('active');
         }
@@ -1130,6 +1189,12 @@ async function submitEditRequest(event) {
     }
     if (requesterEmailField && requesterEmailField.value) {
         payload.requester_email = requesterEmailField.value;
+    }
+
+    // Add assigned user if field exists
+    const assignedField = document.getElementById('edit-request-assigned');
+    if (assignedField) {
+        payload.assigned_to = assignedField.value ? parseInt(assignedField.value) : null;
     }
 
     try {
@@ -2069,4 +2134,302 @@ function exportRequests() {
         message: 'El archivo CSV se descargará automáticamente',
         icon: 'iconoir-download'
     }, 'toast-completed');
+}
+
+// ===================
+// Assignment Functions
+// ===================
+
+let availableUsers = [];
+
+async function loadAvailableUsers() {
+    try {
+        const response = await fetch('/api/users-list.php');
+        const data = await response.json();
+        if (data.success) {
+            availableUsers = data.data;
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// Load users on page load
+document.addEventListener('DOMContentLoaded', loadAvailableUsers);
+
+function openAssignModal(requestId, event) {
+    if (event) event.stopPropagation();
+    
+    const modal = document.getElementById('assign-modal');
+    document.getElementById('assign-request-id').value = requestId;
+    
+    // Populate user list
+    const userList = document.getElementById('assign-user-list');
+    userList.innerHTML = availableUsers.map(user => `
+        <div class="mention-item" onclick="assignUser(${requestId}, ${user.id})">
+            <div class="comment-avatar">${(user.full_name || user.username).charAt(0).toUpperCase()}</div>
+            <div>
+                <div class="mention-item-name">${escapeHtml(user.full_name || user.username)}</div>
+                <div class="mention-item-username">@${escapeHtml(user.username)}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    modal.classList.add('active');
+}
+
+async function assignUser(requestId, userId) {
+    try {
+        const response = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: requestId,
+                assigned_to: userId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('assign-modal');
+            loadRequests();
+            showToast({
+                title: 'Asignado',
+                message: 'La tarea ha sido asignada correctamente',
+                icon: 'iconoir-user-badge-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al asignar');
+        }
+    } catch (error) {
+        console.error('Error assigning user:', error);
+    }
+}
+
+async function unassignUser(requestId) {
+    try {
+        const response = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: requestId,
+                assigned_to: null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadRequests();
+            showToast({
+                title: 'Desasignado',
+                message: 'La asignación ha sido eliminada',
+                icon: 'iconoir-user-xmark'
+            }, 'toast-completed');
+        }
+    } catch (error) {
+        console.error('Error unassigning user:', error);
+    }
+}
+
+// ===================
+// Comments Functions
+// ===================
+
+let currentComments = [];
+
+async function loadComments(requestId) {
+    try {
+        const response = await fetch(`/api/comments.php?request_id=${requestId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentComments = data.data;
+            renderComments(requestId);
+        }
+    } catch (error) {
+        console.error('Error loading comments:', error);
+    }
+}
+
+function renderComments(requestId) {
+    const container = document.getElementById('edit-comments-list');
+    if (!container) return;
+    
+    if (currentComments.length === 0) {
+        container.innerHTML = '<p class="text-muted text-small">No hay comentarios todavía</p>';
+        return;
+    }
+    
+    container.innerHTML = currentComments.map(comment => {
+        const initials = (comment.full_name || comment.username).charAt(0).toUpperCase();
+        const date = new Date(comment.created_at).toLocaleDateString('es-ES', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const currentUserId = parseInt(document.body.dataset.userId);
+        const canModify = comment.user_id === currentUserId || ['admin', 'superadmin'].includes(document.body.dataset.userRole);
+        
+        // Parse mentions in content
+        const contentWithMentions = escapeHtml(comment.content).replace(
+            /@(\w+)/g, 
+            '<span class="mention">@$1</span>'
+        );
+        
+        return `
+            <div class="comment-item" data-comment-id="${comment.id}">
+                <div class="comment-avatar">${initials}</div>
+                <div class="comment-content">
+                    <div class="comment-header">
+                        <span class="comment-author">${escapeHtml(comment.full_name || comment.username)}</span>
+                        <span class="comment-time">${date}</span>
+                    </div>
+                    <div class="comment-text">${contentWithMentions}</div>
+                    ${canModify ? `
+                        <div class="comment-actions">
+                            <button class="comment-action-btn" onclick="deleteComment(${comment.id}, ${requestId})">
+                                <i class="iconoir-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function submitComment(requestId) {
+    const input = document.getElementById('edit-comment-input');
+    const content = input.value.trim();
+    
+    if (!content) return;
+    
+    try {
+        const response = await fetch('/api/comments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                request_id: requestId,
+                content: content
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            input.value = '';
+            await loadComments(requestId);
+            
+            // Update comment count in card
+            const card = document.querySelector(`[data-request-id="${requestId}"]`);
+            if (card) {
+                loadRequests(); // Refresh to update count
+            }
+        } else {
+            alert(data.error || 'Error al añadir comentario');
+        }
+    } catch (error) {
+        console.error('Error adding comment:', error);
+    }
+}
+
+async function deleteComment(commentId, requestId) {
+    if (!confirm('¿Eliminar este comentario?')) return;
+    
+    try {
+        const response = await fetch('/api/comments.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: commentId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadComments(requestId);
+        } else {
+            alert(data.error || 'Error al eliminar comentario');
+        }
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+    }
+}
+
+// Mentions autocomplete
+function setupMentionsAutocomplete(inputElement, dropdownElement) {
+    let mentionStart = -1;
+    
+    inputElement.addEventListener('input', (e) => {
+        const value = e.target.value;
+        const cursorPos = e.target.selectionStart;
+        
+        // Find @ before cursor
+        const beforeCursor = value.substring(0, cursorPos);
+        const lastAtIndex = beforeCursor.lastIndexOf('@');
+        
+        if (lastAtIndex !== -1) {
+            const afterAt = beforeCursor.substring(lastAtIndex + 1);
+            
+            // Check if we're in a mention (no spaces after @)
+            if (!afterAt.includes(' ')) {
+                mentionStart = lastAtIndex;
+                const searchTerm = afterAt.toLowerCase();
+                
+                const filtered = availableUsers.filter(u => 
+                    u.username.toLowerCase().includes(searchTerm) ||
+                    (u.full_name && u.full_name.toLowerCase().includes(searchTerm))
+                );
+                
+                if (filtered.length > 0) {
+                    showMentionsDropdown(dropdownElement, filtered, inputElement, mentionStart);
+                    return;
+                }
+            }
+        }
+        
+        hideMentionsDropdown(dropdownElement);
+    });
+    
+    inputElement.addEventListener('keydown', (e) => {
+        if (dropdownElement.style.display === 'block') {
+            if (e.key === 'Escape') {
+                hideMentionsDropdown(dropdownElement);
+            }
+        }
+    });
+}
+
+function showMentionsDropdown(dropdown, users, input, startPos) {
+    dropdown.innerHTML = users.slice(0, 5).map(user => `
+        <div class="mention-item" data-username="${user.username}">
+            <div class="comment-avatar" style="width: 24px; height: 24px; font-size: 0.625rem;">
+                ${(user.full_name || user.username).charAt(0).toUpperCase()}
+            </div>
+            <div>
+                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
+                <span class="mention-item-username">@${escapeHtml(user.username)}</span>
+            </div>
+        </div>
+    `).join('');
+    
+    dropdown.style.display = 'block';
+    
+    // Handle click on mention
+    dropdown.querySelectorAll('.mention-item').forEach(item => {
+        item.onclick = () => {
+            const username = item.dataset.username;
+            const value = input.value;
+            const newValue = value.substring(0, startPos) + '@' + username + ' ' + value.substring(input.selectionStart);
+            input.value = newValue;
+            input.focus();
+            hideMentionsDropdown(dropdown);
+        };
+    });
+}
+
+function hideMentionsDropdown(dropdown) {
+    dropdown.style.display = 'none';
 }
