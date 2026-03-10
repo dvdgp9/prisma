@@ -1208,18 +1208,6 @@ nav {
 }
 
 /* Advanced Filters (Collapsible) */
-.advanced-filters {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
-    padding: var(--spacing-lg);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(66, 160, 209, 0.08);
-}
-
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -1229,53 +1217,6 @@ nav {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.filter-group label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.filter-group select {
-    min-width: 180px;
-}
-
-.filter-group-toggle {
-    justify-content: flex-end;
-}
-
-.filter-toggle-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 1.35rem;
-    padding: 0.7rem 0.9rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.filter-toggle-chip input {
-    width: auto;
-    margin: 0;
-}
-
-.filter-toggle-chip span {
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.filter-group-actions {
-    justify-content: flex-end;
 }
 
 .requests-summary-bar {
@@ -1926,9 +1867,6 @@ nav {
         margin-left: 0;
     }
 
-    .advanced-filters {
-        padding: var(--spacing-md);
-    }
 }
 
 /* File Upload */

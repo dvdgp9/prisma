@@ -195,69 +195,6 @@ $company_name = $user['company_name'] ?? '';
                     </button>
                 </div>
             </div>
-            
-            <div class="advanced-filters" id="advanced-filters">
-                <div class="filter-group">
-                    <label>Prioridad</label>
-                    <select id="priority-filter" onchange="loadRequests()">
-                        <option value="">Todas</option>
-                        <option value="critical">Crítica</option>
-                        <option value="high">Alta</option>
-                        <option value="medium">Media</option>
-                        <option value="low">Baja</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Estado</label>
-                    <select id="status-filter" onchange="loadRequests()">
-                        <option value="">Todos</option>
-                        <option value="pending">Pendiente</option>
-                        <option value="in_progress">En Progreso</option>
-                        <option value="completed">Completado</option>
-                        <option value="discarded">Descartado</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label>Dificultad</label>
-                    <select id="difficulty-filter" onchange="loadRequests()">
-                        <option value="">Todas</option>
-                        <option value="low">Baja</option>
-                        <option value="medium">Media</option>
-                        <option value="high">Alta</option>
-                    </select>
-                </div>
-
-                <div class="filter-group filter-group-toggle">
-                    <label class="filter-toggle-chip">
-                        <input type="checkbox" id="assigned-to-me-filter" onchange="renderRequests()">
-                        <span>Asignadas a mí</span>
-                    </label>
-                </div>
-
-                <div class="filter-group filter-group-toggle">
-                    <label class="filter-toggle-chip">
-                        <input type="checkbox" id="unassigned-filter" onchange="renderRequests()">
-                        <span>Sin asignar</span>
-                    </label>
-                </div>
-
-                <div class="filter-group filter-group-toggle">
-                    <label class="filter-toggle-chip">
-                        <input type="checkbox" id="with-comments-filter" onchange="renderRequests()">
-                        <span>Con comentarios</span>
-                    </label>
-                </div>
-
-                <div class="filter-group filter-group-actions">
-                    <label>&nbsp;</label>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="clearAllRequestFilters()">
-                        <i class="iconoir-xmark-circle"></i>
-                        Limpiar
-                    </button>
-                </div>
-            </div>
 
             <div class="requests-summary-bar" id="requests-summary-bar">
                 <div class="summary-stat-card">
