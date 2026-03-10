@@ -839,6 +839,31 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - Comprobar que abrir una fila abre el detalle correctamente
 - Comprobar que checklist, comentarios y responsable se ven bien en tabla
 
+### ✅ Progreso executor adicional (10 Marzo 2026 - refinado tabla y toolbar)
+
+#### Subbloque ejecutado
+- **Tabla operativa refinada**
+  - prioridad editable inline desde la tabla
+  - estado editable inline desde la tabla
+  - resto de la fila mantiene apertura del modal
+  - ordenación por clic en cabeceras
+  - indicadores visuales de dirección de orden
+
+- **Toolbar / filtros refinados**
+  - eliminación del botón redundante de filtros
+  - filtros integrados siempre visibles
+  - mejor alineación y densidad visual en la barra superior
+
+- **Navegación corregida**
+  - el acceso a `Solicitudes pendientes de aprobar` ya usa una vista unificada y debe funcionar también desde modo tabla
+
+#### Validación manual requerida
+- Editar prioridad inline desde la tabla y comprobar persistencia
+- Editar estado inline desde la tabla y comprobar que mantiene el estilo visual correcto
+- Ordenar por varias columnas y verificar asc/desc
+- Confirmar que la fila sigue abriendo el modal salvo en acciones inline
+- Confirmar que `Pendientes Aprobar` funciona tanto estando en tarjetas como en tabla
+
 ### 🧠 Actualización Planner (10 Marzo 2026 - nueva decisión del usuario)
 
 El usuario indica que, para continuar, **prefiere priorizar dos cosas** por encima de otros indicadores operativos más amplios:

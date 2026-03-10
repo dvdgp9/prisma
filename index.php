@@ -153,11 +153,6 @@ $company_name = $user['company_name'] ?? '';
                         </select>
                     </div>
                 </div>
-                
-                <button class="btn-filters-toggle" onclick="toggleAdvancedFilters()" id="filters-toggle-btn">
-                    <i class="iconoir-filter"></i>
-                    Filtros
-                </button>
             </div>
 
             <div class="quick-views-bar">
@@ -201,8 +196,7 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
             
-            <!-- Advanced Filters (Collapsible) -->
-            <div class="advanced-filters" id="advanced-filters" style="display: none;">
+            <div class="advanced-filters" id="advanced-filters">
                 <div class="filter-group">
                     <label>Prioridad</label>
                     <select id="priority-filter" onchange="loadRequests()">
@@ -297,15 +291,15 @@ $company_name = $user['company_name'] ?? '';
                 <table class="requests-table" id="requests-table">
                     <thead>
                         <tr>
-                            <th>Prioridad</th>
-                            <th>Estado</th>
-                            <th>Título</th>
-                            <th>App</th>
-                            <th>Responsable</th>
-                            <th>Asignados</th>
-                            <th>Comentarios</th>
-                            <th>Checklist</th>
-                            <th>Antigüedad</th>
+                            <th class="requests-table-sortable" data-sort-field="priority" onclick="setTableSort('priority')">Prioridad</th>
+                            <th class="requests-table-sortable" data-sort-field="status" onclick="setTableSort('status')">Estado</th>
+                            <th class="requests-table-sortable" data-sort-field="title" onclick="setTableSort('title')">Título</th>
+                            <th class="requests-table-sortable" data-sort-field="app_name" onclick="setTableSort('app_name')">App</th>
+                            <th class="requests-table-sortable" data-sort-field="owner" onclick="setTableSort('owner')">Responsable</th>
+                            <th class="requests-table-sortable" data-sort-field="assignments_count" onclick="setTableSort('assignments_count')">Asignados</th>
+                            <th class="requests-table-sortable" data-sort-field="comment_count" onclick="setTableSort('comment_count')">Comentarios</th>
+                            <th class="requests-table-sortable" data-sort-field="checklist" onclick="setTableSort('checklist')">Checklist</th>
+                            <th class="requests-table-sortable" data-sort-field="created_at" onclick="setTableSort('created_at')">Antigüedad</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>

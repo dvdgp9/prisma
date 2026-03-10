@@ -1056,10 +1056,10 @@ nav {
 /* Multi-level Sorting Bar */
 .sorting-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
     padding: var(--spacing-lg);
     background: var(--bg-primary);
     border-radius: var(--radius-lg);
@@ -1092,9 +1092,10 @@ nav {
 
 .sorting-controls {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: var(--spacing-md);
     flex: 1;
+    flex-wrap: wrap;
 }
 
 .sort-group {
@@ -1140,34 +1141,6 @@ nav {
     margin: 0 var(--spacing-xs);
     align-self: center;
     margin-top: 1.25rem;
-}
-
-.btn-filters-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    font-size: 0.9375rem;
-    font-weight: 600;
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.btn-filters-toggle:hover {
-    border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: white;
-}
-
-.btn-filters-toggle.active {
-    border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: white;
 }
 
 .quick-views-bar {
@@ -1236,17 +1209,15 @@ nav {
 
 /* Advanced Filters (Collapsible) */
 .advanced-filters {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-xl);
     padding: var(--spacing-lg);
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
-    animation: slideDown 0.3s ease-out;
-}
-
-.advanced-filters.show {
-    display: flex;
+    border: 1px solid rgba(66, 160, 209, 0.08);
 }
 
 @keyframes slideDown {
@@ -1382,6 +1353,37 @@ nav {
     white-space: nowrap;
 }
 
+.requests-table-sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: color 0.15s ease;
+}
+
+.requests-table-sortable:hover {
+    color: var(--primary-color);
+}
+
+.requests-table-sortable::after {
+    content: '↕';
+    margin-left: 0.35rem;
+    opacity: 0.45;
+    font-size: 0.75rem;
+}
+
+.requests-table-sortable.is-active {
+    color: var(--primary-color) !important;
+}
+
+.requests-table-sortable.is-active::after {
+    content: '↑';
+    opacity: 1;
+}
+
+.requests-table-sortable.is-active.is-desc::after {
+    content: '↓';
+}
+
 .requests-table tbody td {
     padding: 0.9rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
@@ -1423,6 +1425,31 @@ nav {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+.table-inline-badge-button {
+    position: relative;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+
+.table-inline-badge-button .priority-badge,
+.table-inline-badge-button .status-badge-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.table-inline-badge-button .priority-badge i,
+.table-inline-badge-button .status-badge-display i {
+    font-size: 0.7rem;
+}
+
+.table-inline-badge-button .badge-dropdown {
+    left: 0;
+    top: calc(100% + 6px);
 }
 
 .requests-table-empty {
@@ -1897,6 +1924,10 @@ nav {
 
     .view-toggle-group {
         margin-left: 0;
+    }
+
+    .advanced-filters {
+        padding: var(--spacing-md);
     }
 }
 

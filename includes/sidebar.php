@@ -48,7 +48,7 @@ $company_name = $user['company_name'] ?? '';
                 
                 <?php if (has_role('admin')): ?>
                     <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>" 
-                       onclick="<?php echo $current_page === 'index' ? 'loadPendingApprovals(); return false;' : 'return true;'; ?>" 
+                       onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>" 
                        class="quick-action-btn" 
                        id="pending-approvals-nav" 
                        title="Pendientes Aprobar">

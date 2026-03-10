@@ -11,6 +11,10 @@ let requestSearchTerm = '';
 let currentQuickView = 'all';
 let currentChecklistItems = [];
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
+let currentTableSort = {
+    field: null,
+    direction: 'asc'
+};
 
 const userRole = document.body.dataset.userRole;
 
@@ -93,6 +97,151 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 });
 
+function isPendingViewActive() {
+    return currentView === 'pending';
+}
+
+function setTableSort(field) {
+    if (currentTableSort.field === field) {
+        currentTableSort.direction = currentTableSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentTableSort.field = field;
+        currentTableSort.direction = 'asc';
+    }
+
+    if (currentRequestsViewMode === 'table') {
+        renderRequests();
+    }
+}
+
+function syncTableSortUI() {
+    document.querySelectorAll('.requests-table-sortable').forEach(th => {
+        th.classList.remove('is-active', 'is-desc');
+        if (th.dataset.sortField === currentTableSort.field) {
+            th.classList.add('is-active');
+            if (currentTableSort.direction === 'desc') {
+                th.classList.add('is-desc');
+            }
+        }
+    });
+}
+
+function sortRequestsForTable(requestsToSort) {
+    if (!currentTableSort.field) return requestsToSort;
+
+    const priorityRank = { critical: 4, high: 3, medium: 2, low: 1 };
+    const statusRank = { pending: 1, in_progress: 2, completed: 3, discarded: 4 };
+    const direction = currentTableSort.direction === 'asc' ? 1 : -1;
+
+    return [...requestsToSort].sort((a, b) => {
+        let aValue;
+        let bValue;
+
+        switch (currentTableSort.field) {
+            case 'priority':
+                aValue = priorityRank[a.priority] || 0;
+                bValue = priorityRank[b.priority] || 0;
+                break;
+            case 'status':
+                aValue = statusRank[a.status] || 0;
+                bValue = statusRank[b.status] || 0;
+                break;
+            case 'title':
+                aValue = (a.title || '').toLowerCase();
+                bValue = (b.title || '').toLowerCase();
+                break;
+            case 'app_name':
+                aValue = (a.app_name || '').toLowerCase();
+                bValue = (b.app_name || '').toLowerCase();
+                break;
+            case 'owner':
+                aValue = getPrimaryOwnerLabel(a).toLowerCase();
+                bValue = getPrimaryOwnerLabel(b).toLowerCase();
+                break;
+            case 'assignments_count':
+                aValue = (a.assignments || []).length;
+                bValue = (b.assignments || []).length;
+                break;
+            case 'comment_count':
+                aValue = parseInt(a.comment_count || 0, 10);
+                bValue = parseInt(b.comment_count || 0, 10);
+                break;
+            case 'checklist': {
+                const aChecklist = getChecklistProgress(a);
+                const bChecklist = getChecklistProgress(b);
+                aValue = aChecklist.total === 0 ? -1 : (aChecklist.completed / aChecklist.total);
+                bValue = bChecklist.total === 0 ? -1 : (bChecklist.completed / bChecklist.total);
+                break;
+            }
+            case 'created_at':
+                aValue = new Date(a.created_at).getTime();
+                bValue = new Date(b.created_at).getTime();
+                break;
+            default:
+                return 0;
+        }
+
+        if (aValue < bValue) return -1 * direction;
+        if (aValue > bValue) return 1 * direction;
+        return 0;
+    });
+}
+
+function openPendingApprovalsView(event = null) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    currentView = 'pending';
+    currentAppId = null;
+    currentCompanyId = null;
+    document.getElementById('page-title').textContent = 'Solicitudes Pendientes de Aprobar';
+    history.pushState({ view: 'pending' }, '', '/index.php#pending');
+
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.company-nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.quick-action-btn').forEach(btn => btn.classList.remove('active'));
+
+    const pendingBtn = document.getElementById('pending-approvals-nav');
+    if (pendingBtn) {
+        pendingBtn.classList.add('active');
+    }
+
+    loadPendingApprovals();
+}
+
+function getTablePriorityBadgeMarkup(request, canEdit) {
+    if (canEdit) {
+        return `
+            <button type="button" class="table-inline-badge-button" onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')">
+                <span class="priority-badge priority-${request.priority}">
+                    ${escapeHtml(getPriorityLabel(request.priority))}
+                    <i class="iconoir-nav-arrow-down"></i>
+                </span>
+                ${createPriorityDropdown(request.id, request.priority)}
+            </button>
+        `;
+    }
+
+    return `<span class="priority-badge priority-${request.priority}">${escapeHtml(getPriorityLabel(request.priority))}</span>`;
+}
+
+function getTableStatusBadgeMarkup(request, canEdit) {
+    if (canEdit) {
+        return `
+            <button type="button" class="table-inline-badge-button" onclick="toggleBadgeDropdown(event, ${request.id}, 'status')">
+                <span class="status-badge-display status-${request.status}">
+                    ${escapeHtml(getStatusLabel(request.status))}
+                    <i class="iconoir-nav-arrow-down"></i>
+                </span>
+                ${createStatusDropdown(request.id, request.status)}
+            </button>
+        `;
+    }
+
+    return `<span class="status-badge-display status-${request.status}">${escapeHtml(getStatusLabel(request.status))}</span>`;
+}
+
 async function loadChecklistItems(requestId) {
     const countEl = document.getElementById('edit-checklist-count');
     const progressText = document.getElementById('edit-checklist-progress-text');
@@ -130,7 +279,9 @@ function renderRequestsTable(filteredRequests, tableBody) {
     const canEdit = ['admin', 'superadmin', 'programador'].includes(document.body.dataset.userRole);
     const canDelete = ['admin', 'superadmin'].includes(document.body.dataset.userRole);
 
-    tableBody.innerHTML = filteredRequests.map(request => {
+    const sortedRequests = sortRequestsForTable(filteredRequests);
+
+    tableBody.innerHTML = sortedRequests.map(request => {
         const checklistProgress = getChecklistProgress(request);
         const primaryOwner = getPrimaryOwnerLabel(request);
         const assignmentsCount = (request.assignments || []).length;
@@ -138,10 +289,10 @@ function renderRequestsTable(filteredRequests, tableBody) {
         return `
             <tr data-request-id="${request.id}" onclick="openEditRequestModal(${request.id})">
                 <td>
-                    <span class="priority-badge priority-${request.priority}">${escapeHtml(getPriorityLabel(request.priority))}</span>
+                    ${getTablePriorityBadgeMarkup(request, canEdit)}
                 </td>
                 <td>
-                    <span class="status-badge-display status-${request.status}">${escapeHtml(getStatusLabel(request.status))}</span>
+                    ${getTableStatusBadgeMarkup(request, canEdit)}
                 </td>
                 <td class="requests-table-title-cell">
                     <strong>${escapeHtml(request.title)}</strong>
@@ -170,6 +321,8 @@ function renderRequestsTable(filteredRequests, tableBody) {
             </tr>
         `;
     }).join('');
+
+    syncTableSortUI();
 }
 
 function renderChecklistItems() {
@@ -790,22 +943,6 @@ async function loadRequests() {
         }
     } catch (error) {
         console.error('Error loading requests:', error);
-    }
-}
-
-// Toggle advanced filters visibility
-function toggleAdvancedFilters() {
-    const filtersDiv = document.getElementById('advanced-filters');
-    const toggleBtn = document.getElementById('filters-toggle-btn');
-    
-    if (filtersDiv.style.display === 'none') {
-        filtersDiv.style.display = 'flex';
-        filtersDiv.classList.add('show');
-        toggleBtn.classList.add('active');
-    } else {
-        filtersDiv.style.display = 'none';
-        filtersDiv.classList.remove('show');
-        toggleBtn.classList.remove('active');
     }
 }
 
