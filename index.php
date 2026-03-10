@@ -103,6 +103,14 @@ $company_name = $user['company_name'] ?? '';
             <!-- Multi-level Sorting Bar -->
             <div class="sorting-bar">
                 <div class="sorting-controls">
+                    <div class="sort-group sort-group-search">
+                        <label class="sort-label">Buscar</label>
+                        <div class="toolbar-search-input">
+                            <i class="iconoir-search"></i>
+                            <input type="text" id="request-search" placeholder="Buscar por título, descripción, app o solicitante" oninput="handleSearchInput()">
+                        </div>
+                    </div>
+
                     <div class="sort-group">
                         <label class="sort-label">Ordenar por</label>
                         <select id="sort-primary" onchange="loadRequests()" class="sort-select">
@@ -151,6 +159,37 @@ $company_name = $user['company_name'] ?? '';
                     Filtros
                 </button>
             </div>
+
+            <div class="quick-views-bar">
+                <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
+                    <i class="iconoir-view-grid"></i>
+                    <span>Todas</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
+                    <i class="iconoir-user-badge-check"></i>
+                    <span>Mis asignadas</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
+                    <i class="iconoir-play"></i>
+                    <span>En progreso</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
+                    <i class="iconoir-pause"></i>
+                    <span>Pendientes</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
+                    <i class="iconoir-check-circle"></i>
+                    <span>Completadas</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
+                    <i class="iconoir-user-xmark"></i>
+                    <span>Sin asignar</span>
+                </button>
+                <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
+                    <i class="iconoir-chat-bubble"></i>
+                    <span>Con comentarios</span>
+                </button>
+            </div>
             
             <!-- Advanced Filters (Collapsible) -->
             <div class="advanced-filters" id="advanced-filters" style="display: none;">
@@ -184,6 +223,58 @@ $company_name = $user['company_name'] ?? '';
                         <option value="medium">Media</option>
                         <option value="high">Alta</option>
                     </select>
+                </div>
+
+                <div class="filter-group filter-group-toggle">
+                    <label class="filter-toggle-chip">
+                        <input type="checkbox" id="assigned-to-me-filter" onchange="renderRequests()">
+                        <span>Asignadas a mí</span>
+                    </label>
+                </div>
+
+                <div class="filter-group filter-group-toggle">
+                    <label class="filter-toggle-chip">
+                        <input type="checkbox" id="unassigned-filter" onchange="renderRequests()">
+                        <span>Sin asignar</span>
+                    </label>
+                </div>
+
+                <div class="filter-group filter-group-toggle">
+                    <label class="filter-toggle-chip">
+                        <input type="checkbox" id="with-comments-filter" onchange="renderRequests()">
+                        <span>Con comentarios</span>
+                    </label>
+                </div>
+
+                <div class="filter-group filter-group-actions">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="clearAllRequestFilters()">
+                        <i class="iconoir-xmark-circle"></i>
+                        Limpiar
+                    </button>
+                </div>
+            </div>
+
+            <div class="requests-summary-bar" id="requests-summary-bar">
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Visibles</span>
+                    <strong class="summary-stat-value" id="summary-visible-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">En progreso</span>
+                    <strong class="summary-stat-value" id="summary-in-progress-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Pendientes</span>
+                    <strong class="summary-stat-value" id="summary-pending-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Sin asignar</span>
+                    <strong class="summary-stat-value" id="summary-unassigned-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Con comentarios</span>
+                    <strong class="summary-stat-value" id="summary-commented-count">0</strong>
                 </div>
             </div>
 
@@ -377,6 +468,21 @@ $company_name = $user['company_name'] ?? '';
                                 </label>
                                 <span id="edit-comments-count" class="badge-count-inline"></span>
                             </div>
+
+                            <div class="request-activity-overview" id="edit-activity-overview">
+                                <div class="request-activity-stat">
+                                    <span class="request-activity-stat-label">Último toque</span>
+                                    <strong id="edit-last-activity">Sin actividad</strong>
+                                </div>
+                                <div class="request-activity-stat">
+                                    <span class="request-activity-stat-label">Responsable principal</span>
+                                    <strong id="edit-primary-owner">Sin asignar</strong>
+                                </div>
+                            </div>
+
+                            <div id="edit-activity-timeline" class="activity-timeline">
+                                <!-- Timeline loaded dynamically -->
+                            </div>
                             
                             <div id="edit-comments-list" class="comments-list">
                                 <!-- Comments will be loaded here -->
@@ -451,6 +557,46 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                         </div>
                         <?php endif; ?>
+
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <div class="modal-side-title-content">
+                                    <i class="iconoir-report-columns"></i> Resumen
+                                </div>
+                            </div>
+                            <div class="modal-side-content">
+                                <div class="request-insight-list" id="edit-request-insights">
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Estado</span>
+                                        <strong id="edit-summary-status">-</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Prioridad</span>
+                                        <strong id="edit-summary-priority">-</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Dificultad</span>
+                                        <strong id="edit-summary-difficulty">-</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Creada</span>
+                                        <strong id="edit-summary-created">-</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Antigüedad</span>
+                                        <strong id="edit-summary-age">-</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Comentarios</span>
+                                        <strong id="edit-summary-comments">0</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Adjuntos</span>
+                                        <strong id="edit-summary-attachments">0</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="modal-side-section collapsible" id="edit-requester-section">
                             <div class="modal-side-title" onclick="this.parentElement.classList.toggle('active')">

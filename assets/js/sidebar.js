@@ -166,6 +166,9 @@ function escapeHtml(text) {
 // Inbox / Notifications (shared across all pages)
 // ===================
 
+let inboxNotifications = [];
+let currentInboxFilter = 'all';
+
 async function loadNotifications() {
     try {
         const response = await fetch('/api/notifications.php');
@@ -173,6 +176,7 @@ async function loadNotifications() {
         
         if (data.success) {
             const { notifications, unread_count } = data.data;
+            inboxNotifications = notifications || [];
             
             const badge = document.getElementById('inbox-count');
             if (badge) {
@@ -183,43 +187,68 @@ async function loadNotifications() {
                     badge.style.display = 'none';
                 }
             }
-            
-            const body = document.getElementById('inbox-body');
-            if (body) {
-                if (notifications.length === 0) {
-                    body.innerHTML = `
-                        <div class="inbox-empty">
-                            <i class="iconoir-bell"></i>
-                            <p>No hay notificaciones</p>
-                        </div>
-                    `;
-                } else {
-                    body.innerHTML = notifications.map(n => {
-                        const iconClass = n.type === 'mention' ? 'mention' : (n.type === 'assignment' ? 'assignment' : 'comment');
-                        const iconName = n.type === 'mention' ? 'iconoir-at-sign' : (n.type === 'assignment' ? 'iconoir-user-badge-check' : 'iconoir-chat-bubble');
-                        const timeAgo = getTimeAgo(new Date(n.created_at));
-                        
-                        return `
-                            <div class="inbox-item ${n.is_read == 0 ? 'unread' : ''}" 
-                                 onclick="handleNotificationClick(${n.id}, ${n.request_id})">
-                                <div class="inbox-item-icon ${iconClass}">
-                                    <i class="${iconName}"></i>
-                                </div>
-                                <div class="inbox-item-content">
-                                    <div class="inbox-item-text">${escapeHtml(n.message)}</div>
-                                    <div class="inbox-item-meta">
-                                        ${escapeHtml(n.request_title)} · ${timeAgo}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
+
+            renderNotifications();
         }
     } catch (error) {
         console.error('Error loading notifications:', error);
     }
+}
+
+function setInboxFilter(filter, event) {
+    currentInboxFilter = filter;
+    document.querySelectorAll('.inbox-filter-chip').forEach(chip => chip.classList.remove('active'));
+    const activeChip = document.querySelector(`.inbox-filter-chip[data-filter="${filter}"]`);
+    if (activeChip) {
+        activeChip.classList.add('active');
+    }
+    renderNotifications();
+}
+
+function getFilteredNotifications() {
+    if (currentInboxFilter === 'all') return inboxNotifications;
+    if (currentInboxFilter === 'unread') {
+        return inboxNotifications.filter(n => parseInt(n.is_read, 10) === 0);
+    }
+    return inboxNotifications.filter(n => n.type === currentInboxFilter);
+}
+
+function renderNotifications() {
+    const body = document.getElementById('inbox-body');
+    if (!body) return;
+
+    const notifications = getFilteredNotifications();
+
+    if (notifications.length === 0) {
+        body.innerHTML = `
+            <div class="inbox-empty">
+                <i class="iconoir-bell"></i>
+                <p>No hay notificaciones</p>
+            </div>
+        `;
+        return;
+    }
+
+    body.innerHTML = notifications.map(n => {
+        const iconClass = n.type === 'mention' ? 'mention' : (n.type === 'assignment' ? 'assignment' : 'comment');
+        const iconName = n.type === 'mention' ? 'iconoir-at-sign' : (n.type === 'assignment' ? 'iconoir-user-badge-check' : 'iconoir-chat-bubble');
+        const timeAgo = getTimeAgo(new Date(n.created_at));
+
+        return `
+            <div class="inbox-item ${n.is_read == 0 ? 'unread' : ''}" 
+                 onclick="handleNotificationClick(${n.id}, ${n.request_id})">
+                <div class="inbox-item-icon ${iconClass}">
+                    <i class="${iconName}"></i>
+                </div>
+                <div class="inbox-item-content">
+                    <div class="inbox-item-text">${escapeHtml(n.message)}</div>
+                    <div class="inbox-item-meta">
+                        ${escapeHtml(n.request_title)} · ${timeAgo}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function getTimeAgo(date) {

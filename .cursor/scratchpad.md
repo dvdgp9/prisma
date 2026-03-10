@@ -2,6 +2,8 @@
 
 ## Background and Motivation
 
+Actualización Planner (9 Marzo 2026): el usuario solicita un **análisis completo de la aplicación** para entender con claridad qué producto es Prisma hoy, cuál es su propuesta de valor real, qué limitaciones presenta, y cuál debería ser un **plan de mejoras transversal** en diseño, experiencia de usuario, funcionalidades, arquitectura, seguridad, rendimiento y operación.
+
 El usuario quiere transformar **Prisma** de una plataforma de uso individual a una **plataforma colaborativa de equipo**. Actualmente Prisma gestiona:
 - Empresas (companies) con multi-tenancy básico
 - Usuarios con roles (superadmin, admin, user)
@@ -26,6 +28,406 @@ El usuario quiere transformar **Prisma** de una plataforma de uso individual a u
 ---
 
 ## Key Challenges and Analysis
+
+### Análisis Global del Producto (Planner - 9 Marzo 2026)
+
+#### 1. ¿Qué es Prisma?
+
+Prisma es una **plataforma interna de gestión de demanda de desarrollo**. Sirve como punto central para recoger, priorizar, organizar y ejecutar trabajo relacionado con múltiples aplicaciones y múltiples empresas/clientes.
+
+No es solo un "tablón de ideas". Por la estructura actual del sistema, Prisma ya actúa como una mezcla de:
+- **Portal de entrada de solicitudes**
+- **Backlog de producto / mejoras / bugs**
+- **Panel operativo para desarrollo**
+- **Herramienta ligera de coordinación de equipo**
+- **Mini service desk interno**
+
+#### 2. Casos de uso reales que hoy cubre
+
+- Usuarios de negocio o cliente envían solicitudes externas mediante `solicitud.php`
+- Usuarios internos visualizan y votan mejoras para priorización
+- Admins y superadmins revisan solicitudes pendientes y las aprueban o rechazan
+- Equipo técnico organiza el trabajo por app, prioridad, dificultad y estado
+- Superadmin administra empresas, usuarios, permisos y aplicaciones
+- Usuarios pueden gestionar tareas rápidas personales (`tasks.php`)
+- Se mantiene contexto mediante adjuntos, comentarios, menciones y asignaciones
+- Ya existe una base para release planning, changelog y recursos por proyecto
+
+#### 3. Propuesta de valor actual
+
+Fortalezas del producto hoy:
+- **Centraliza trabajo disperso** entre apps y clientes
+- **Reduce pérdida de contexto** gracias a adjuntos, comentarios y asignación
+- **Permite priorización visible** mediante votos, estado, dificultad y prioridad
+- **Tiene base multiempresa** y permisos por rol
+- **Es usable como herramienta interna real** sin depender de suites externas complejas
+
+#### 4. Diagnóstico de madurez actual
+
+Prisma está en una fase de **producto funcional con crecimiento orgánico**:
+- La funcionalidad principal existe y resuelve necesidades reales
+- La UI ya tiene intención de diseño y consistencia visual
+- El sistema ha evolucionado añadiendo módulos útiles sin una capa fuerte de producto/plataforma unificada
+- Hay señales de deuda técnica normal de producto interno: JS grande, estilos extensos, lógica distribuida, flujos potentes pero no completamente sistematizados
+
+#### 5. Problemas estructurales detectados
+
+##### Producto
+- Prisma mezcla varios conceptos: solicitud, mejora, tarea, incidencia, release, comentario, notificación
+- Falta una definición clara del ciclo de vida end-to-end de una petición
+- No está completamente separado lo que es "captura de demanda" de lo que es "ejecución técnica"
+
+##### UX / Navegación
+- La app tiene mucha potencia, pero todavía depende de que el usuario "sepa cómo funciona"
+- La navegación lateral es útil, aunque el descubrimiento de funciones sigue siendo bajo
+- Varias acciones importantes viven en iconos o flujos implícitos
+
+##### Arquitectura frontend
+- `assets/js/main.js` concentra demasiadas responsabilidades
+- El HTML generado inline en JS complica mantenimiento y pruebas
+- Parte de la lógica compartida está duplicada o repartida entre páginas
+
+##### Arquitectura backend
+- El backend PHP por endpoints es válido, pero le falta una capa más clara de servicios / dominio
+- La evolución funcional parece haber sido incremental; eso puede generar reglas de negocio repetidas
+
+##### Datos / reporting
+- Hay mucha operativa, pero poca analítica agregada
+- Faltan métricas nativas para decidir mejor: throughput, lead time, aging, carga por responsable, salud por app
+
+##### Operación
+- El producto ya tiene valor diario, pero aún no está completamente preparado como plataforma robusta de equipo en escalado
+
+#### 6. Oportunidades claras de evolución
+
+Prisma puede evolucionar hacia uno de estos dos posicionamientos:
+
+##### Opción A: Backlog Colaborativo Ligero
+Foco en captura, priorización, comentarios, asignación y seguimiento simple.
+
+##### Opción B: Plataforma Operativa de Desarrollo
+Foco en intake + priorización + ejecución + releases + reporting + comunicación con stakeholders.
+
+La mejor estrategia parece una evolución gradual desde A hacia B, sin convertir Prisma en un clon pesado de Jira.
+
+### Plan Maestro de Mejoras (Planner - 9 Marzo 2026)
+
+#### Objetivo general
+
+Transformar Prisma en una **plataforma colaborativa, clara y escalable** para gestionar la demanda de desarrollo de múltiples apps y clientes, con una experiencia excelente para tres perfiles:
+- **Solicitante**
+- **Gestor/administrador**
+- **Equipo técnico**
+
+#### Principios de diseño del roadmap
+
+1. **Claridad antes que complejidad**
+2. **Reducir fricción en flujos frecuentes**
+3. **Mejorar visibilidad del trabajo**
+4. **Mantener la ligereza del producto**
+5. **Escalar sin romper el modelo actual**
+
+#### Pilar 1: Diseño visual y consistencia
+
+##### Diagnóstico
+- Hay una base visual moderna, pero la interfaz ha crecido por capas
+- Existen varios patrones de botones, badges, paneles y acciones rápidas
+- Parte del UI depende de estilos inline desde JS
+
+##### Mejoras propuestas
+1. **Sistema de diseño ligero**
+   - Definir tokens de color, espaciado, radios, sombras y estados
+   - Crear patrones reutilizables para cards, tables, badges, chips, dropdowns y modales
+   - Reducir al mínimo estilos inline en JS
+
+2. **Jerarquía visual más fuerte**
+   - Reforzar diferencias entre título, metadata, estado y acciones
+   - Hacer más evidente qué es importante y qué es secundario
+
+3. **Unificación de densidad visual**
+   - Revisar paddings, tamaños de icono, altura de inputs y badges
+   - Definir modo compacto para listados densos
+
+##### Criterio de éxito
+- La UI se percibe más coherente y profesional
+- Menos excepciones visuales por pantalla
+- Menor esfuerzo para mantener estilos
+
+#### Pilar 2: UX e interfaz principal
+
+##### Diagnóstico
+- La vista principal ya es potente, pero todavía puede ser más legible y más accionable
+- La información está presente, pero no siempre bien sintetizada
+
+##### Mejoras propuestas
+1. **Toolbar superior más útil**
+   - Guardar filtros activos visibles
+   - Búsqueda global real por título, descripción, solicitante y comentarios
+   - Filtros rápidos por responsable, estado, prioridad, app, empresa y "mías"
+
+2. **Vistas guardadas**
+   - "Mis asignadas"
+   - "Pendientes de triage"
+   - "En progreso"
+   - "Bloqueadas"
+   - "Sin asignar"
+
+3. **Mejoras de card/listado**
+   - Alternar entre vista card y vista tabla compacta
+   - Mostrar fechas clave: creación, última actividad, fecha objetivo
+   - Destacar items envejecidos o sin movimiento
+
+4. **Modal de detalle más potente**
+   - Convertirlo en panel de detalle tipo side panel o modal ancho estructurado por tabs
+   - Tabs: Resumen, Comentarios, Archivos, Historial, Actividad
+
+##### Criterio de éxito
+- Menos clics para encontrar trabajo relevante
+- Mejor comprensión del estado de cada item
+- Mejor experiencia para usuarios intensivos
+
+#### Pilar 3: Funcionalidad de producto
+
+##### Diagnóstico
+- Prisma ya cubre intake, votación y gestión básica
+- Le faltan piezas para cerrar el ciclo operativo
+
+##### Mejoras propuestas
+1. **Workflow más completo**
+   - Estados más claros: `new`, `triage`, `ready`, `in_progress`, `blocked`, `done`, `discarded`
+   - Motivos de descarte / aplazamiento
+   - Historial de cambios de estado
+
+2. **Tipologías de trabajo**
+   - Diferenciar: mejora, bug, incidencia, tarea técnica, deuda técnica
+   - Filtros y badges específicos por tipo
+
+3. **Campos de negocio útiles**
+   - Impacto
+   - Esfuerzo estimado
+   - Urgencia
+   - Valor negocio
+   - Fecha objetivo
+   - Bloqueadores / dependencias
+
+4. **Subtareas / checklist**
+   - Muy útil para ejecución ligera sin salir de Prisma
+
+5. **Relaciones entre items**
+   - Duplicado de
+   - Bloquea a
+   - Relacionado con
+   - Derivado de solicitud externa
+
+6. **Centro de actividad**
+   - Feed por request con cambios, comentarios, asignaciones, archivos y menciones
+
+##### Criterio de éxito
+- Prisma deja de ser solo un inbox + backlog y pasa a soportar ejecución real de trabajo
+
+#### Pilar 4: Portal del solicitante / experiencia externa
+
+##### Diagnóstico
+- `solicitud.php` resuelve la captura externa, pero el solicitante tiene poca visibilidad posterior
+
+##### Mejoras propuestas
+1. **Portal de seguimiento para solicitantes**
+   - Estado de su solicitud
+   - Historial básico
+   - Comentarios públicos del equipo
+
+2. **Confirmaciones mejores**
+   - Número de ticket o referencia
+   - Tiempo estimado de revisión
+
+3. **Notificaciones por email**
+   - Solicitud recibida
+   - Solicitud aprobada/rechazada
+   - Comentario nuevo
+   - Solicitud completada
+
+4. **Formulario más inteligente**
+   - Sugerencias de solicitudes similares antes de enviar
+   - Plantillas por tipo de solicitud
+   - Campos condicionales por app
+
+##### Criterio de éxito
+- Menos incertidumbre del solicitante
+- Menos preguntas repetidas al equipo
+- Mayor calidad de las solicitudes entrantes
+
+#### Pilar 5: Colaboración de equipo
+
+##### Diagnóstico
+- Ya existe una base muy valiosa: comentarios, menciones, asignaciones múltiples, inbox
+
+##### Mejoras propuestas
+1. **Inbox avanzado**
+   - Filtros por tipo
+   - Agrupación por request
+   - Marcar como no leído
+   - Preferencias de notificación
+
+2. **Presencia y responsabilidad**
+   - Owner principal
+   - Colaboradores
+   - Última persona que tocó el item
+
+3. **Actividad personal**
+   - "Lo que te menciona"
+   - "Lo asignado a ti"
+   - "Lo que espera tu respuesta"
+
+4. **Notas internas vs públicas**
+   - Especialmente importante si el solicitante externo llega a tener portal
+
+##### Criterio de éxito
+- Mejor coordinación del equipo sin depender tanto de chat externo
+
+#### Pilar 6: Gestión operativa y reporting
+
+##### Diagnóstico
+- Hay gestión, pero faltan instrumentos de dirección y capacidad
+
+##### Mejoras propuestas
+1. **Dashboard ejecutivo**
+   - Volumen por app
+   - Volumen por empresa
+   - Pendientes vs completadas
+   - Tiempo medio hasta resolución
+   - Carga por responsable
+
+2. **Dashboard operativo**
+   - Aging de items
+   - Items bloqueados
+   - Sin asignar
+   - Sin actividad > X días
+
+3. **Reporting por release**
+   - Qué entra en cada release
+   - Qué quedó fuera
+   - Qué se desplegó
+
+4. **Exportación avanzada**
+   - CSV/Excel con filtros activos
+   - Resúmenes por app o cliente
+
+##### Criterio de éxito
+- Decisiones basadas en datos, no solo percepción
+
+#### Pilar 7: Arquitectura y mantenibilidad
+
+##### Diagnóstico
+- `main.js` es un punto de riesgo por tamaño y responsabilidades
+- CSS principal es extenso y mezcla capas del sistema
+- La lógica de rendering está muy acoplada al DOM
+
+##### Mejoras propuestas
+1. **Modularización frontend**
+   - Separar por dominios: requests, comments, notifications, assignments, uploads, filters, sidebar
+   - Extraer renderers reutilizables
+
+2. **Reducir HTML inline generado en JS**
+   - Usar templates más organizados o funciones pequeñas por componente
+
+3. **Capa de API cliente**
+   - Unificar fetch, manejo de errores, parseo y toasts
+
+4. **Backend por servicios**
+   - Mover reglas de negocio repetidas a helpers/servicios PHP
+   - Estandarizar respuestas API
+
+5. **Migraciones versionadas**
+   - Evitar depender de SQL manual disperso en conversaciones o scratchpad
+
+##### Criterio de éxito
+- Código más fácil de tocar sin regresiones
+- Menos duplicación
+- Mejor velocidad de evolución
+
+#### Pilar 8: Seguridad y robustez
+
+##### Diagnóstico
+- La base es razonable: PDO, roles, escape HTML, passwords hasheados
+- Pero al crecer como plataforma colaborativa necesita un nivel más alto de robustez
+
+##### Mejoras propuestas
+1. **CSRF protection** en formularios y acciones sensibles
+2. **Auditoría de permisos** endpoint por endpoint
+3. **Validación centralizada** de inputs
+4. **Rate limiting** en login, comentarios y creación de solicitudes
+5. **Historial/auditoría** de acciones críticas
+6. **Política de archivos** más estricta: tamaño, tipo, antivirus si aplica
+
+##### Criterio de éxito
+- Menor superficie de riesgo operativo y de seguridad
+
+#### Pilar 9: Rendimiento y escalabilidad
+
+##### Diagnóstico
+- La app funciona, pero el crecimiento de datos y usuarios puede tensar vistas y endpoints
+
+##### Mejoras propuestas
+1. **Paginación real** en requests, comentarios y notificaciones
+2. **Carga incremental / lazy loading**
+3. **Índices DB** para filtros más usados
+4. **Reducir recargas completas** tras acciones pequeñas
+5. **Cache ligera** de datos estables (apps, permisos, catálogos)
+
+##### Criterio de éxito
+- Mejor respuesta percibida en instalaciones con volumen real
+
+#### Pilar 10: Calidad, testing y operación
+
+##### Diagnóstico
+- Falta formalización de pruebas y de ciclo de despliegue
+
+##### Mejoras propuestas
+1. **Checklist de QA** por flujo crítico
+2. **Tests mínimos** para endpoints clave
+3. **Logs de error más estructurados**
+4. **Entorno staging** si no existe
+5. **Backups y plan de rollback**
+6. **Documentación viva** de roles, estados y workflows
+
+##### Criterio de éxito
+- Menos regresiones y más confianza al desplegar
+
+### Roadmap priorizado recomendado
+
+#### Fase 1 - Consolidación UX y claridad del producto
+- Definir modelo de estados y tipos de item
+- Reforzar filtros, búsqueda y vistas guardadas
+- Mejorar panel/modal de detalle
+- Unificar patrones visuales principales
+
+#### Fase 2 - Colaboración y seguimiento
+- Inbox avanzado
+- Historial de actividad
+- Owner principal + colaboradores
+- Notificaciones email básicas
+
+#### Fase 3 - Ejecución operativa real
+- Subtareas / checklist
+- Dependencias y bloqueos
+- Fechas objetivo y aging
+- Dashboards operativos
+
+#### Fase 4 - Plataforma madura
+- Portal del solicitante
+- Reporting ejecutivo
+- Arquitectura modular y migraciones versionadas
+- Endurecimiento de seguridad y observabilidad
+
+### Recomendación de enfoque
+
+La mejor decisión no es añadir funciones indiscriminadamente, sino **ordenar el producto** alrededor de 3 flujos principales:
+
+1. **Captura de demanda**
+2. **Priorización y triage**
+3. **Ejecución y seguimiento**
+
+Si Prisma se optimiza alrededor de esos 3 flujos, puede convertirse en una herramienta muy sólida y diferencial: ligera, clara y muy adaptada al proceso real del equipo.
 
 ### Análisis: Modularización del Sidebar (21 Enero 2026)
 
@@ -151,8 +553,50 @@ CREATE TABLE user_companies (
 - Usar la misma infraestructura de uploads existente
 
 ---
-
+@@
 ## High-level Task Breakdown
+
+### Fase H: Consolidación UX y Claridad del Producto (NUEVA - Marzo 2026)
+
+#### Decisión de producto confirmada por el usuario
+- **No** se implementarán campos ricos adicionales por ahora
+- **No** se ampliará el workflow de estados
+- Se mantienen los estados actuales: `pending`, `in_progress`, `completed`, `discarded`
+- Se ejecutarán las antiguas **Fases 1, 2 y 3** del plan maestro, adaptadas a esta restricción
+
+#### H.1 Fase 1 adaptada - UX principal y claridad
+- Reforzar búsqueda y filtros sin alterar el modelo de datos principal
+- Añadir vistas rápidas útiles con los campos ya existentes
+- Mejorar la presentación del detalle de mejora sin introducir complejidad funcional extra
+- Unificar patrones visuales principales de listados, toolbars y detalle
+
+**Criterio de éxito**: Encontrar, filtrar y entender mejoras es más rápido sin cambiar el workflow actual
+
+#### H.2 Fase 2 adaptada - Colaboración y seguimiento
+- Mejorar inbox/notificaciones existentes
+- Añadir mayor visibilidad de actividad por mejora
+- Introducir noción de responsable principal sin rediseñar todo el dominio
+- Mejorar vistas personales: asignado a mí, menciones, pendientes de revisar
+
+**Criterio de éxito**: El equipo coordina mejor su trabajo dentro de Prisma con menos fricción
+
+#### H.3 Fase 3 adaptada - Ejecución operativa ligera
+- Añadir subtareas o checklist ligero dentro de la mejora
+- Añadir bloqueos/dependencias de forma simple si el coste es razonable
+- Mejorar visibilidad temporal con fechas existentes o indicadores de antigüedad
+- Añadir primeras vistas operativas sobre carga y seguimiento
+
+**Criterio de éxito**: Prisma soporta mejor la ejecución diaria sin convertirse en una herramienta pesada
+
+#### Orden de ejecución propuesto
+1. **H.1.1** Toolbar de filtros y vistas rápidas
+2. **H.1.2** Mejora del panel/modal de detalle
+3. **H.1.3** Unificación visual de listados y acciones
+4. **H.2.1** Inbox avanzado y vistas personales
+5. **H.2.2** Actividad por mejora
+6. **H.2.3** Responsable principal
+7. **H.3.1** Checklist/subtareas ligeras
+8. **H.3.2** Indicadores operativos básicos
 
 ### Fase A: Zona de Tareas Rápidas
 
@@ -220,6 +664,16 @@ CREATE TABLE user_companies (
 
 ## Project Status Board
 
+### 🔄 Fase H: Consolidación UX + Colaboración + Ejecución Ligera (EN PREPARACIÓN)
+- [x] H.1.1: Toolbar de filtros y vistas rápidas usando campos actuales
+- [x] H.1.2: Mejorar panel/modal de detalle de mejora
+- [x] H.1.3: Unificar visualmente listados y acciones principales
+- [x] H.2.1: Mejorar inbox con filtros/vistas personales
+- [ ] H.2.2: Añadir actividad visible por mejora
+- [ ] H.2.3: Introducir responsable principal
+- [ ] H.3.1: Añadir checklist/subtareas ligeras
+- [ ] H.3.2: Añadir indicadores operativos básicos
+
 ### ✅ Fase A: Zona de Tareas Rápidas (COMPLETADA)
 - [x] A.1: DB - Crear tablas `tasks` y `task_attachments`
 - [x] A.2: API - `/api/tasks.php` CRUD
@@ -275,6 +729,64 @@ CREATE TABLE user_companies (
 ---
 
 ## Executor's Feedback or Assistance Requests
+
+### 🔧 Ejecución aprobada por el usuario (10 Marzo 2026)
+
+El usuario confirma proceder en **modo executor** con las fases equivalentes a 1, 2 y 3 del plan maestro, con dos restricciones funcionales importantes:
+
+- Se mantienen los **estados actuales**: `pending`, `in_progress`, `completed`, `discarded`
+- No se implementarán **campos ricos nuevos** por ahora
+
+#### Siguiente bloque a ejecutar
+Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas**, porque ofrece el mayor impacto inmediato con bajo riesgo y sin requerir cambios profundos de dominio.
+
+##### Alcance propuesto de H.1.1
+- Añadir búsqueda más clara en la vista principal
+- Añadir filtros rápidos por:
+  - estado
+  - prioridad
+  - asignadas a mí
+  - sin asignar
+  - con comentarios
+- Añadir vistas rápidas tipo:
+  - Mis asignadas
+  - En progreso
+  - Pendientes
+  - Completadas
+
+##### Criterio de validación antes de pasar al siguiente bloque
+- El usuario puede localizar trabajo relevante con menos clics
+- Los filtros no rompen la vista global, por app ni por empresa
+- No se modifica el modelo de estados existente
+
+### ✅ Progreso executor realizado (10 Marzo 2026)
+
+#### Implementado en esta pasada
+- **Toolbar mejorada** con buscador visible en cabecera
+- **Vistas rápidas**: Todas, Mis asignadas, En progreso, Pendientes, Completadas, Sin asignar, Con comentarios
+- **Filtros operativos extra** sin tocar el modelo de datos:
+  - asignadas a mí
+  - sin asignar
+  - con comentarios
+  - limpiar filtros
+- **Resumen operativo superior** con métricas visibles del conjunto filtrado
+- **Resumen dentro del modal de edición** con estado, prioridad, dificultad, fecha de creación, antigüedad, comentarios y adjuntos
+- **Inbox filtrable** por tipo y por no leídas
+- **Actividad visible por mejora** en el modal con timeline ligero de creación, asignación y comentarios
+- **Responsable principal ligero** derivado del primer asignado visible en cards y modal
+- **Indicadores operativos básicos** en cards: antigüedad, responsable principal y señal de actividad
+
+#### Pendiente para siguiente iteración
+- H.3.1 Checklist/subtareas ligeras
+- H.3.2 Indicadores operativos básicos más profundos
+
+#### Solicitud de validación manual al usuario
+- Revisar que la nueva barra superior de búsqueda/filtros resulte útil
+- Verificar que las vistas rápidas devuelven resultados coherentes
+- Probar el resumen del modal de edición
+- Probar filtros del inbox
+- Probar timeline y bloque de actividad en el modal
+- Confirmar si la convención de "primer asignado = responsable principal" encaja con producto
 
 ### 🚀 Fase E: Release Planner - Panel de Anuncios Programados (22 Enero 2026)
 
@@ -410,38 +922,23 @@ CREATE TABLE app_files (
 - `programador`: CRU de mejoras (sin delete) + ver apps asignadas
 - `user`: Solo lectura + crear mejoras + votar
 
-### SQL a ejecutar
+### SQL Fase 1 (ya ejecutado)
+- assigned_to en requests, request_comments, comment_mentions
 
+### SQL Fase 2 (pendiente de ejecutar)
 ```sql
--- 1. Añadir campo assigned_to a requests
-ALTER TABLE requests 
-ADD COLUMN assigned_to INT NULL AFTER created_by,
-ADD CONSTRAINT fk_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
-
--- 2. Crear tabla de comentarios
-CREATE TABLE request_comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    request_id INT NOT NULL,
-    user_id INT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_request (request_id),
-    INDEX idx_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 3. Crear tabla de menciones (para notificaciones futuras)
-CREATE TABLE comment_mentions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    comment_id INT NOT NULL,
-    mentioned_user_id INT NOT NULL,
-    is_read TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (comment_id) REFERENCES request_comments(id) ON DELETE CASCADE,
-    FOREIGN KEY (mentioned_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_comment (comment_id),
-    INDEX idx_mentioned_user (mentioned_user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- 1. Tabla de asignaciones múltiples
+CREATE TABLE request_assignments (...);
+-- 2. Migrar datos de assigned_to
+INSERT INTO request_assignments SELECT id, assigned_to FROM requests WHERE assigned_to IS NOT NULL;
+-- 3. Tabla de notificaciones
+CREATE TABLE notifications (...);
 ```
+
+### Cambios Fase 2 (9 Marzo 2026)
+- **Inbox/Notificaciones**: Panel lateral con notificaciones de menciones, comentarios y asignaciones
+- **Asignación múltiple**: Tags + buscador en modal de edición
+- **Cards mejoradas**: Votos y botones de acción en filas separadas
+- **Emojis eliminados**: Reemplazados por texto limpio en selects del modal
+- **Mentions mejorados**: Dropdown compacto que aparece arriba del input, sin @ en los items
+- **Notificaciones automáticas**: Al mencionar, comentar en tareas asignadas, o asignar tareas

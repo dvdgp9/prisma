@@ -131,6 +131,13 @@ $company_name = $user['company_name'] ?? '';
             </button>
         </div>
     </div>
+    <div class="inbox-filters" id="inbox-filters">
+        <button type="button" class="inbox-filter-chip active" data-filter="all" onclick="setInboxFilter('all', event)">Todas</button>
+        <button type="button" class="inbox-filter-chip" data-filter="unread" onclick="setInboxFilter('unread', event)">No leídas</button>
+        <button type="button" class="inbox-filter-chip" data-filter="mention" onclick="setInboxFilter('mention', event)">Menciones</button>
+        <button type="button" class="inbox-filter-chip" data-filter="assignment" onclick="setInboxFilter('assignment', event)">Asignaciones</button>
+        <button type="button" class="inbox-filter-chip" data-filter="comment" onclick="setInboxFilter('comment', event)">Comentarios</button>
+    </div>
     <div class="inbox-body" id="inbox-body">
         <!-- Notifications loaded dynamically -->
     </div>

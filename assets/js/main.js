@@ -7,6 +7,8 @@ let currentAppId = null;
 let currentCompanyId = null;
 let selectedFiles = [];
 let showFinished = false;
+let requestSearchTerm = '';
+let currentQuickView = 'all';
 
 const userRole = document.body.dataset.userRole;
 
@@ -87,6 +89,235 @@ document.addEventListener('DOMContentLoaded', async function () {
         }, 100);
     }
 });
+
+function handleSearchInput() {
+    requestSearchTerm = document.getElementById('request-search')?.value?.trim().toLowerCase() || '';
+    renderRequests();
+}
+
+function setQuickView(view, event) {
+    currentQuickView = view;
+    document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
+    const selectedChip = document.querySelector(`.quick-view-chip[data-quick-view="${view}"]`);
+    if (selectedChip) {
+        selectedChip.classList.add('active');
+    }
+
+    const assignedToMe = document.getElementById('assigned-to-me-filter');
+    const unassigned = document.getElementById('unassigned-filter');
+    const withComments = document.getElementById('with-comments-filter');
+
+    if (assignedToMe) assignedToMe.checked = false;
+    if (unassigned) unassigned.checked = false;
+    if (withComments) withComments.checked = false;
+
+    if (view === 'mine' && assignedToMe) assignedToMe.checked = true;
+    if (view === 'unassigned' && unassigned) unassigned.checked = true;
+    if (view === 'commented' && withComments) withComments.checked = true;
+
+    renderRequests();
+}
+
+function clearAllRequestFilters() {
+    const priority = document.getElementById('priority-filter');
+    const status = document.getElementById('status-filter');
+    const difficulty = document.getElementById('difficulty-filter');
+    const search = document.getElementById('request-search');
+    const assignedToMe = document.getElementById('assigned-to-me-filter');
+    const unassigned = document.getElementById('unassigned-filter');
+    const withComments = document.getElementById('with-comments-filter');
+
+    if (priority) priority.value = '';
+    if (status) status.value = '';
+    if (difficulty) difficulty.value = '';
+    if (search) search.value = '';
+    if (assignedToMe) assignedToMe.checked = false;
+    if (unassigned) unassigned.checked = false;
+    if (withComments) withComments.checked = false;
+
+    requestSearchTerm = '';
+    currentQuickView = 'all';
+    document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
+    const allChip = document.querySelector('.quick-view-chip[data-quick-view="all"]');
+    if (allChip) allChip.classList.add('active');
+
+    loadRequests();
+}
+
+function getFilteredRequests() {
+    const currentUserId = parseInt(document.body.dataset.userId, 10);
+    const assignedToMe = document.getElementById('assigned-to-me-filter')?.checked;
+    const unassigned = document.getElementById('unassigned-filter')?.checked;
+    const withComments = document.getElementById('with-comments-filter')?.checked;
+
+    return requests.filter(request => {
+        const assignments = request.assignments || [];
+        const matchesSearch = !requestSearchTerm || [
+            request.title,
+            request.description,
+            request.app_name,
+            request.creator_name,
+            request.creator_username,
+            request.requester_name,
+            request.requester_email
+        ].filter(Boolean).some(value => value.toLowerCase().includes(requestSearchTerm));
+
+        const isMine = assignments.some(a => parseInt(a.id, 10) === currentUserId);
+        const isUnassigned = assignments.length === 0;
+        const hasComments = parseInt(request.comment_count || 0, 10) > 0;
+
+        let matchesQuickView = true;
+        if (currentQuickView === 'mine') matchesQuickView = isMine;
+        if (currentQuickView === 'in_progress') matchesQuickView = request.status === 'in_progress';
+        if (currentQuickView === 'pending') matchesQuickView = request.status === 'pending';
+        if (currentQuickView === 'completed') matchesQuickView = request.status === 'completed';
+        if (currentQuickView === 'unassigned') matchesQuickView = isUnassigned;
+        if (currentQuickView === 'commented') matchesQuickView = hasComments;
+
+        if (!matchesSearch || !matchesQuickView) return false;
+        if (assignedToMe && !isMine) return false;
+        if (unassigned && !isUnassigned) return false;
+        if (withComments && !hasComments) return false;
+
+        return true;
+    });
+}
+
+function updateRequestsSummary(filteredRequests) {
+    const visibleEl = document.getElementById('summary-visible-count');
+    const inProgressEl = document.getElementById('summary-in-progress-count');
+    const pendingEl = document.getElementById('summary-pending-count');
+    const unassignedEl = document.getElementById('summary-unassigned-count');
+    const commentedEl = document.getElementById('summary-commented-count');
+
+    if (visibleEl) visibleEl.textContent = filteredRequests.length;
+    if (inProgressEl) inProgressEl.textContent = filteredRequests.filter(r => r.status === 'in_progress').length;
+    if (pendingEl) pendingEl.textContent = filteredRequests.filter(r => r.status === 'pending').length;
+    if (unassignedEl) unassignedEl.textContent = filteredRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
+    if (commentedEl) commentedEl.textContent = filteredRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
+}
+
+function getRelativeAge(dateString) {
+    if (!dateString) return '-';
+    const created = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'Hoy';
+    if (diffDays === 1) return '1 día';
+    if (diffDays < 30) return `${diffDays} días`;
+    const months = Math.floor(diffDays / 30);
+    if (months === 1) return '1 mes';
+    return `${months} meses`;
+}
+
+function getDateTimeLabel(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getPrimaryOwnerLabel(request) {
+    if (!request || !request.assignments || request.assignments.length === 0) {
+        return 'Sin asignar';
+    }
+
+    const primary = request.assignments[0];
+    return primary.full_name || primary.username || 'Sin asignar';
+}
+
+function getLastActivityLabel(request, comments = currentComments) {
+    if (comments && comments.length > 0) {
+        const lastComment = comments[comments.length - 1];
+        return `${lastComment.full_name || lastComment.username} · ${getDateTimeLabel(lastComment.created_at)}`;
+    }
+
+    if (request?.created_at) {
+        return `Creada · ${getDateTimeLabel(request.created_at)}`;
+    }
+
+    return 'Sin actividad';
+}
+
+function renderActivityTimeline(request) {
+    const timeline = document.getElementById('edit-activity-timeline');
+    const lastActivityEl = document.getElementById('edit-last-activity');
+    const primaryOwnerEl = document.getElementById('edit-primary-owner');
+
+    if (lastActivityEl) {
+        lastActivityEl.textContent = getLastActivityLabel(request);
+    }
+
+    if (primaryOwnerEl) {
+        primaryOwnerEl.textContent = getPrimaryOwnerLabel(request);
+    }
+
+    if (!timeline) return;
+
+    const items = [
+        {
+            type: 'created',
+            icon: 'iconoir-plus-circle',
+            title: 'Mejora creada',
+            meta: `${request.creator_name || request.creator_username || 'Sistema'} · ${getDateTimeLabel(request.created_at)}`
+        }
+    ];
+
+    if (request.assignments && request.assignments.length > 0) {
+        items.push({
+            type: 'owner',
+            icon: 'iconoir-user-badge-check',
+            title: `Responsable principal: ${getPrimaryOwnerLabel(request)}`,
+            meta: `${request.assignments.length} persona(s) asignada(s)`
+        });
+    }
+
+    currentComments.forEach(comment => {
+        items.push({
+            type: 'comment',
+            icon: 'iconoir-chat-bubble',
+            title: escapeHtml(comment.full_name || comment.username),
+            meta: getDateTimeLabel(comment.created_at),
+            content: escapeHtml(comment.content)
+        });
+    });
+
+    timeline.innerHTML = items.map(item => `
+        <div class="activity-timeline-item activity-${item.type}">
+            <div class="activity-timeline-icon">
+                <i class="${item.icon}"></i>
+            </div>
+            <div class="activity-timeline-content">
+                <div class="activity-timeline-title">${item.title}</div>
+                <div class="activity-timeline-meta">${item.meta}</div>
+                ${item.content ? `<div class="activity-timeline-text">${item.content}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateEditRequestSummary(request) {
+    const statusEl = document.getElementById('edit-summary-status');
+    const priorityEl = document.getElementById('edit-summary-priority');
+    const difficultyEl = document.getElementById('edit-summary-difficulty');
+    const createdEl = document.getElementById('edit-summary-created');
+    const ageEl = document.getElementById('edit-summary-age');
+    const commentsEl = document.getElementById('edit-summary-comments');
+    const attachmentsEl = document.getElementById('edit-summary-attachments');
+
+    if (statusEl) statusEl.textContent = getStatusLabel(request.status);
+    if (priorityEl) priorityEl.textContent = getPriorityLabel(request.priority);
+    if (difficultyEl) difficultyEl.textContent = getDifficultyLabel(request.difficulty);
+    if (createdEl) createdEl.textContent = new Date(request.created_at).toLocaleDateString('es-ES');
+    if (ageEl) ageEl.textContent = getRelativeAge(request.created_at);
+    if (commentsEl) commentsEl.textContent = request.comment_count || 0;
+    if (attachmentsEl) attachmentsEl.textContent = request.attachment_count || 0;
+
+    renderActivityTimeline(request);
+}
 
 // Helper to update active nav state by app/company
 function updateActiveNavItem(appId, companyId = null) {
@@ -329,21 +560,25 @@ function toggleAdvancedFilters() {
 function renderRequests() {
     const grid = document.getElementById('requests-grid');
 
-    if (requests.length === 0) {
+    const filteredRequests = getFilteredRequests();
+
+    updateRequestsSummary(filteredRequests);
+
+    if (filteredRequests.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
-                <h3>No hay mejoras aún</h3>
-                <p>Crea la primera mejora usando el botón de arriba.</p>
+                <h3>No hay resultados</h3>
+                <p>Prueba a ajustar la búsqueda o limpiar los filtros activos.</p>
             </div>
         `;
         return;
     }
 
     // Separate active and finished requests
-    const activeRequests = requests.filter(r =>
+    const activeRequests = filteredRequests.filter(r =>
         r.status === 'pending' || r.status === 'in_progress'
     );
-    const finishedRequests = requests.filter(r =>
+    const finishedRequests = filteredRequests.filter(r =>
         r.status === 'completed' || r.status === 'discarded'
     );
 
@@ -430,6 +665,9 @@ function createRequestCard(request, isFinished = false) {
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
     const canEdit = ['admin', 'superadmin', 'programador'].includes(userRole);
     const canDelete = ['admin', 'superadmin'].includes(userRole);
+    const primaryOwnerLabel = getPrimaryOwnerLabel(request);
+    const requestAgeLabel = getRelativeAge(request.created_at);
+    const hasComments = parseInt(request.comment_count || 0, 10) > 0;
 
     card.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
@@ -496,6 +734,23 @@ function createRequestCard(request, isFinished = false) {
 
         <p class="card-description">${escapeHtml(request.description)}</p>
 
+        <div class="request-card-insights">
+            <span class="request-card-insight">
+                <i class="iconoir-hourglass"></i>
+                <span>${requestAgeLabel}</span>
+            </span>
+            <span class="request-card-insight ${request.assignments && request.assignments.length > 0 ? 'is-highlight' : ''}">
+                <i class="iconoir-user-badge-check"></i>
+                <span>${escapeHtml(primaryOwnerLabel)}</span>
+            </span>
+            ${hasComments ? `
+                <span class="request-card-insight is-highlight">
+                    <i class="iconoir-chat-bubble"></i>
+                    <span>Actividad</span>
+                </span>
+            ` : ''}
+        </div>
+
         ${request.files && request.files.length > 0 ? `
             <div style="margin-bottom: var(--spacing-md);">
                 <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">
@@ -522,9 +777,9 @@ function createRequestCard(request, isFinished = false) {
                 </div>
 
                 ${request.assignments && request.assignments.length > 0 ? `
-                    ${request.assignments.map(a => `
-                        <span class="assigned-tag" title="Asignado a ${escapeHtml(a.full_name || a.username)}">
-                            ${escapeHtml(a.full_name || a.username)}
+                    ${request.assignments.map((a, index) => `
+                        <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}" title="Asignado a ${escapeHtml(a.full_name || a.username)}">
+                            ${escapeHtml(a.full_name || a.username)}${index === 0 ? ' · Resp.' : ''}
                         </span>
                     `).join('')}
                 ` : (canEdit ? `
@@ -1052,6 +1307,9 @@ async function openEditRequestModal(requestId) {
 
             // Load comments
             await loadComments(requestId);
+
+            // Update operational summary
+            updateEditRequestSummary(request);
 
             // Setup mentions autocomplete
             const commentInput = document.getElementById('edit-comment-input');
@@ -2179,7 +2437,7 @@ function openAssignModal(requestId, event) {
     
     const userList = document.getElementById('assign-user-list');
     userList.innerHTML = availableUsers.map(user => `
-        <div class="assign-dropdown-item" onclick="quickAssignUser(${requestId}, ${user.id}, '${escapeHtml(user.full_name || user.username)}')">
+        <div class="assign-dropdown-item" data-user-id="${user.id}" data-user-name="${escapeHtml(user.full_name || user.username)}">
             <div class="comment-avatar" style="width: 24px; height: 24px; font-size: 0.625rem;">
                 ${(user.full_name || user.username).charAt(0).toUpperCase()}
             </div>
@@ -2189,6 +2447,10 @@ function openAssignModal(requestId, event) {
             </div>
         </div>
     `).join('');
+    
+    userList.querySelectorAll('.assign-dropdown-item').forEach(item => {
+        item.onclick = () => quickAssignUser(requestId, parseInt(item.dataset.userId), item.dataset.userName);
+    });
     
     modal.classList.add('active');
 }
@@ -2237,11 +2499,11 @@ function renderAssignedTags() {
         return;
     }
     
-    container.innerHTML = window.currentAssignments.map(a => `
-        <span class="assigned-tag">
-            ${escapeHtml(a.full_name || a.username)}
+    container.innerHTML = window.currentAssignments.map((a, index) => `
+        <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}">
+            ${escapeHtml(a.full_name || a.username)}${index === 0 ? ' · Resp.' : ''}
             <span class="remove-tag" onclick="removeAssignment(${a.id})">
-                <i class="iconoir-xmark" style="font-size: 0.625rem;"></i>
+                ×
             </span>
         </span>
     `).join('');
@@ -2335,6 +2597,11 @@ function renderComments(requestId) {
     const container = document.getElementById('edit-comments-list');
     const countEl = document.getElementById('edit-comments-count');
     if (!container) return;
+
+    const activeRequest = requests.find(r => parseInt(r.id, 10) === parseInt(requestId, 10));
+    if (activeRequest) {
+        renderActivityTimeline(activeRequest);
+    }
     
     if (countEl) countEl.textContent = currentComments.length > 0 ? `${currentComments.length}` : '';
     
