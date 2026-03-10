@@ -814,6 +814,31 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 #### Siguiente bloque propuesto tras validación
 - **Vista alternable tarjetas / tabla comprimida** reutilizando filtros y búsqueda actuales
 
+### ✅ Progreso executor adicional (10 Marzo 2026 - vista operativa)
+
+#### Subbloque ejecutado
+- **Alternancia entre vista tarjetas y vista tabla comprimida**
+  - toggle `Tarjetas / Tabla`
+  - persistencia local del modo de vista
+  - reutilización del mismo dataset filtrado
+  - tabla compacta con columnas operativas:
+    - prioridad
+    - estado
+    - título
+    - app
+    - responsable
+    - asignados
+    - comentarios
+    - checklist
+    - antigüedad
+    - acciones
+
+#### Criterio de validación manual
+- Cambiar entre tarjetas y tabla sin perder filtros ni búsqueda
+- Verificar que el número de resultados es consistente entre ambas vistas
+- Comprobar que abrir una fila abre el detalle correctamente
+- Comprobar que checklist, comentarios y responsable se ven bien en tabla
+
 ### 🧠 Actualización Planner (10 Marzo 2026 - nueva decisión del usuario)
 
 El usuario indica que, para continuar, **prefiere priorizar dos cosas** por encima de otros indicadores operativos más amplios:

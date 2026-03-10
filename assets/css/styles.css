@@ -1177,6 +1177,37 @@ nav {
     margin-bottom: var(--spacing-lg);
 }
 
+.view-toggle-group {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+.view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-toggle-btn.active {
+    background: rgba(66, 160, 209, 0.12);
+    color: var(--primary-color);
+}
+
 .quick-view-chip {
     display: inline-flex;
     align-items: center;
@@ -1323,6 +1354,81 @@ nav {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+}
+
+.requests-table-wrapper {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 2px 8px var(--shadow);
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.requests-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 980px;
+}
+
+.requests-table thead th {
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.requests-table tbody td {
+    padding: 0.9rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.requests-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.requests-table tbody tr:hover {
+    background: rgba(66, 160, 209, 0.04);
+}
+
+.requests-table-title-cell {
+    min-width: 240px;
+}
+
+.requests-table-title-cell strong {
+    display: block;
+    line-height: 1.35;
+}
+
+.requests-table-subline {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 320px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.requests-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.requests-table-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem !important;
 }
 
 /* Requests Separator */
@@ -1787,6 +1893,10 @@ nav {
 
     .request-activity-overview {
         grid-template-columns: 1fr;
+    }
+
+    .view-toggle-group {
+        margin-left: 0;
     }
 }
 

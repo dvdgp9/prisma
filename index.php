@@ -189,6 +189,16 @@ $company_name = $user['company_name'] ?? '';
                     <i class="iconoir-chat-bubble"></i>
                     <span>Con comentarios</span>
                 </button>
+                <div class="view-toggle-group" id="view-toggle-group">
+                    <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)">
+                        <i class="iconoir-view-grid"></i>
+                        <span>Tarjetas</span>
+                    </button>
+                    <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)">
+                        <i class="iconoir-table-rows"></i>
+                        <span>Tabla</span>
+                    </button>
+                </div>
             </div>
             
             <!-- Advanced Filters (Collapsible) -->
@@ -281,6 +291,28 @@ $company_name = $user['company_name'] ?? '';
             <!-- Cards Grid -->
             <div class="cards-grid" id="requests-grid">
                 <!-- Cards will be loaded dynamically -->
+            </div>
+
+            <div class="requests-table-wrapper" id="requests-table-wrapper" style="display: none;">
+                <table class="requests-table" id="requests-table">
+                    <thead>
+                        <tr>
+                            <th>Prioridad</th>
+                            <th>Estado</th>
+                            <th>Título</th>
+                            <th>App</th>
+                            <th>Responsable</th>
+                            <th>Asignados</th>
+                            <th>Comentarios</th>
+                            <th>Checklist</th>
+                            <th>Antigüedad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-table-body">
+                        <!-- Rows rendered dynamically -->
+                    </tbody>
+                </table>
             </div>
         </main>
     </div>

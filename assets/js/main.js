@@ -10,6 +10,7 @@ let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
 let currentChecklistItems = [];
+let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
 
 const userRole = document.body.dataset.userRole;
 
@@ -69,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupFileUpload();
     setupAppFilesUpload();
     setupEditModalFileUpload();
+    syncRequestsViewModeUI();
 
     // Cmd/Ctrl + Enter to submit new request form
     const newRequestForm = document.getElementById('new-request-form');
@@ -122,6 +124,52 @@ async function loadChecklistItems(requestId) {
     } catch (error) {
         console.error('Error loading checklist:', error);
     }
+}
+
+function renderRequestsTable(filteredRequests, tableBody) {
+    const canEdit = ['admin', 'superadmin', 'programador'].includes(document.body.dataset.userRole);
+    const canDelete = ['admin', 'superadmin'].includes(document.body.dataset.userRole);
+
+    tableBody.innerHTML = filteredRequests.map(request => {
+        const checklistProgress = getChecklistProgress(request);
+        const primaryOwner = getPrimaryOwnerLabel(request);
+        const assignmentsCount = (request.assignments || []).length;
+
+        return `
+            <tr data-request-id="${request.id}" onclick="openEditRequestModal(${request.id})">
+                <td>
+                    <span class="priority-badge priority-${request.priority}">${escapeHtml(getPriorityLabel(request.priority))}</span>
+                </td>
+                <td>
+                    <span class="status-badge-display status-${request.status}">${escapeHtml(getStatusLabel(request.status))}</span>
+                </td>
+                <td class="requests-table-title-cell">
+                    <strong>${escapeHtml(request.title)}</strong>
+                    ${request.description ? `<span class="requests-table-subline">${escapeHtml(request.description)}</span>` : ''}
+                </td>
+                <td>${escapeHtml(request.app_name || '-')}</td>
+                <td>${escapeHtml(primaryOwner)}</td>
+                <td>${assignmentsCount}</td>
+                <td>${parseInt(request.comment_count || 0, 10)}</td>
+                <td>${checklistProgress.total > 0 ? `${checklistProgress.completed}/${checklistProgress.total}` : '-'}</td>
+                <td>${escapeHtml(getRelativeAge(request.created_at))}</td>
+                <td>
+                    <div class="requests-table-actions" onclick="event.stopPropagation()">
+                        ${canEdit ? `
+                            <button type="button" class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
+                                <i class="iconoir-edit"></i>
+                            </button>
+                        ` : ''}
+                        ${canDelete ? `
+                            <button type="button" class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
+                                <i class="iconoir-xmark"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderChecklistItems() {
@@ -264,6 +312,31 @@ async function deleteChecklistItem(itemId) {
 function handleSearchInput() {
     requestSearchTerm = document.getElementById('request-search')?.value?.trim().toLowerCase() || '';
     renderRequests();
+}
+
+function setRequestsViewMode(mode, event) {
+    currentRequestsViewMode = mode;
+    localStorage.setItem('prisma_requests_view_mode', mode);
+    syncRequestsViewModeUI();
+    renderRequests();
+}
+
+function syncRequestsViewModeUI() {
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.view-toggle-btn[data-view-mode="${currentRequestsViewMode}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const grid = document.getElementById('requests-grid');
+    const tableWrapper = document.getElementById('requests-table-wrapper');
+    if (!grid || !tableWrapper) return;
+
+    if (currentRequestsViewMode === 'table') {
+        grid.style.display = 'none';
+        tableWrapper.style.display = 'block';
+    } else {
+        grid.style.display = 'flex';
+        tableWrapper.style.display = 'none';
+    }
 }
 
 function setQuickView(view, event) {
@@ -739,10 +812,12 @@ function toggleAdvancedFilters() {
 // Render requests
 function renderRequests() {
     const grid = document.getElementById('requests-grid');
+    const tableBody = document.getElementById('requests-table-body');
 
     const filteredRequests = getFilteredRequests();
 
     updateRequestsSummary(filteredRequests);
+    syncRequestsViewModeUI();
 
     if (filteredRequests.length === 0) {
         grid.innerHTML = `
@@ -751,6 +826,22 @@ function renderRequests() {
                 <p>Prueba a ajustar la búsqueda o limpiar los filtros activos.</p>
             </div>
         `;
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="requests-table-empty">No hay resultados para los filtros actuales</td>
+                </tr>
+            `;
+        }
+        return;
+    }
+
+    if (tableBody) {
+        renderRequestsTable(filteredRequests, tableBody);
+    }
+
+    if (currentRequestsViewMode === 'table') {
+        grid.innerHTML = '';
         return;
     }
 
