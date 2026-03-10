@@ -189,12 +189,21 @@ function updateRequestsSummary(filteredRequests) {
     const pendingEl = document.getElementById('summary-pending-count');
     const unassignedEl = document.getElementById('summary-unassigned-count');
     const commentedEl = document.getElementById('summary-commented-count');
+    const staleEl = document.getElementById('ops-stale-count');
+    const unownedActiveEl = document.getElementById('ops-unowned-active-count');
+    const criticalOpenEl = document.getElementById('ops-critical-open-count');
+    const myActiveEl = document.getElementById('ops-my-active-count');
+    const currentUserId = parseInt(document.body.dataset.userId, 10);
 
     if (visibleEl) visibleEl.textContent = filteredRequests.length;
     if (inProgressEl) inProgressEl.textContent = filteredRequests.filter(r => r.status === 'in_progress').length;
     if (pendingEl) pendingEl.textContent = filteredRequests.filter(r => r.status === 'pending').length;
     if (unassignedEl) unassignedEl.textContent = filteredRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
     if (commentedEl) commentedEl.textContent = filteredRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
+    if (staleEl) staleEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && getAgeInDays(r.created_at) >= 14).length;
+    if (unownedActiveEl) unownedActiveEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && (!r.assignments || r.assignments.length === 0)).length;
+    if (criticalOpenEl) criticalOpenEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && r.priority === 'critical').length;
+    if (myActiveEl) myActiveEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && (r.assignments || []).some(a => parseInt(a.id, 10) === currentUserId)).length;
 }
 
 function getRelativeAge(dateString) {
@@ -208,6 +217,45 @@ function getRelativeAge(dateString) {
     const months = Math.floor(diffDays / 30);
     if (months === 1) return '1 mes';
     return `${months} meses`;
+}
+
+function getAgeInDays(dateString) {
+    if (!dateString) return 0;
+    const created = new Date(dateString);
+    const now = new Date();
+    return Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
+}
+
+function isActiveRequest(request) {
+    return request.status === 'pending' || request.status === 'in_progress';
+}
+
+function getRequestHealthSignals(request) {
+    const ageDays = getAgeInDays(request.created_at);
+    const active = isActiveRequest(request);
+    const unassigned = !request.assignments || request.assignments.length === 0;
+    const criticalOpen = active && request.priority === 'critical';
+    const stale = active && ageDays >= 14;
+
+    const signals = [];
+
+    if (stale) {
+        signals.push({ type: 'risk', label: `Antigua ${ageDays}d` });
+    }
+
+    if (unassigned && active) {
+        signals.push({ type: 'warning', label: 'Sin dueño' });
+    }
+
+    if (criticalOpen) {
+        signals.push({ type: 'focus', label: 'Crítica abierta' });
+    }
+
+    if (request.status === 'in_progress' && request.comment_count > 0) {
+        signals.push({ type: 'good', label: 'Con tracción' });
+    }
+
+    return signals;
 }
 
 function getDateTimeLabel(dateString) {
@@ -668,6 +716,7 @@ function createRequestCard(request, isFinished = false) {
     const primaryOwnerLabel = getPrimaryOwnerLabel(request);
     const requestAgeLabel = getRelativeAge(request.created_at);
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
+    const healthSignals = getRequestHealthSignals(request);
 
     card.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
@@ -750,6 +799,14 @@ function createRequestCard(request, isFinished = false) {
                 </span>
             ` : ''}
         </div>
+
+        ${healthSignals.length > 0 ? `
+            <div class="request-health-strip">
+                ${healthSignals.map(signal => `
+                    <span class="request-health-badge ${signal.type}">${signal.label}</span>
+                `).join('')}
+            </div>
+        ` : ''}
 
         ${request.files && request.files.length > 0 ? `
             <div style="margin-bottom: var(--spacing-md);">

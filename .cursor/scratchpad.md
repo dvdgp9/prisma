@@ -775,10 +775,16 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - **Actividad visible por mejora** en el modal con timeline ligero de creación, asignación y comentarios
 - **Responsable principal ligero** derivado del primer asignado visible en cards y modal
 - **Indicadores operativos básicos** en cards: antigüedad, responsable principal y señal de actividad
+- **Panel operativo H.3** en la vista principal con métricas de:
+  - antiguas activas
+  - sin dueño
+  - críticas abiertas
+  - carga mía
+- **Badges de salud/riesgo** en cards para detectar trabajo envejecido, sin dueño, crítico abierto o con tracción
 
 #### Pendiente para siguiente iteración
 - H.3.1 Checklist/subtareas ligeras
-- H.3.2 Indicadores operativos básicos más profundos
+- H.3.2 Indicadores operativos básicos más profundos solo si hiciera falta tras uso real
 
 #### Solicitud de validación manual al usuario
 - Revisar que la nueva barra superior de búsqueda/filtros resulte útil
@@ -787,6 +793,7 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - Probar filtros del inbox
 - Probar timeline y bloque de actividad en el modal
 - Confirmar si la convención de "primer asignado = responsable principal" encaja con producto
+- Validar que el panel operativo aporta señal útil y no mete ruido visual
 
 ### 🚀 Fase E: Release Planner - Panel de Anuncios Programados (22 Enero 2026)
 
