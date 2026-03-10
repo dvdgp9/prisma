@@ -775,16 +775,10 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - **Actividad visible por mejora** en el modal con timeline ligero de creación, asignación y comentarios
 - **Responsable principal ligero** derivado del primer asignado visible en cards y modal
 - **Indicadores operativos básicos** en cards: antigüedad, responsable principal y señal de actividad
-- **Panel operativo H.3** en la vista principal con métricas de:
-  - antiguas activas
-  - sin dueño
-  - críticas abiertas
-  - carga mía
-- **Badges de salud/riesgo** en cards para detectar trabajo envejecido, sin dueño, crítico abierto o con tracción
 
 #### Pendiente para siguiente iteración
 - H.3.1 Checklist/subtareas ligeras
-- H.3.2 Indicadores operativos básicos más profundos solo si hiciera falta tras uso real
+- H.3.2 Indicadores operativos básicos más profundos
 
 #### Solicitud de validación manual al usuario
 - Revisar que la nueva barra superior de búsqueda/filtros resulte útil
@@ -793,7 +787,143 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - Probar filtros del inbox
 - Probar timeline y bloque de actividad en el modal
 - Confirmar si la convención de "primer asignado = responsable principal" encaja con producto
-- Validar que el panel operativo aporta señal útil y no mete ruido visual
+
+### 🔧 Progreso executor adicional (10 Marzo 2026 - H.3.1 en curso)
+
+#### Subbloque ejecutado
+- **Checklist/subtareas ligeras dentro de cada mejora**
+  - nuevo endpoint backend dedicado para checklist por request
+  - integración del bloque en el modal de edición
+  - alta de subtarea
+  - marcar / desmarcar completada
+  - renombrar
+  - eliminar
+  - progreso visible en modal
+  - progreso agregado visible en cards (`x/y`)
+
+#### Dependencia externa pendiente
+- Ejecutar SQL de creación de la tabla `request_checklist_items` en phpMyAdmin
+
+#### Validación manual requerida antes de pasar a la vista tabla
+- Abrir una mejora y comprobar que aparece el bloque checklist
+- Crear varias subtareas
+- Marcar/desmarcar completadas
+- Renombrar y eliminar una subtarea
+- Confirmar que el progreso (`x/y`) se refleja en el modal y en las cards
+
+#### Siguiente bloque propuesto tras validación
+- **Vista alternable tarjetas / tabla comprimida** reutilizando filtros y búsqueda actuales
+
+### 🧠 Actualización Planner (10 Marzo 2026 - nueva decisión del usuario)
+
+El usuario indica que, para continuar, **prefiere priorizar dos cosas** por encima de otros indicadores operativos más amplios:
+
+1. **Subtareas / checklist dentro de cada mejora**
+2. **Alternancia entre vista de tarjetas y vista de tabla comprimida**
+
+Esta nueva preferencia reajusta el foco de **H.3**. En vez de ampliar reporting genérico, conviene centrar la siguiente iteración en mejorar la **ejecución diaria** y la **densidad de información**.
+
+#### Evaluación Planner: checklist/subtareas dentro de la mejora
+
+##### Viabilidad
+- **Sí, es viable y recomendable**
+- Tiene encaje directo con el objetivo de H.3: dar soporte a la ejecución diaria sin convertir Prisma en una herramienta pesada
+- Se puede implementar como un modelo **muy ligero** separado de los campos principales de la request
+
+##### Propuesta funcional mínima
+- Añadir una tabla tipo `request_checklist_items`
+- Cada item tendría:
+  - `id`
+  - `request_id`
+  - `title`
+  - `is_completed`
+  - `position`
+  - `created_by`
+  - `created_at`
+- Operaciones mínimas:
+  - crear item
+  - marcar/desmarcar completado
+  - renombrar item
+  - eliminar item
+- Presentación inicial dentro del **modal de detalle/edición**
+- Mostrar también un **resumen compacto** en cards o tabla cuando haya checklist:
+  - `0/3`
+  - `2/5`
+
+##### Decisiones de alcance para no sobredimensionar
+- **No** convertirlo en un sistema de tareas hijo con estados propios
+- **No** añadir fechas, responsables por subtarea ni dependencias en esta primera versión
+- **No** mezclarlo con el workflow principal de la request
+
+##### Criterio de éxito
+- El equipo puede descomponer una mejora en pasos ejecutables pequeños
+- El progreso de ejecución se entiende sin entrar en herramientas externas
+- El coste cognitivo sigue siendo bajo
+
+#### Evaluación Planner: alternancia tarjetas / tabla comprimida
+
+##### Viabilidad
+- **Sí, también es viable y muy valiosa**
+- Complementa bien la mejora anterior:
+  - **cards** para exploración y contexto
+  - **tabla** para revisión masiva, priorización y seguimiento denso
+
+##### Propuesta funcional mínima
+- Añadir un toggle global de vista:
+  - `Tarjetas`
+  - `Tabla`
+- Mantener los mismos filtros, búsqueda y quick views para ambas vistas
+- La tabla debería ser **compacta, legible y accionable**
+
+##### Columnas recomendadas para la tabla comprimida
+- prioridad
+- estado
+- título
+- app
+- responsable principal
+- nº asignados
+- comentarios
+- checklist progreso
+- antigüedad
+- acciones rápidas
+
+##### Decisiones de alcance para no disparar complejidad
+- Reutilizar `loadRequests()` y la misma fuente de datos
+- Evitar una tabla excesivamente editable en primera versión
+- Mantener acciones clave rápidas, pero sin convertir la tabla en un Excel
+
+##### Criterio de éxito
+- El usuario puede revisar muchas mejoras en menos scroll
+- El cambio entre vistas no rompe filtros ni contexto
+- La tabla es claramente más densa pero sigue siendo usable
+
+#### Orden recomendado para ejecución posterior
+1. **H.3.1a** Checklist/subtareas ligeras dentro de la mejora
+2. **H.1/H.3 transversal** Alternancia entre vista tarjetas y vista tabla comprimida
+3. **H.3.2b** Añadir progreso de checklist visible en card/tabla/resumen modal
+
+#### Riesgos y notas de diseño
+- La tabla comprimida exige cuidar mucho el responsive; en móvil probablemente conviene mantener cards por defecto
+- El checklist sí requiere backend y tabla nueva, pero el dominio es acotado y de bajo riesgo
+- La combinación de tabla + checklist es especialmente potente porque permite ver progreso real sin abrir cada mejora
+
+#### High-level Task Breakdown (nueva propuesta Planner)
+1. **Checklist ligero por mejora**
+   - Crear persistencia y API CRUD mínima para items de checklist
+   - Integrar el bloque en el modal de mejora
+   - Mostrar progreso agregado por mejora
+   - **Criterio verificable**: se pueden crear, completar y eliminar items y el progreso se refleja correctamente
+
+2. **Toggle de vista tarjetas/tabla**
+   - Añadir selector de modo de visualización
+   - Reutilizar filtros y búsqueda existentes en ambas vistas
+   - Construir tabla compacta con columnas operativas clave
+   - **Criterio verificable**: el mismo conjunto filtrado puede visualizarse en ambos modos sin inconsistencias
+
+3. **Pulido de densidad operativa**
+   - Añadir progreso checklist en tabla/cards/modal
+   - Ajustar jerarquía visual y responsive
+   - **Criterio verificable**: la vista tabla aporta más densidad sin perder claridad y el checklist aporta seguimiento real
 
 ### 🚀 Fase E: Release Planner - Panel de Anuncios Programados (22 Enero 2026)
 

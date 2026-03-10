@@ -278,29 +278,6 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <div class="operations-overview-bar" id="operations-overview-bar">
-                <div class="operations-overview-card risk">
-                    <span class="operations-overview-label">Antiguas activas</span>
-                    <strong class="operations-overview-value" id="ops-stale-count">0</strong>
-                    <span class="operations-overview-hint">Más de 14 días y sin cerrar</span>
-                </div>
-                <div class="operations-overview-card warning">
-                    <span class="operations-overview-label">Sin dueño</span>
-                    <strong class="operations-overview-value" id="ops-unowned-active-count">0</strong>
-                    <span class="operations-overview-hint">Pendientes o en progreso sin asignación</span>
-                </div>
-                <div class="operations-overview-card focus">
-                    <span class="operations-overview-label">Críticas abiertas</span>
-                    <strong class="operations-overview-value" id="ops-critical-open-count">0</strong>
-                    <span class="operations-overview-hint">Prioridad crítica no resuelta</span>
-                </div>
-                <div class="operations-overview-card personal">
-                    <span class="operations-overview-label">Carga mía</span>
-                    <strong class="operations-overview-value" id="ops-my-active-count">0</strong>
-                    <span class="operations-overview-hint">Asignadas a ti activas</span>
-                </div>
-            </div>
-
             <!-- Cards Grid -->
             <div class="cards-grid" id="requests-grid">
                 <!-- Cards will be loaded dynamically -->
@@ -485,6 +462,32 @@ $company_name = $user['company_name'] ?? '';
 
                         <!-- Comments section -->
                         <div class="comments-section">
+                            <div class="attachments-header" style="margin-bottom: 1rem; margin-top: 0.5rem;">
+                                <label>
+                                    <i class="iconoir-check-square"></i> Checklist
+                                </label>
+                                <span id="edit-checklist-count" class="badge-count-inline"></span>
+                            </div>
+
+                            <div class="checklist-progress-bar-wrapper">
+                                <div class="checklist-progress-bar">
+                                    <div class="checklist-progress-fill" id="edit-checklist-progress-fill" style="width: 0%;"></div>
+                                </div>
+                                <span class="checklist-progress-text" id="edit-checklist-progress-text">0/0</span>
+                            </div>
+
+                            <div class="checklist-add-row">
+                                <input type="text" id="edit-checklist-input" placeholder="Añadir subtarea o paso de verificación..." onkeydown="handleChecklistKeydown(event)">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="addChecklistItem()">
+                                    <i class="iconoir-plus"></i>
+                                    Añadir
+                                </button>
+                            </div>
+
+                            <div id="edit-checklist-list" class="checklist-list">
+                                <!-- Checklist items loaded dynamically -->
+                            </div>
+
                             <div class="attachments-header" style="margin-bottom: 1rem;">
                                 <label>
                                     <i class="iconoir-chat-bubble"></i> Comentarios
@@ -616,6 +619,10 @@ $company_name = $user['company_name'] ?? '';
                                     <div class="request-insight-item">
                                         <span class="request-insight-label">Adjuntos</span>
                                         <strong id="edit-summary-attachments">0</strong>
+                                    </div>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Checklist</span>
+                                        <strong id="edit-summary-checklist">0/0</strong>
                                     </div>
                                 </div>
                             </div>

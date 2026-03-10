@@ -9,6 +9,7 @@ let selectedFiles = [];
 let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
+let currentChecklistItems = [];
 
 const userRole = document.body.dataset.userRole;
 
@@ -89,6 +90,176 @@ document.addEventListener('DOMContentLoaded', async function () {
         }, 100);
     }
 });
+
+async function loadChecklistItems(requestId) {
+    const countEl = document.getElementById('edit-checklist-count');
+    const progressText = document.getElementById('edit-checklist-progress-text');
+    const progressFill = document.getElementById('edit-checklist-progress-fill');
+
+    try {
+        const response = await fetch(`/api/request-checklist.php?request_id=${requestId}`);
+        const data = await response.json();
+
+        if (data.success) {
+            currentChecklistItems = data.data || [];
+            renderChecklistItems();
+
+            const total = currentChecklistItems.length;
+            const completed = currentChecklistItems.filter(item => parseInt(item.is_completed, 10) === 1).length;
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            if (countEl) countEl.textContent = total > 0 ? `${total}` : '';
+            if (progressText) progressText.textContent = `${completed}/${total}`;
+            if (progressFill) progressFill.style.width = `${percent}%`;
+
+            const activeRequest = requests.find(r => parseInt(r.id, 10) === parseInt(requestId, 10));
+            if (activeRequest) {
+                activeRequest.checklist_count = total;
+                activeRequest.checklist_completed_count = completed;
+                updateEditRequestSummary(activeRequest);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading checklist:', error);
+    }
+}
+
+function renderChecklistItems() {
+    const container = document.getElementById('edit-checklist-list');
+    if (!container) return;
+
+    if (!currentChecklistItems.length) {
+        container.innerHTML = '<p class="text-muted text-small">No hay subtareas todavía</p>';
+        return;
+    }
+
+    container.innerHTML = currentChecklistItems.map(item => `
+        <div class="checklist-item ${parseInt(item.is_completed, 10) === 1 ? 'completed' : ''}" data-checklist-id="${item.id}">
+            <label class="checklist-item-main">
+                <input type="checkbox" ${parseInt(item.is_completed, 10) === 1 ? 'checked' : ''} onchange="toggleChecklistItem(${item.id}, this.checked)">
+                <span class="checklist-item-title">${escapeHtml(item.title)}</span>
+            </label>
+            <div class="checklist-item-actions">
+                <button type="button" class="comment-action-btn" onclick="renameChecklistItem(${item.id})" title="Renombrar">
+                    <i class="iconoir-edit-pencil"></i>
+                </button>
+                <button type="button" class="comment-action-btn" onclick="deleteChecklistItem(${item.id})" title="Eliminar">
+                    <i class="iconoir-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function handleChecklistKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addChecklistItem();
+    }
+}
+
+async function addChecklistItem() {
+    const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
+    const input = document.getElementById('edit-checklist-input');
+    const title = input?.value?.trim();
+
+    if (!requestId || !title) return;
+
+    try {
+        const response = await fetch('/api/request-checklist.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId, title })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            input.value = '';
+            await loadChecklistItems(requestId);
+            await loadRequests();
+        } else {
+            alert(data.error || 'Error al añadir subtarea');
+        }
+    } catch (error) {
+        console.error('Error adding checklist item:', error);
+    }
+}
+
+async function toggleChecklistItem(itemId, isCompleted) {
+    const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
+
+    try {
+        const response = await fetch('/api/request-checklist.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemId, is_completed: isCompleted })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            await loadChecklistItems(requestId);
+            await loadRequests();
+        } else {
+            alert(data.error || 'Error al actualizar subtarea');
+        }
+    } catch (error) {
+        console.error('Error toggling checklist item:', error);
+    }
+}
+
+async function renameChecklistItem(itemId) {
+    const item = currentChecklistItems.find(entry => parseInt(entry.id, 10) === parseInt(itemId, 10));
+    if (!item) return;
+
+    const newTitle = prompt('Nuevo texto de la subtarea', item.title);
+    if (newTitle === null) return;
+
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+
+    const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
+
+    try {
+        const response = await fetch('/api/request-checklist.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemId, title: trimmed })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            await loadChecklistItems(requestId);
+        } else {
+            alert(data.error || 'Error al renombrar subtarea');
+        }
+    } catch (error) {
+        console.error('Error renaming checklist item:', error);
+    }
+}
+
+async function deleteChecklistItem(itemId) {
+    if (!confirm('¿Eliminar esta subtarea?')) return;
+
+    const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
+
+    try {
+        const response = await fetch('/api/request-checklist.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemId })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            await loadChecklistItems(requestId);
+            await loadRequests();
+        } else {
+            alert(data.error || 'Error al eliminar subtarea');
+        }
+    } catch (error) {
+        console.error('Error deleting checklist item:', error);
+    }
+}
 
 function handleSearchInput() {
     requestSearchTerm = document.getElementById('request-search')?.value?.trim().toLowerCase() || '';
@@ -189,21 +360,12 @@ function updateRequestsSummary(filteredRequests) {
     const pendingEl = document.getElementById('summary-pending-count');
     const unassignedEl = document.getElementById('summary-unassigned-count');
     const commentedEl = document.getElementById('summary-commented-count');
-    const staleEl = document.getElementById('ops-stale-count');
-    const unownedActiveEl = document.getElementById('ops-unowned-active-count');
-    const criticalOpenEl = document.getElementById('ops-critical-open-count');
-    const myActiveEl = document.getElementById('ops-my-active-count');
-    const currentUserId = parseInt(document.body.dataset.userId, 10);
 
     if (visibleEl) visibleEl.textContent = filteredRequests.length;
     if (inProgressEl) inProgressEl.textContent = filteredRequests.filter(r => r.status === 'in_progress').length;
     if (pendingEl) pendingEl.textContent = filteredRequests.filter(r => r.status === 'pending').length;
     if (unassignedEl) unassignedEl.textContent = filteredRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
     if (commentedEl) commentedEl.textContent = filteredRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
-    if (staleEl) staleEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && getAgeInDays(r.created_at) >= 14).length;
-    if (unownedActiveEl) unownedActiveEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && (!r.assignments || r.assignments.length === 0)).length;
-    if (criticalOpenEl) criticalOpenEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && r.priority === 'critical').length;
-    if (myActiveEl) myActiveEl.textContent = filteredRequests.filter(r => isActiveRequest(r) && (r.assignments || []).some(a => parseInt(a.id, 10) === currentUserId)).length;
 }
 
 function getRelativeAge(dateString) {
@@ -217,45 +379,6 @@ function getRelativeAge(dateString) {
     const months = Math.floor(diffDays / 30);
     if (months === 1) return '1 mes';
     return `${months} meses`;
-}
-
-function getAgeInDays(dateString) {
-    if (!dateString) return 0;
-    const created = new Date(dateString);
-    const now = new Date();
-    return Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
-}
-
-function isActiveRequest(request) {
-    return request.status === 'pending' || request.status === 'in_progress';
-}
-
-function getRequestHealthSignals(request) {
-    const ageDays = getAgeInDays(request.created_at);
-    const active = isActiveRequest(request);
-    const unassigned = !request.assignments || request.assignments.length === 0;
-    const criticalOpen = active && request.priority === 'critical';
-    const stale = active && ageDays >= 14;
-
-    const signals = [];
-
-    if (stale) {
-        signals.push({ type: 'risk', label: `Antigua ${ageDays}d` });
-    }
-
-    if (unassigned && active) {
-        signals.push({ type: 'warning', label: 'Sin dueño' });
-    }
-
-    if (criticalOpen) {
-        signals.push({ type: 'focus', label: 'Crítica abierta' });
-    }
-
-    if (request.status === 'in_progress' && request.comment_count > 0) {
-        signals.push({ type: 'good', label: 'Con tracción' });
-    }
-
-    return signals;
 }
 
 function getDateTimeLabel(dateString) {
@@ -275,6 +398,12 @@ function getPrimaryOwnerLabel(request) {
 
     const primary = request.assignments[0];
     return primary.full_name || primary.username || 'Sin asignar';
+}
+
+function getChecklistProgress(request) {
+    const total = parseInt(request?.checklist_count || 0, 10);
+    const completed = parseInt(request?.checklist_completed_count || 0, 10);
+    return { total, completed };
 }
 
 function getLastActivityLabel(request, comments = currentComments) {
@@ -355,6 +484,8 @@ function updateEditRequestSummary(request) {
     const ageEl = document.getElementById('edit-summary-age');
     const commentsEl = document.getElementById('edit-summary-comments');
     const attachmentsEl = document.getElementById('edit-summary-attachments');
+    const checklistEl = document.getElementById('edit-summary-checklist');
+    const checklistProgress = getChecklistProgress(request);
 
     if (statusEl) statusEl.textContent = getStatusLabel(request.status);
     if (priorityEl) priorityEl.textContent = getPriorityLabel(request.priority);
@@ -363,6 +494,7 @@ function updateEditRequestSummary(request) {
     if (ageEl) ageEl.textContent = getRelativeAge(request.created_at);
     if (commentsEl) commentsEl.textContent = request.comment_count || 0;
     if (attachmentsEl) attachmentsEl.textContent = request.attachment_count || 0;
+    if (checklistEl) checklistEl.textContent = `${checklistProgress.completed}/${checklistProgress.total}`;
 
     renderActivityTimeline(request);
 }
@@ -716,7 +848,7 @@ function createRequestCard(request, isFinished = false) {
     const primaryOwnerLabel = getPrimaryOwnerLabel(request);
     const requestAgeLabel = getRelativeAge(request.created_at);
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
-    const healthSignals = getRequestHealthSignals(request);
+    const checklistProgress = getChecklistProgress(request);
 
     card.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
@@ -798,15 +930,13 @@ function createRequestCard(request, isFinished = false) {
                     <span>Actividad</span>
                 </span>
             ` : ''}
+            ${checklistProgress.total > 0 ? `
+                <span class="request-card-insight ${checklistProgress.completed === checklistProgress.total ? 'is-highlight' : ''}">
+                    <i class="iconoir-check-square"></i>
+                    <span>${checklistProgress.completed}/${checklistProgress.total}</span>
+                </span>
+            ` : ''}
         </div>
-
-        ${healthSignals.length > 0 ? `
-            <div class="request-health-strip">
-                ${healthSignals.map(signal => `
-                    <span class="request-health-badge ${signal.type}">${signal.label}</span>
-                `).join('')}
-            </div>
-        ` : ''}
 
         ${request.files && request.files.length > 0 ? `
             <div style="margin-bottom: var(--spacing-md);">
@@ -1098,6 +1228,13 @@ function closeModal(modalId) {
         selectedFiles = [];
         document.getElementById('file-list').innerHTML = '';
     }
+    if (modalId === 'edit-request-modal') {
+        currentChecklistItems = [];
+        const checklistInput = document.getElementById('edit-checklist-input');
+        const checklistList = document.getElementById('edit-checklist-list');
+        if (checklistInput) checklistInput.value = '';
+        if (checklistList) checklistList.innerHTML = '';
+    }
 }
 
 // Submit new request
@@ -1361,6 +1498,9 @@ async function openEditRequestModal(requestId) {
 
             // Load attachments
             await loadRequestAttachments(requestId);
+
+            // Load checklist
+            await loadChecklistItems(requestId);
 
             // Load comments
             await loadComments(requestId);

@@ -151,7 +151,9 @@ switch ($method) {
                     assigned.username as assigned_username,
                     assigned.full_name as assigned_name,
                     (SELECT COUNT(*) FROM attachments WHERE request_id = r.id) as attachment_count,
-                    (SELECT COUNT(*) FROM request_comments WHERE request_id = r.id) as comment_count
+                    (SELECT COUNT(*) FROM request_comments WHERE request_id = r.id) as comment_count,
+                    (SELECT COUNT(*) FROM request_checklist_items WHERE request_id = r.id) as checklist_count,
+                    (SELECT COUNT(*) FROM request_checklist_items WHERE request_id = r.id AND is_completed = 1) as checklist_completed_count
                 FROM requests r
                 INNER JOIN apps a ON r.app_id = a.id
                 LEFT JOIN users u ON r.created_by = u.id
