@@ -597,12 +597,13 @@ function updateRequestsSummary(filteredRequests) {
     const pendingEl = document.getElementById('summary-pending-count');
     const unassignedEl = document.getElementById('summary-unassigned-count');
     const commentedEl = document.getElementById('summary-commented-count');
+    const activeRequests = filteredRequests.filter(r => r.status !== 'completed' && r.status !== 'discarded');
 
-    if (visibleEl) visibleEl.textContent = filteredRequests.length;
-    if (inProgressEl) inProgressEl.textContent = filteredRequests.filter(r => r.status === 'in_progress').length;
-    if (pendingEl) pendingEl.textContent = filteredRequests.filter(r => r.status === 'pending').length;
-    if (unassignedEl) unassignedEl.textContent = filteredRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
-    if (commentedEl) commentedEl.textContent = filteredRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
+    if (visibleEl) visibleEl.textContent = activeRequests.length;
+    if (inProgressEl) inProgressEl.textContent = activeRequests.filter(r => r.status === 'in_progress').length;
+    if (pendingEl) pendingEl.textContent = activeRequests.filter(r => r.status === 'pending').length;
+    if (unassignedEl) unassignedEl.textContent = activeRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
+    if (commentedEl) commentedEl.textContent = activeRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
 }
 
 function getRelativeAge(dateString) {
@@ -963,6 +964,12 @@ function renderRequests() {
     const tableBody = document.getElementById('requests-table-body');
 
     const filteredRequests = getFilteredRequests();
+    const activeRequests = filteredRequests.filter(r =>
+        r.status === 'pending' || r.status === 'in_progress'
+    );
+    const finishedRequests = filteredRequests.filter(r =>
+        r.status === 'completed' || r.status === 'discarded'
+    );
 
     updateRequestsSummary(filteredRequests);
     syncRequestsViewModeUI();
@@ -985,21 +992,21 @@ function renderRequests() {
     }
 
     if (tableBody) {
-        renderRequestsTable(filteredRequests, tableBody);
+        if (activeRequests.length > 0) {
+            renderRequestsTable(activeRequests, tableBody);
+        } else {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="requests-table-empty">No hay solicitudes activas para los filtros actuales</td>
+                </tr>
+            `;
+        }
     }
 
     if (currentRequestsViewMode === 'table') {
         grid.innerHTML = '';
         return;
     }
-
-    // Separate active and finished requests
-    const activeRequests = filteredRequests.filter(r =>
-        r.status === 'pending' || r.status === 'in_progress'
-    );
-    const finishedRequests = filteredRequests.filter(r =>
-        r.status === 'completed' || r.status === 'discarded'
-    );
 
     grid.innerHTML = '';
 

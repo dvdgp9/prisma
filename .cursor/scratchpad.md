@@ -885,6 +885,24 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - En `Tabla`, comprobar que siguen funcionando búsqueda, quick views y cambio de vista
 - En `Tarjetas`, confirmar que la barra completa sigue presente y funcional
 
+### ✅ Progreso executor adicional (11 Marzo 2026 - métricas activas y tabla sin completadas)
+
+#### Subbloque ejecutado
+- **Summary superior ajustado**
+  - `Visibles`, `En progreso`, `Pendientes`, `Sin asignar` y `Con comentarios` ahora calculan solo sobre solicitudes activas
+  - las solicitudes `completed` y `discarded` dejan de contaminar esos contadores
+
+- **Vista tabla ajustada**
+  - la tabla ahora renderiza únicamente solicitudes activas
+  - las solicitudes finalizadas permanecen únicamente en la experiencia de tarjetas, bajo su bloque separado
+  - si los filtros devuelven solo finalizadas, la tabla muestra un estado vacío de “solicitudes activas”
+
+#### Validación manual requerida
+- Comprobar que los KPIs superiores ya no cuentan completadas/descartadas
+- Confirmar que los números del summary cuadran con las tarjetas activas visibles
+- Entrar en `Tabla` y verificar que no aparecen solicitudes completadas
+- Probar un filtro/quick view que deje solo resultados finalizados y verificar el estado vacío de tabla
+
 ### 🧠 Actualización Planner (10 Marzo 2026 - nueva decisión del usuario)
 
 El usuario indica que, para continuar, **prefiere priorizar dos cosas** por encima de otros indicadores operativos más amplios:
