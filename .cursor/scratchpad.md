@@ -864,6 +864,27 @@ Propuesta del executor: empezar por **H.1.1 Toolbar de filtros y vistas rápidas
 - Confirmar que la fila sigue abriendo el modal salvo en acciones inline
 - Confirmar que `Pendientes Aprobar` funciona tanto estando en tarjetas como en tabla
 
+### ✅ Progreso executor adicional (11 Marzo 2026 - toolbar adaptativa por vista)
+
+#### Subbloque ejecutado
+- **Toolbar diferenciada por vista**
+  - recuperación de una `requests-toolbar-shell` común para controlar layout por modo
+  - en `cards` se mantiene la barra completa con búsqueda + ordenación multinivel
+  - en `table` se compacta la cabecera
+  - en `table` se ocultan los selects de orden global porque la ordenación principal pasa a los encabezados de tabla
+  - se mantienen visibles búsqueda, quick views y toggle de vista
+
+#### Motivo UX
+- La vista de tabla ya ofrece una ordenación primaria más natural desde los encabezados.
+- Mantener simultáneamente la ordenación multinivel completa generaba ruido visual y duplicidad mental.
+- La vista de tarjetas sí sigue aprovechando mejor la barra de ordenación global.
+
+#### Validación manual requerida
+- Cambiar entre `Tarjetas` y `Tabla` y confirmar que la cabecera se reconfigura
+- En `Tabla`, verificar que ya no aparecen los tres selects de orden global
+- En `Tabla`, comprobar que siguen funcionando búsqueda, quick views y cambio de vista
+- En `Tarjetas`, confirmar que la barra completa sigue presente y funcional
+
 ### 🧠 Actualización Planner (10 Marzo 2026 - nueva decisión del usuario)
 
 El usuario indica que, para continuar, **prefiere priorizar dos cosas** por encima de otros indicadores operativos más amplios:

@@ -481,7 +481,18 @@ function syncRequestsViewModeUI() {
 
     const grid = document.getElementById('requests-grid');
     const tableWrapper = document.getElementById('requests-table-wrapper');
+    const toolbarShell = document.getElementById('requests-toolbar-shell');
+    const sortingBar = document.getElementById('sorting-bar');
     if (!grid || !tableWrapper) return;
+
+    if (toolbarShell) {
+        toolbarShell.classList.toggle('is-table-mode', currentRequestsViewMode === 'table');
+        toolbarShell.classList.toggle('is-cards-mode', currentRequestsViewMode !== 'table');
+    }
+
+    if (sortingBar) {
+        sortingBar.classList.toggle('is-table-mode', currentRequestsViewMode === 'table');
+    }
 
     if (currentRequestsViewMode === 'table') {
         grid.style.display = 'none';

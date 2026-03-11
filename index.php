@@ -100,99 +100,100 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- Multi-level Sorting Bar -->
-            <div class="sorting-bar">
-                <div class="sorting-controls">
-                    <div class="sort-group sort-group-search">
-                        <label class="sort-label">Buscar</label>
-                        <div class="toolbar-search-input">
-                            <i class="iconoir-search"></i>
-                            <input type="text" id="request-search" placeholder="Buscar por título, descripción, app o solicitante" oninput="handleSearchInput()">
+            <div class="requests-toolbar-shell" id="requests-toolbar-shell">
+                <div class="sorting-bar" id="sorting-bar">
+                    <div class="sorting-controls">
+                        <div class="sort-group sort-group-search">
+                            <label class="sort-label">Buscar</label>
+                            <div class="toolbar-search-input">
+                                <i class="iconoir-search"></i>
+                                <input type="text" id="request-search" placeholder="Buscar por título, descripción, app o solicitante" oninput="handleSearchInput()">
+                            </div>
+                        </div>
+
+                        <div class="sort-group sort-group-order">
+                            <label class="sort-label">Ordenar por</label>
+                            <select id="sort-primary" onchange="loadRequests()" class="sort-select">
+                                <option value="votes">Votos</option>
+                                <option value="priority">Prioridad</option>
+                                <option value="difficulty">Dificultad</option>
+                                <option value="status">Estado</option>
+                                <option value="date">Fecha (nueva)</option>
+                                <option value="date_asc">Fecha (antigua)</option>
+                            </select>
+                        </div>
+                        
+                        <span class="sort-separator">→</span>
+                        
+                        <div class="sort-group sort-group-order">
+                            <label class="sort-label">Luego por</label>
+                            <select id="sort-secondary" onchange="loadRequests()" class="sort-select">
+                                <option value="">Ninguno</option>
+                                <option value="votes">Votos</option>
+                                <option value="priority" selected>Prioridad</option>
+                                <option value="difficulty">Dificultad</option>
+                                <option value="status">Estado</option>
+                                <option value="date">Fecha (nueva)</option>
+                                <option value="date_asc">Fecha (antigua)</option>
+                            </select>
+                        </div>
+                        
+                        <span class="sort-separator">→</span>
+                        
+                        <div class="sort-group sort-group-order">
+                            <label class="sort-label">Finalmente por</label>
+                            <select id="sort-tertiary" onchange="loadRequests()" class="sort-select">
+                                <option value="">Ninguno</option>
+                                <option value="votes">Votos</option>
+                                <option value="priority">Prioridad</option>
+                                <option value="difficulty">Dificultad</option>
+                                <option value="status">Estado</option>
+                                <option value="date" selected>Fecha (nueva)</option>
+                                <option value="date_asc">Fecha (antigua)</option>
+                            </select>
                         </div>
                     </div>
-
-                    <div class="sort-group">
-                        <label class="sort-label">Ordenar por</label>
-                        <select id="sort-primary" onchange="loadRequests()" class="sort-select">
-                            <option value="votes">Votos</option>
-                            <option value="priority">Prioridad</option>
-                            <option value="difficulty">Dificultad</option>
-                            <option value="status">Estado</option>
-                            <option value="date">Fecha (nueva)</option>
-                            <option value="date_asc">Fecha (antigua)</option>
-                        </select>
-                    </div>
-                    
-                    <span class="sort-separator">→</span>
-                    
-                    <div class="sort-group">
-                        <label class="sort-label">Luego por</label>
-                        <select id="sort-secondary" onchange="loadRequests()" class="sort-select">
-                            <option value="">Ninguno</option>
-                            <option value="votes">Votos</option>
-                            <option value="priority" selected>Prioridad</option>
-                            <option value="difficulty">Dificultad</option>
-                            <option value="status">Estado</option>
-                            <option value="date">Fecha (nueva)</option>
-                            <option value="date_asc">Fecha (antigua)</option>
-                        </select>
-                    </div>
-                    
-                    <span class="sort-separator">→</span>
-                    
-                    <div class="sort-group">
-                        <label class="sort-label">Finalmente por</label>
-                        <select id="sort-tertiary" onchange="loadRequests()" class="sort-select">
-                            <option value="">Ninguno</option>
-                            <option value="votes">Votos</option>
-                            <option value="priority">Prioridad</option>
-                            <option value="difficulty">Dificultad</option>
-                            <option value="status">Estado</option>
-                            <option value="date" selected>Fecha (nueva)</option>
-                            <option value="date_asc">Fecha (antigua)</option>
-                        </select>
-                    </div>
                 </div>
-            </div>
 
-            <div class="quick-views-bar">
-                <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
-                    <i class="iconoir-view-grid"></i>
-                    <span>Todas</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
-                    <i class="iconoir-user-badge-check"></i>
-                    <span>Mis asignadas</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
-                    <i class="iconoir-play"></i>
-                    <span>En progreso</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
-                    <i class="iconoir-pause"></i>
-                    <span>Pendientes</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
-                    <i class="iconoir-check-circle"></i>
-                    <span>Completadas</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
-                    <i class="iconoir-user-xmark"></i>
-                    <span>Sin asignar</span>
-                </button>
-                <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
-                    <i class="iconoir-chat-bubble"></i>
-                    <span>Con comentarios</span>
-                </button>
-                <div class="view-toggle-group" id="view-toggle-group">
-                    <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)">
+                <div class="quick-views-bar" id="quick-views-bar">
+                    <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
                         <i class="iconoir-view-grid"></i>
-                        <span>Tarjetas</span>
+                        <span>Todas</span>
                     </button>
-                    <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)">
-                        <i class="iconoir-table-rows"></i>
-                        <span>Tabla</span>
+                    <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
+                        <i class="iconoir-user-badge-check"></i>
+                        <span>Mis asignadas</span>
                     </button>
+                    <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
+                        <i class="iconoir-play"></i>
+                        <span>En progreso</span>
+                    </button>
+                    <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
+                        <i class="iconoir-pause"></i>
+                        <span>Pendientes</span>
+                    </button>
+                    <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
+                        <i class="iconoir-check-circle"></i>
+                        <span>Completadas</span>
+                    </button>
+                    <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
+                        <i class="iconoir-user-xmark"></i>
+                        <span>Sin asignar</span>
+                    </button>
+                    <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
+                        <i class="iconoir-chat-bubble"></i>
+                        <span>Con comentarios</span>
+                    </button>
+                    <div class="view-toggle-group" id="view-toggle-group">
+                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)">
+                            <i class="iconoir-view-grid"></i>
+                            <span>Tarjetas</span>
+                        </button>
+                        <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)">
+                            <i class="iconoir-table-rows"></i>
+                            <span>Tabla</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
