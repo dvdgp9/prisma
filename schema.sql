@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     full_name VARCHAR(255),
-    role ENUM('superadmin', 'admin', 'user') NOT NULL DEFAULT 'user',
+    role ENUM('superadmin', 'admin', 'programador', 'user') NOT NULL DEFAULT 'user',
     company_id INT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

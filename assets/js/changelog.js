@@ -463,6 +463,7 @@ function openProfileModal() {
                 const roleLabels = {
                     'superadmin': 'Superadministrador',
                     'admin': 'Administrador',
+                    'programador': 'Programador',
                     'user': 'Usuario'
                 };
                 document.getElementById('profile-role').textContent = roleLabels[profile.role] || profile.role;

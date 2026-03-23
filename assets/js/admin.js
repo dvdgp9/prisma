@@ -609,6 +609,7 @@ function getRoleLabel(role) {
     const labels = {
         'superadmin': 'Superadmin',
         'admin': 'Admin',
+        'programador': 'Programador',
         'user': 'Usuario'
     };
     return labels[role] || role;

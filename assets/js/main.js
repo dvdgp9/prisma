@@ -1089,6 +1089,7 @@ function createRequestCard(request, isFinished = false) {
 
     const userRole = document.body.dataset.userRole;
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
+    const canChangeStatus = ['admin', 'superadmin', 'programador'].includes(userRole);
     const canEdit = ['admin', 'superadmin', 'programador'].includes(userRole);
     const canDelete = ['admin', 'superadmin'].includes(userRole);
     const primaryOwnerLabel = getPrimaryOwnerLabel(request);
@@ -1112,16 +1113,24 @@ function createRequestCard(request, isFinished = false) {
                 </h3>
             </div>
             
-            ${isAdminOrSuperadmin ? `
+            ${canChangeStatus ? `
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0;">
-                    <div class="difficulty-indicator" title="Dificultad">
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
-                                onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
-                                onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
-                                onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
-                    </div>
+                    ${isAdminOrSuperadmin ? `
+                        <div class="difficulty-indicator" title="Dificultad">
+                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
+                                    onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
+                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
+                                    onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
+                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
+                                    onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
+                        </div>
+                    ` : request.difficulty ? `
+                        <div class="difficulty-display" style="flex-shrink: 0;" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
+                        </div>
+                    ` : ''}
                     <div class="status-actions">
                         <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
                                 onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
@@ -1991,6 +2000,7 @@ async function openProfileModal() {
             const roleLabels = {
                 'superadmin': 'Superadministrador',
                 'admin': 'Administrador',
+                'programador': 'Programador',
                 'user': 'Usuario'
             };
             document.getElementById('profile-role').textContent = roleLabels[profile.role] || profile.role;
