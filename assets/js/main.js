@@ -1088,8 +1088,8 @@ function createRequestCard(request, isFinished = false) {
     };
 
     const userRole = document.body.dataset.userRole;
-    const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(userRole);
-    const canChangeStatus = ['admin', 'superadmin', 'programador'].includes(userRole);
+    const canAdmin = ['admin', 'superadmin'].includes(userRole);
+    const canManageRequest = ['admin', 'superadmin', 'programador'].includes(userRole);
     const canEdit = ['admin', 'superadmin', 'programador'].includes(userRole);
     const canDelete = ['admin', 'superadmin'].includes(userRole);
     const primaryOwnerLabel = getPrimaryOwnerLabel(request);
@@ -1101,11 +1101,11 @@ function createRequestCard(request, isFinished = false) {
         <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
             <div style="display: flex; align-items: center; gap: var(--spacing-md); flex: 1; min-width: 0;">
                 <div class="priority-badge priority-${request.priority}" 
-                     ${isAdminOrSuperadmin ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}
+                     ${canManageRequest ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}
                      style="flex-shrink: 0;">
                     ${priorityLabels[request.priority] || request.priority.toUpperCase()}
-                    ${isAdminOrSuperadmin ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
-                    ${isAdminOrSuperadmin ? createPriorityDropdown(request.id, request.priority) : ''}
+                    ${canManageRequest ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
+                    ${canManageRequest ? createPriorityDropdown(request.id, request.priority) : ''}
                 </div>
                 
                 <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">
@@ -1113,24 +1113,16 @@ function createRequestCard(request, isFinished = false) {
                 </h3>
             </div>
             
-            ${canChangeStatus ? `
+            ${canManageRequest ? `
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0;">
-                    ${isAdminOrSuperadmin ? `
-                        <div class="difficulty-indicator" title="Dificultad">
-                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
-                                    onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
-                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
-                                    onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
-                            <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
-                                    onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
-                        </div>
-                    ` : request.difficulty ? `
-                        <div class="difficulty-display" style="flex-shrink: 0;" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
-                        </div>
-                    ` : ''}
+                    <div class="difficulty-indicator" title="Dificultad">
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
+                                onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
+                    </div>
                     <div class="status-actions">
                         <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
                                 onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
@@ -1247,13 +1239,13 @@ function createRequestCard(request, isFinished = false) {
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                 <div class="vote-section" style="margin: 0;">
-                    <button class="vote-btn ${request.user_voted && !isAdminOrSuperadmin ? 'voted' : ''}" 
+                    <button class="vote-btn ${request.user_voted && !canAdmin ? 'voted' : ''}" 
                             onclick="vote(${request.id}, 'up')"
-                            title="${isAdminOrSuperadmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
+                            title="${canAdmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
                         <i class="iconoir-arrow-up"></i>
                     </button>
                     <span class="vote-count">${request.vote_count || 0}</span>
-                    ${isAdminOrSuperadmin ? `
+                    ${canAdmin ? `
                         <button class="vote-btn vote-down" 
                                 onclick="vote(${request.id}, 'down')"
                                 title="Reducir votos">

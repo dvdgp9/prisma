@@ -490,7 +490,7 @@ $company_name = $user['company_name'] ?? '';
 
                     <!-- Right Column: Metadata -->
                     <div class="modal-column-side">
-                        <?php if (has_role('admin')): ?>
+                        <?php if (has_role('programador')): ?>
                         <div class="modal-side-section">
                             <div class="modal-side-title">
                                 <div class="modal-side-title-content">
