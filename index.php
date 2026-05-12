@@ -772,7 +772,7 @@ $company_name = $user['company_name'] ?? '';
 
     <!-- Add Note Modal -->
     <div class="modal" id="add-note-modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <div class="modal-header-left">
                     <i class="iconoir-notes modal-header-icon"></i>
@@ -793,14 +793,54 @@ $company_name = $user['company_name'] ?? '';
                     <div class="form-group">
                         <label for="note-content">
                             <i class="iconoir-align-left"></i> Contenido
+                            <span class="form-help-inline">Soporta Markdown (negritas, listas, enlaces, código…)</span>
                         </label>
-                        <textarea id="note-content" rows="5" placeholder="Escribe aquí la información..."></textarea>
+                        <textarea id="note-content" rows="10" placeholder="Escribe aquí la información... **negrita**, *cursiva*, listas con -, `código`, [enlace](https://...)"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-ghost" onclick="closeModal('add-note-modal')">Cancelar</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="iconoir-plus"></i> Añadir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Note Modal -->
+    <div class="modal" id="edit-note-modal">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-edit-pencil modal-header-icon"></i>
+                    <h3 class="modal-title">Editar Nota</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('edit-note-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+            <form id="edit-note-form" onsubmit="submitEditNote(event)">
+                <input type="hidden" id="edit-note-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-note-title">
+                            <i class="iconoir-text"></i> Título *
+                        </label>
+                        <input type="text" id="edit-note-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-note-content">
+                            <i class="iconoir-align-left"></i> Contenido
+                            <span class="form-help-inline">Soporta Markdown (negritas, listas, enlaces, código…)</span>
+                        </label>
+                        <textarea id="edit-note-content" rows="14"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('edit-note-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="iconoir-check"></i> Guardar
                     </button>
                 </div>
             </form>
@@ -927,6 +967,9 @@ $company_name = $user['company_name'] ?? '';
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
+    <!-- Markdown rendering (notes) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/main.js"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>

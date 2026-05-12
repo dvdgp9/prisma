@@ -39,7 +39,7 @@ switch ($method) {
                 INNER JOIN apps a ON ar.app_id = a.id
                 LEFT JOIN users u ON ar.created_by = u.id
                 WHERE a.company_id = ?
-                ORDER BY ar.created_at DESC
+                ORDER BY ar.is_pinned DESC, ar.pinned_at DESC, ar.created_at DESC
             ");
             $stmt->execute([$companyId]);
         } else {
@@ -59,7 +59,7 @@ switch ($method) {
                 INNER JOIN apps a ON ar.app_id = a.id
                 LEFT JOIN users u ON ar.created_by = u.id
                 WHERE ar.app_id = ?
-                ORDER BY ar.created_at DESC
+                ORDER BY ar.is_pinned DESC, ar.pinned_at DESC, ar.created_at DESC
             ");
             $stmt->execute([$appId]);
         }
@@ -171,7 +171,14 @@ switch ($method) {
             $updates[] = 'content = ?';
             $params[] = $input['content'];
         }
-        
+
+        if (isset($input['is_pinned']) && $resource['type'] === 'note') {
+            $pinned = $input['is_pinned'] ? 1 : 0;
+            $updates[] = 'is_pinned = ?';
+            $params[] = $pinned;
+            $updates[] = 'pinned_at = ' . ($pinned ? 'CURRENT_TIMESTAMP' : 'NULL');
+        }
+
         if (empty($updates)) {
             error_response('No fields to update');
         }

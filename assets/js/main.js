@@ -2603,27 +2603,7 @@ async function loadAppLinksAndNotes() {
                 if (notes.length === 0) {
                     notesDisplay.innerHTML = '';
                 } else {
-                    notesDisplay.innerHTML = notes.map(note => `
-                        <div class="app-note-card">
-                            <div class="app-note-card-header">
-                                <div class="app-note-card-title">
-                                    <i class="iconoir-notes"></i>
-                                    ${escapeHtml(note.title)}
-                                </div>
-                                <div class="app-note-card-actions">
-                                    <button class="app-note-card-btn delete" onclick="deleteAppResource(${note.id}, 'note')" title="Eliminar">
-                                        <i class="iconoir-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="app-note-card-content">${escapeHtml(note.content || '')}</div>
-                            <div class="app-note-card-meta">
-                                ${currentView === 'company' && note.app_name ? `<span>${escapeHtml(note.app_name)}</span>` : ''}
-                                <span>${note.created_by_name || note.created_by_username || 'Usuario'}</span>
-                                <span>${formatDate(note.created_at)}</span>
-                            </div>
-                        </div>
-                    `).join('');
+                    notesDisplay.innerHTML = notes.map(note => renderNoteCard(note)).join('');
                 }
             }
         }
@@ -2810,14 +2790,179 @@ async function submitAddNote(event) {
     }
 }
 
-// View note in modal
+// View note in modal (renders markdown)
 function viewNote(noteId) {
     const note = appResourcesData.notes.find(n => n.id == noteId);
     if (!note) return;
-    
+
     document.getElementById('view-note-title').textContent = note.title;
-    document.getElementById('view-note-content').textContent = note.content || '(Sin contenido)';
+    const contentEl = document.getElementById('view-note-content');
+    contentEl.classList.add('markdown-body');
+    if (note.content && note.content.trim()) {
+        contentEl.innerHTML = renderNoteMarkdown(note.content);
+    } else {
+        contentEl.textContent = '(Sin contenido)';
+    }
     document.getElementById('view-note-modal').classList.add('active');
+}
+
+// ===================
+// Note helpers: markdown, collapse, pin, edit, copy
+// ===================
+
+// Render markdown safely. Falls back to escaped plain text if libs aren't loaded.
+function renderNoteMarkdown(text) {
+    const raw = text || '';
+    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+        return escapeHtml(raw).replace(/\n/g, '<br>');
+    }
+    try {
+        const html = marked.parse(raw, { breaks: true, gfm: true });
+        return DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel'] });
+    } catch (e) {
+        return escapeHtml(raw).replace(/\n/g, '<br>');
+    }
+}
+
+// Build a note card. Long content gets collapsed behind a "Ver más" toggle.
+function renderNoteCard(note) {
+    const content = note.content || '';
+    const isLong = content.length > 360 || (content.match(/\n/g) || []).length > 6;
+    const pinned = !!parseInt(note.is_pinned, 10);
+    const titleEsc = escapeHtml(note.title);
+    const rendered = renderNoteMarkdown(content);
+    const metaApp = (currentView === 'company' && note.app_name)
+        ? `<span>${escapeHtml(note.app_name)}</span>` : '';
+    const author = escapeHtml(note.created_by_name || note.created_by_username || 'Usuario');
+    return `
+        <div class="app-note-card${pinned ? ' is-pinned' : ''}${isLong ? ' is-collapsible' : ''}" data-note-id="${note.id}">
+            <div class="app-note-card-header">
+                <div class="app-note-card-title">
+                    <i class="iconoir-notes"></i>
+                    ${pinned ? '<i class="iconoir-bookmark app-note-pin-mark" title="Fijada"></i>' : ''}
+                    <span>${titleEsc}</span>
+                </div>
+                <div class="app-note-card-actions">
+                    <button class="app-note-card-btn" onclick="togglePinNote(${note.id})" title="${pinned ? 'Desfijar' : 'Fijar arriba'}">
+                        <i class="${pinned ? 'iconoir-bookmark-solid' : 'iconoir-bookmark'}"></i>
+                    </button>
+                    <button class="app-note-card-btn" onclick="copyNoteContent(${note.id})" title="Copiar contenido">
+                        <i class="iconoir-copy"></i>
+                    </button>
+                    <button class="app-note-card-btn" onclick="openEditNoteModal(${note.id})" title="Editar">
+                        <i class="iconoir-edit-pencil"></i>
+                    </button>
+                    <button class="app-note-card-btn delete" onclick="deleteAppResource(${note.id}, 'note')" title="Eliminar">
+                        <i class="iconoir-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="app-note-card-content markdown-body${isLong ? ' is-collapsed' : ''}">${rendered}</div>
+            ${isLong ? `<button class="app-note-card-toggle" onclick="toggleNoteCollapse(this)"><i class="iconoir-nav-arrow-down"></i> Ver más</button>` : ''}
+            <div class="app-note-card-meta">
+                ${metaApp}
+                <span>${author}</span>
+                <span>${formatDate(note.created_at)}</span>
+            </div>
+        </div>
+    `;
+}
+
+function toggleNoteCollapse(btn) {
+    const card = btn.closest('.app-note-card');
+    if (!card) return;
+    const content = card.querySelector('.app-note-card-content');
+    if (!content) return;
+    const collapsed = content.classList.toggle('is-collapsed');
+    btn.innerHTML = collapsed
+        ? '<i class="iconoir-nav-arrow-down"></i> Ver más'
+        : '<i class="iconoir-nav-arrow-up"></i> Ver menos';
+}
+
+async function togglePinNote(noteId) {
+    const note = appResourcesData.notes.find(n => n.id == noteId);
+    if (!note) return;
+    const newPinned = !parseInt(note.is_pinned, 10);
+    try {
+        const response = await fetch('/api/app-resources.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: noteId, is_pinned: newPinned ? 1 : 0 })
+        });
+        const data = await response.json();
+        if (data.success) {
+            await loadAppResources();
+            showToast({
+                title: newPinned ? 'Nota fijada' : 'Nota desfijada',
+                message: note.title,
+                icon: 'iconoir-bookmark'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al fijar la nota');
+        }
+    } catch (e) {
+        console.error('Error toggling pin:', e);
+    }
+}
+
+async function copyNoteContent(noteId) {
+    const note = appResourcesData.notes.find(n => n.id == noteId);
+    if (!note) return;
+    const text = `${note.title}\n\n${note.content || ''}`.trim();
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast({
+            title: 'Copiado',
+            message: note.title,
+            icon: 'iconoir-copy'
+        }, 'toast-completed');
+    } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+    }
+}
+
+function openEditNoteModal(noteId) {
+    const note = appResourcesData.notes.find(n => n.id == noteId);
+    if (!note) return;
+    document.getElementById('edit-note-id').value = note.id;
+    document.getElementById('edit-note-title').value = note.title;
+    document.getElementById('edit-note-content').value = note.content || '';
+    document.getElementById('edit-note-modal').classList.add('active');
+    document.getElementById('edit-note-title').focus();
+}
+
+async function submitEditNote(event) {
+    event.preventDefault();
+    const id = document.getElementById('edit-note-id').value;
+    const title = document.getElementById('edit-note-title').value.trim();
+    const content = document.getElementById('edit-note-content').value;
+    if (!id || !title) return;
+    try {
+        const response = await fetch('/api/app-resources.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: parseInt(id, 10), title, content })
+        });
+        const data = await response.json();
+        if (data.success) {
+            closeModal('edit-note-modal');
+            await loadAppResources();
+            showToast({
+                title: 'Nota actualizada',
+                message: title,
+                icon: 'iconoir-check'
+            }, 'toast-completed');
+        } else {
+            alert(data.error || 'Error al actualizar la nota');
+        }
+    } catch (e) {
+        console.error('Error updating note:', e);
+    }
 }
 
 // ===================
