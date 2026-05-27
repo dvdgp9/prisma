@@ -16,80 +16,86 @@ if (!isset($user)) {
 $company_name = $user['company_name'] ?? '';
 ?>
 
+<?php
+    $user_initials = strtoupper(mb_substr(trim($user['full_name'] ?? $user['username'] ?? '?'), 0, 1));
+    $user_display = $user['full_name'] ?? $user['username'] ?? 'Usuario';
+    $role_label_map = ['superadmin' => 'Superadmin', 'admin' => 'Admin', 'programador' => 'Programador', 'user' => 'Usuario'];
+    $role_label = $role_label_map[$user['role'] ?? 'user'] ?? 'Usuario';
+?>
 <aside class="sidebar">
     <div class="sidebar-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <img src="/assets/images/logo.png" alt="Prisma" style="height: 32px; width: auto;">
-            <div class="logo">Prisma</div>
-        </div>
+        <a href="/index.php" class="sidebar-brand" aria-label="Prisma · Inicio">
+            <img src="/assets/images/logo.png" alt="" aria-hidden="true">
+            <span class="sidebar-brand-text">Prisma</span>
+        </a>
     </div>
 
-    <nav>
-        <!-- Search Box -->
+    <nav class="sidebar-nav">
+        <!-- Primary navigation -->
         <div class="nav-section">
-            <div class="sidebar-search">
-                <i class="iconoir-search"></i>
-                <input type="text" id="sidebar-search-input" placeholder="Buscar apps..." onkeyup="filterSidebarApps(this.value)">
-            </div>
-        </div>
-
-        <!-- Quick Actions Icons -->
-        <div class="nav-section">
-            <div class="quick-actions-row">
-                <?php if ($current_page === 'index'): ?>
-                    <a href="javascript:void(0)" class="quick-action-btn <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('global', null, event); return false;" title="Vista Global">
-                        <i class="iconoir-globe"></i>
-                    </a>
-                <?php else: ?>
-                    <a href="/index.php" class="quick-action-btn" title="Vista Global">
-                        <i class="iconoir-globe"></i>
-                    </a>
-                <?php endif; ?>
-                
-                <?php if (has_role('admin')): ?>
-                    <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>" 
-                       onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>" 
-                       class="quick-action-btn" 
-                       id="pending-approvals-nav" 
-                       title="Pendientes Aprobar">
-                        <i class="iconoir-clock"></i>
-                        <span class="badge-count" id="pending-count" style="display: none;"></span>
-                    </a>
-                <?php endif; ?>
-                
-                <a href="javascript:void(0)" class="quick-action-btn" onclick="toggleInbox()" title="Notificaciones" id="inbox-nav-btn">
-                    <i class="iconoir-bell"></i>
-                    <span class="badge-count" id="inbox-count" style="display: none;"></span>
+            <?php if ($current_page === 'index'): ?>
+                <a href="javascript:void(0)" class="nav-item <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('global', null, event); return false;" data-nav="global">
+                    <i class="iconoir-view-grid"></i>
+                    <span>Vista global</span>
                 </a>
-
-                <a href="/changelog.php" class="quick-action-btn <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog">
-                    <i class="iconoir-list"></i>
+            <?php else: ?>
+                <a href="/index.php" class="nav-item" data-nav="global">
+                    <i class="iconoir-view-grid"></i>
+                    <span>Vista global</span>
                 </a>
-            </div>
-            
-            <a href="/tasks.php" class="nav-item <?php echo $current_page === 'tasks' ? 'active' : ''; ?>">
-                <i class="iconoir-check-circle"></i>
-                <span>Mis Tareas</span>
-                <span class="badge-count" id="tasks-count" style="display: none;"></span>
-            </a>
-            <?php if (has_role('superadmin')): ?>
-            <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
-                <i class="iconoir-calendar"></i>
-                <span>Release Planner</span>
-            </a>
             <?php endif; ?>
+
+            <a href="/tasks.php" class="nav-item <?php echo $current_page === 'tasks' ? 'active' : ''; ?>" data-nav="tasks">
+                <i class="iconoir-task-list"></i>
+                <span>Mis tareas</span>
+                <span class="nav-count" id="tasks-count" hidden></span>
+            </a>
+
+            <?php if (has_role('admin')): ?>
+                <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>"
+                   onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>"
+                   class="nav-item" id="pending-approvals-nav" data-nav="pending">
+                    <i class="iconoir-hourglass"></i>
+                    <span>Por aprobar</span>
+                    <span class="nav-count" id="pending-count" hidden></span>
+                </a>
+            <?php endif; ?>
+
+            <a href="javascript:void(0)" class="nav-item" onclick="toggleInbox()" id="inbox-nav-btn" data-nav="inbox">
+                <i class="iconoir-bell"></i>
+                <span>Notificaciones</span>
+                <span class="nav-count nav-count--accent" id="inbox-count" hidden></span>
+            </a>
         </div>
 
-        <!-- Apps Section - Will be loaded dynamically and grouped by company -->
-        <div class="nav-section" id="apps-nav">
-            <div class="nav-section-title">Aplicaciones</div>
-            <!-- Apps will be loaded dynamically via JS -->
+        <!-- Apps section -->
+        <div class="nav-section nav-section--apps">
+            <div class="nav-section-header">
+                <span class="nav-section-title">Aplicaciones</span>
+                <div class="sidebar-search">
+                    <i class="iconoir-search"></i>
+                    <input type="text" id="sidebar-search-input" placeholder="Buscar app" onkeyup="filterSidebarApps(this.value)" aria-label="Buscar aplicación">
+                </div>
+            </div>
+            <div id="apps-nav">
+                <!-- Apps loaded dynamically -->
+            </div>
         </div>
 
-        <!-- Admin Section -->
-        <?php if (has_role('admin')): ?>
-            <div class="nav-section">
-                <div class="nav-section-title">Administración</div>
+        <!-- Tools / Admin section -->
+        <div class="nav-section nav-section--tools">
+            <div class="nav-section-title">Herramientas</div>
+            <?php if (has_role('superadmin')): ?>
+                <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
+                    <i class="iconoir-rocket"></i>
+                    <span>Release Planner</span>
+                </a>
+            <?php endif; ?>
+            <a href="/changelog.php" class="nav-item <?php echo $current_page === 'changelog' ? 'active' : ''; ?>">
+                <i class="iconoir-journal"></i>
+                <span>Changelog</span>
+            </a>
+            <?php if (has_role('admin')): ?>
                 <?php if (has_role('superadmin')): ?>
                     <a href="/admin.php" class="nav-item <?php echo $current_page === 'admin' ? 'active' : ''; ?>">
                         <i class="iconoir-shield-check"></i>
@@ -98,23 +104,31 @@ $company_name = $user['company_name'] ?? '';
                 <?php endif; ?>
                 <a href="/manage-apps.php" class="nav-item <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>">
                     <i class="iconoir-settings"></i>
-                    <span>Gestionar Apps</span>
+                    <span>Gestionar apps</span>
                 </a>
-            </div>
-        <?php endif; ?>
-
-        <!-- Profile and Logout -->
-        <div class="nav-section">
-            <a href="javascript:void(0)" class="nav-item" onclick="openProfileModal()">
-                <i class="iconoir-user"></i>
-                <span>Mi Perfil</span>
-            </a>
-            <a href="/logout.php" class="nav-item" style="color: var(--secondary);">
-                <i class="iconoir-log-out"></i>
-                <span>Cerrar Sesión</span>
-            </a>
+            <?php endif; ?>
         </div>
     </nav>
+
+    <!-- User pill at footer -->
+    <div class="sidebar-user" id="sidebar-user">
+        <button type="button" class="sidebar-user-trigger" onclick="toggleSidebarUserMenu(event)" aria-haspopup="true" aria-expanded="false">
+            <span class="sidebar-user-avatar"><?php echo htmlspecialchars($user_initials, ENT_QUOTES); ?></span>
+            <span class="sidebar-user-meta">
+                <span class="sidebar-user-name"><?php echo htmlspecialchars($user_display, ENT_QUOTES); ?></span>
+                <span class="sidebar-user-role"><?php echo htmlspecialchars($role_label, ENT_QUOTES); ?></span>
+            </span>
+            <i class="iconoir-nav-arrow-up sidebar-user-caret"></i>
+        </button>
+        <div class="sidebar-user-menu" id="sidebar-user-menu" hidden>
+            <button type="button" class="sidebar-user-menu-item" onclick="openProfileModal(); toggleSidebarUserMenu()">
+                <i class="iconoir-user"></i><span>Mi perfil</span>
+            </button>
+            <a href="/logout.php" class="sidebar-user-menu-item sidebar-user-menu-item--danger">
+                <i class="iconoir-log-out"></i><span>Cerrar sesión</span>
+            </a>
+        </div>
+    </div>
 </aside>
 
 <!-- Inbox Panel -->

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prisma",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["-d", "output_buffering=On", "-d", "display_errors=Off", "-S", "localhost:8765", "-t", "."],
+      "port": 8765
+    }
+  ]
+}

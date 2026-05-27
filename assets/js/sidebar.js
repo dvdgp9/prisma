@@ -46,10 +46,9 @@ function renderSidebarApps() {
     // Check if we have multiple companies
     const hasMultipleCompanies = sidebarAppsGrouped.length > 1;
     
-    let navContent = '<div class="nav-section-title">Aplicaciones</div>';
-    
+    let navContent = '';
+
     if (hasMultipleCompanies) {
-        // Render grouped by company
         navContent += sidebarAppsGrouped.map(group => `
             <div class="company-group" data-company-id="${group.id}">
                 <div class="company-group-header" onclick="toggleCompanyGroup(${group.id})">
@@ -60,29 +59,22 @@ function renderSidebarApps() {
                     <i class="iconoir-nav-arrow-down company-group-toggle"></i>
                 </div>
                 <div class="company-group-apps" style="max-height: none;">
-                    ${group.apps.map(app => {
-                        const appLink = getAppLink(app.id);
-                        return `
-                            <a href="${appLink}" class="nav-item" data-app-id="${app.id}">
-                                <i class="iconoir-app-window"></i>
-                                <span>${escapeHtml(app.name)}</span>
-                            </a>
-                        `;
-                    }).join('')}
+                    ${group.apps.map(app => `
+                        <a href="${getAppLink(app.id)}" class="nav-item" data-app-id="${app.id}">
+                            <i class="iconoir-app-window"></i>
+                            <span>${escapeHtml(app.name)}</span>
+                        </a>
+                    `).join('')}
                 </div>
             </div>
         `).join('');
     } else {
-        // Single company or flat list
-        navContent += sidebarApps.map(app => {
-            const appLink = getAppLink(app.id);
-            return `
-                <a href="${appLink}" class="nav-item" data-app-id="${app.id}">
-                    <i class="iconoir-app-window"></i>
-                    <span>${escapeHtml(app.name)}</span>
-                </a>
-            `;
-        }).join('');
+        navContent += sidebarApps.map(app => `
+            <a href="${getAppLink(app.id)}" class="nav-item" data-app-id="${app.id}">
+                <i class="iconoir-app-window"></i>
+                <span>${escapeHtml(app.name)}</span>
+            </a>
+        `).join('');
     }
 
     appsNav.innerHTML = navContent;

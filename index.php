@@ -13,13 +13,14 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <!-- Iconoir Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=2.4">
 </head>
 
 <?php
@@ -104,15 +105,15 @@ $company_name = $user['company_name'] ?? '';
                 <div class="sorting-bar" id="sorting-bar">
                     <div class="sorting-controls">
                         <div class="sort-group sort-group-search">
-                            <label class="sort-label">Buscar</label>
+                            <label class="sort-label" for="request-search">Buscar</label>
                             <div class="toolbar-search-input">
                                 <i class="iconoir-search"></i>
                                 <input type="text" id="request-search" placeholder="Buscar por título, descripción, app o solicitante" oninput="handleSearchInput()">
                             </div>
                         </div>
 
-                        <div class="sort-group sort-group-order">
-                            <label class="sort-label">Ordenar por</label>
+                        <div class="sort-group sort-group-order sort-group-primary">
+                            <label class="sort-label" for="sort-primary">Ordenar por</label>
                             <select id="sort-primary" onchange="loadRequests()" class="sort-select">
                                 <option value="votes">Votos</option>
                                 <option value="priority">Prioridad</option>
@@ -122,11 +123,9 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
                         </div>
-                        
-                        <span class="sort-separator">→</span>
-                        
-                        <div class="sort-group sort-group-order">
-                            <label class="sort-label">Luego por</label>
+
+                        <div class="sort-group sort-group-order sort-group-secondary">
+                            <label class="sort-label" for="sort-secondary">Luego por</label>
                             <select id="sort-secondary" onchange="loadRequests()" class="sort-select">
                                 <option value="">Ninguno</option>
                                 <option value="votes">Votos</option>
@@ -137,11 +136,9 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
                         </div>
-                        
-                        <span class="sort-separator">→</span>
-                        
-                        <div class="sort-group sort-group-order">
-                            <label class="sort-label">Finalmente por</label>
+
+                        <div class="sort-group sort-group-order sort-group-tertiary">
+                            <label class="sort-label" for="sort-tertiary">Finalmente por</label>
                             <select id="sort-tertiary" onchange="loadRequests()" class="sort-select">
                                 <option value="">Ninguno</option>
                                 <option value="votes">Votos</option>
@@ -152,44 +149,56 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
                         </div>
+
+                        <button type="button" class="toolbar-more-btn" id="toolbar-more-btn" onclick="toggleToolbarAdvanced()" aria-expanded="false">
+                            <i class="iconoir-filter"></i>
+                            <span>Más filtros</span>
+                            <i class="iconoir-nav-arrow-down"></i>
+                        </button>
                     </div>
                 </div>
 
                 <div class="quick-views-bar" id="quick-views-bar">
-                    <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
-                        <i class="iconoir-view-grid"></i>
-                        <span>Todas</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
-                        <i class="iconoir-user-badge-check"></i>
-                        <span>Mis asignadas</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
-                        <i class="iconoir-play"></i>
-                        <span>En progreso</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
-                        <i class="iconoir-pause"></i>
-                        <span>Pendientes</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
-                        <i class="iconoir-check-circle"></i>
-                        <span>Completadas</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
-                        <i class="iconoir-user-xmark"></i>
-                        <span>Sin asignar</span>
-                    </button>
-                    <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
-                        <i class="iconoir-chat-bubble"></i>
-                        <span>Con comentarios</span>
-                    </button>
+                    <div class="quick-views-primary" role="tablist" aria-label="Filtro rápido por estado">
+                        <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
+                            <i class="iconoir-view-grid"></i>
+                            <span>Todas</span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
+                            <i class="iconoir-pause"></i>
+                            <span>Pendientes</span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
+                            <i class="iconoir-play"></i>
+                            <span>En curso</span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
+                            <i class="iconoir-check-circle"></i>
+                            <span>Hechas</span>
+                        </button>
+                    </div>
+
+                    <div class="quick-views-secondary" aria-label="Filtros adicionales">
+                        <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
+                            <i class="iconoir-user-badge-check"></i>
+                            <span>Mis asignadas</span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
+                            <i class="iconoir-user-xmark"></i>
+                            <span>Sin asignar</span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
+                            <i class="iconoir-chat-bubble"></i>
+                            <span>Con comentarios</span>
+                        </button>
+                    </div>
+
                     <div class="view-toggle-group" id="view-toggle-group">
-                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)">
+                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)" title="Vista tarjetas" aria-label="Vista tarjetas">
                             <i class="iconoir-view-grid"></i>
                             <span>Tarjetas</span>
                         </button>
-                        <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)">
+                        <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)" title="Vista tabla" aria-label="Vista tabla">
                             <i class="iconoir-table-rows"></i>
                             <span>Tabla</span>
                         </button>
@@ -213,10 +222,6 @@ $company_name = $user['company_name'] ?? '';
                 <div class="summary-stat-card">
                     <span class="summary-stat-label">Sin asignar</span>
                     <strong class="summary-stat-value" id="summary-unassigned-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Con comentarios</span>
-                    <strong class="summary-stat-value" id="summary-commented-count">0</strong>
                 </div>
             </div>
 
@@ -292,6 +297,23 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                             <div id="file-list" class="file-list-preview"></div>
                         </div>
+
+                        <div class="form-group">
+                            <div class="attachments-header">
+                                <label>
+                                    <i class="iconoir-check-square"></i> Checklist <span class="label-hint">(opcional)</span>
+                                </label>
+                                <span id="new-checklist-count" class="badge-count-inline"></span>
+                            </div>
+                            <div class="checklist-add-row">
+                                <input type="text" id="new-checklist-input" placeholder="Añade una subtarea y pulsa Enter" onkeydown="handleNewChecklistKeydown(event)">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="addNewChecklistItem()">
+                                    <i class="iconoir-plus"></i>
+                                    Añadir
+                                </button>
+                            </div>
+                            <div id="new-checklist-list" class="checklist-list checklist-list--draft"></div>
+                        </div>
                     </div>
 
                     <!-- Right Column: Metadata -->
@@ -313,10 +335,10 @@ $company_name = $user['company_name'] ?? '';
                                 <div class="form-group">
                                     <label for="request-priority">Prioridad</label>
                                     <select id="request-priority">
-                                        <option value="low">🟢 Baja</option>
-                                        <option value="medium" selected>🟡 Media</option>
-                                        <option value="high">🟠 Alta</option>
-                                        <option value="critical">🔴 Crítica</option>
+                                        <option value="low">Baja</option>
+                                        <option value="medium" selected>Media</option>
+                                        <option value="high">Alta</option>
+                                        <option value="critical">Crítica</option>
                                     </select>
                                 </div>
 

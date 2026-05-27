@@ -503,6 +503,14 @@ function syncRequestsViewModeUI() {
     }
 }
 
+function toggleToolbarAdvanced() {
+    const shell = document.getElementById('requests-toolbar-shell');
+    const btn = document.getElementById('toolbar-more-btn');
+    if (!shell) return;
+    const isOpen = shell.classList.toggle('is-advanced');
+    if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
 function setQuickView(view, event) {
     currentQuickView = view;
     document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
@@ -785,8 +793,9 @@ async function loadApps() {
 // Render apps in sidebar navigation (grouped by company)
 function renderAppsNav() {
     const appsNav = document.getElementById('apps-nav');
+    if (!appsNav) return;
 
-    let navContent = '<div class="nav-section-title">Aplicaciones</div>';
+    let navContent = '';
 
     if (appsGrouped.length > 0) {
         navContent += appsGrouped.map(group => `
@@ -807,6 +816,7 @@ function renderAppsNav() {
                         <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                             <i class="iconoir-app-window"></i>
                             <span>${escapeHtml(app.name)}</span>
+                            <span class="nav-count" data-app-count="${app.id}" hidden></span>
                         </a>
                     `).join('')}
                 </div>
@@ -817,11 +827,50 @@ function renderAppsNav() {
             <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
                 <i class="iconoir-app-window"></i>
                 <span>${escapeHtml(app.name)}</span>
+                <span class="nav-count" data-app-count="${app.id}" hidden></span>
             </a>
         `).join('');
     }
 
     appsNav.innerHTML = navContent;
+    updateAppCounters();
+}
+
+function updateAppCounters() {
+    if (typeof requests === 'undefined' || !Array.isArray(requests)) return;
+    const counts = {};
+    for (const r of requests) {
+        if (r.status === 'completed' || r.status === 'discarded') continue;
+        counts[r.app_id] = (counts[r.app_id] || 0) + 1;
+    }
+    document.querySelectorAll('[data-app-count]').forEach(el => {
+        const id = el.getAttribute('data-app-count');
+        const n = counts[id] || 0;
+        if (n > 0) { el.textContent = n; el.hidden = false; }
+        else { el.textContent = ''; el.hidden = true; }
+    });
+}
+
+function toggleSidebarUserMenu(event) {
+    if (event) event.stopPropagation();
+    const wrap = document.getElementById('sidebar-user');
+    const menu = document.getElementById('sidebar-user-menu');
+    if (!wrap || !menu) return;
+    const isOpen = wrap.classList.toggle('is-open');
+    menu.hidden = !isOpen;
+    const trigger = wrap.querySelector('.sidebar-user-trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    if (isOpen) {
+        const closeOnOutside = (e) => {
+            if (!wrap.contains(e.target)) {
+                wrap.classList.remove('is-open');
+                menu.hidden = true;
+                if (trigger) trigger.setAttribute('aria-expanded', 'false');
+                document.removeEventListener('click', closeOnOutside);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+    }
 }
 
 // Toggle company group collapse/expand
@@ -952,6 +1001,7 @@ async function loadRequests() {
         if (data.success) {
             requests = data.data;
             renderRequests();
+            updateAppCounters();
         }
     } catch (error) {
         console.error('Error loading requests:', error);
@@ -1097,72 +1147,78 @@ function createRequestCard(request, isFinished = false) {
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
     const checklistProgress = getChecklistProgress(request);
 
+    const showAppLine = currentView !== 'app' && request.app_name;
+    const description = (request.description || '').trim();
+    const priorityArrow = canManageRequest ? '<i class="iconoir-nav-arrow-down"></i>' : '';
+    const priorityDropdown = canManageRequest ? createPriorityDropdown(request.id, request.priority) : '';
+
     card.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
-            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex: 1; min-width: 0;">
-                <div class="priority-badge priority-${request.priority}" 
-                     ${canManageRequest ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}
-                     style="flex-shrink: 0;">
-                    ${priorityLabels[request.priority] || request.priority.toUpperCase()}
-                    ${canManageRequest ? '<i class="iconoir-nav-arrow-down" style="font-size: 0.625rem;"></i>' : ''}
-                    ${canManageRequest ? createPriorityDropdown(request.id, request.priority) : ''}
+        <div class="request-card-topline">
+            ${showAppLine ? `
+                <div class="request-card-app" title="${escapeHtml(request.app_name)}">
+                    <span class="app-name">${escapeHtml(request.app_name)}</span>
+                    <span class="app-id">#${request.id}</span>
                 </div>
-                
-                <h3 class="card-title" style="margin: 0; flex: 1; min-width: 0;">
-                    ${(currentView !== 'app' && request.app_name) ? escapeHtml(request.app_name) + ' - ' : ''}${escapeHtml(request.title)}
-                </h3>
-            </div>
-            
-            ${canManageRequest ? `
-                <div style="display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0;">
+            ` : `
+                <div class="request-card-app">
+                    <span class="app-id">#${request.id}</span>
+                </div>
+            `}
+            <div class="request-card-topline-spacer"></div>
+            <div class="request-card-toprow-end">
+                ${canManageRequest ? `
                     <div class="difficulty-indicator" title="Dificultad">
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}" 
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"
                                 onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}" 
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"
                                 onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}" 
+                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"
                                 onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
                     </div>
-                    <div class="status-actions">
-                        <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)"
-                                title="Pausar">
+                    <div class="status-actions" role="group" aria-label="Cambiar estado">
+                        <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}"
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)" title="Pausar">
                             <i class="iconoir-pause"></i>
                         </button>
-                        <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)"
-                                title="En progreso">
+                        <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}"
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)" title="En progreso">
                             <i class="iconoir-play"></i>
                         </button>
-                        <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)"
-                                title="Completar">
+                        <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}"
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)" title="Completar">
                             <i class="iconoir-check"></i>
                         </button>
-                        <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" 
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)"
-                                title="Descartar">
+                        <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}"
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)" title="Descartar">
                             <i class="iconoir-xmark"></i>
                         </button>
                     </div>
-                </div>
-            ` : `
-                ${request.difficulty ? `
-                    <div class="difficulty-display" style="flex-shrink: 0;" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
-                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
-                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
-                        <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
+                ` : `
+                    ${request.difficulty ? `
+                        <div class="difficulty-display" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
+                        </div>
+                    ` : ''}
+                    <div class="status-badge-display status-${request.status}">
+                        ${statusLabels[request.status] || request.status}
                     </div>
-                ` : ''}
-                <div class="status-badge-display status-${request.status}" style="flex-shrink: 0;">
-                    ${statusLabels[request.status] || request.status}
-                </div>
-            `}
+                `}
+            </div>
         </div>
 
-        <p class="card-description">${escapeHtml(request.description)}</p>
+        <h3 class="card-title">${escapeHtml(request.title)}</h3>
+
+        ${description ? `<p class="card-description">${escapeHtml(description)}</p>` : ''}
 
         <div class="request-card-insights">
+            <span class="priority-badge priority-${request.priority}"
+                  ${canManageRequest ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
+                ${priorityLabels[request.priority] || request.priority.toUpperCase()}
+                ${priorityArrow}
+                ${priorityDropdown}
+            </span>
             <span class="request-card-insight">
                 <i class="iconoir-hourglass"></i>
                 <span>${requestAgeLabel}</span>
@@ -1174,7 +1230,7 @@ function createRequestCard(request, isFinished = false) {
             ${hasComments ? `
                 <span class="request-card-insight is-highlight">
                     <i class="iconoir-chat-bubble"></i>
-                    <span>Actividad</span>
+                    <span>${request.comment_count}</span>
                 </span>
             ` : ''}
             ${checklistProgress.total > 0 ? `
@@ -1203,70 +1259,54 @@ function createRequestCard(request, isFinished = false) {
             </div>
         ` : ''}
 
-        <div class="card-footer" style="flex-direction: column; gap: var(--spacing-sm);">
-            <div style="display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 4px;" title="Creado por">
-                    <i class="iconoir-user" style="color: var(--text-muted); font-size: 0.75rem;"></i>
-                    <span class="text-small text-muted">${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
-                </div>
-
-                ${request.assignments && request.assignments.length > 0 ? `
-                    ${request.assignments.map((a, index) => `
-                        <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}" title="Asignado a ${escapeHtml(a.full_name || a.username)}">
-                            ${escapeHtml(a.full_name || a.username)}${index === 0 ? ' · Resp.' : ''}
-                        </span>
-                    `).join('')}
-                ` : (canEdit ? `
+        <div class="card-footer">
+            <div class="card-footer-people">
+                <span class="card-creator" title="Creado por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}">
+                    <i class="iconoir-user"></i>
+                    <span>${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
+                </span>
+                ${request.assignments && request.assignments.length > 0 ? request.assignments.map((a, index) => `
+                    <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}" title="${index === 0 ? 'Responsable' : 'Asignado'}: ${escapeHtml(a.full_name || a.username)}">
+                        ${escapeHtml(a.full_name || a.username)}
+                    </span>
+                `).join('') : (canEdit ? `
                     <button class="btn-assign-quick" onclick="openAssignModal(${request.id}, event)" title="Asignar">
                         <i class="iconoir-user-plus"></i>
                         <span>Asignar</span>
                     </button>
                 ` : '')}
-
-                ${request.comment_count > 0 ? `
-                    <div style="display: flex; align-items: center; gap: 2px;" title="${request.comment_count} comentario(s)">
-                        <i class="iconoir-chat-bubble" style="color: var(--text-muted); font-size: 0.75rem;"></i>
-                        <span class="text-small text-muted">${request.comment_count}</span>
-                    </div>
-                ` : ''}
-
-                ${request.attachment_count > 0 ? `
-                    <div style="display: flex; align-items: center; gap: 2px;" title="${request.attachment_count} adjunto(s)">
-                        <i class="iconoir-attachment" style="color: var(--text-muted); font-size: 0.75rem;"></i>
-                        <span class="text-small text-muted">${request.attachment_count}</span>
-                    </div>
-                ` : ''}
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <div class="vote-section" style="margin: 0;">
-                    <button class="vote-btn ${request.user_voted && !canAdmin ? 'voted' : ''}" 
+            <div class="card-footer-actions">
+                <div class="vote-section" title="${canAdmin ? 'Ajustar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
+                    <button class="vote-btn ${request.user_voted && !canAdmin ? 'voted' : ''}"
                             onclick="vote(${request.id}, 'up')"
-                            title="${canAdmin ? 'Aumentar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
+                            aria-label="Votar a favor">
                         <i class="iconoir-arrow-up"></i>
                     </button>
                     <span class="vote-count">${request.vote_count || 0}</span>
                     ${canAdmin ? `
-                        <button class="vote-btn vote-down" 
+                        <button class="vote-btn vote-down"
                                 onclick="vote(${request.id}, 'down')"
-                                title="Reducir votos">
+                                aria-label="Reducir voto">
                             <i class="iconoir-arrow-down"></i>
                         </button>
                     ` : ''}
                 </div>
                 ${canEdit ? `
-                    <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+                    <div class="card-actions-cluster">
                         ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
-                            <button class="quick-action-btn" onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})" 
-                                    title="Completar y Programar" style="color: #22c55e;">
+                            <button class="quick-action-btn quick-action-btn--ship"
+                                    onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})"
+                                    title="Completar y Programar">
                                 <i class="iconoir-rocket"></i>
                             </button>
                         ` : ''}
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
-                            <i class="iconoir-edit"></i>
+                            <i class="iconoir-edit-pencil"></i>
                         </button>
                         ${canDelete ? `
-                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar" style="color: var(--color-red);">
-                                <i class="iconoir-xmark"></i>
+                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
+                                <i class="iconoir-trash"></i>
                             </button>
                         ` : ''}
                     </div>
@@ -1485,6 +1525,64 @@ function closeModal(modalId) {
 }
 
 // Submit new request
+// ===== Pending checklist (Nueva Petición · client-side draft) =====
+let pendingChecklistItems = [];
+
+function handleNewChecklistKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addNewChecklistItem();
+    }
+}
+
+function addNewChecklistItem() {
+    const input = document.getElementById('new-checklist-input');
+    const title = (input?.value || '').trim();
+    if (!title) return;
+    pendingChecklistItems.push({ title });
+    input.value = '';
+    input.focus();
+    renderPendingChecklist();
+}
+
+function removePendingChecklistItem(index) {
+    pendingChecklistItems.splice(index, 1);
+    renderPendingChecklist();
+}
+
+function renderPendingChecklist() {
+    const list = document.getElementById('new-checklist-list');
+    const count = document.getElementById('new-checklist-count');
+    if (!list) return;
+
+    if (pendingChecklistItems.length === 0) {
+        list.innerHTML = '';
+        if (count) { count.textContent = ''; count.hidden = true; }
+        return;
+    }
+
+    if (count) { count.textContent = `${pendingChecklistItems.length}`; count.hidden = false; }
+
+    list.innerHTML = pendingChecklistItems.map((item, idx) => `
+        <div class="checklist-item checklist-item--draft">
+            <span class="checklist-item-bullet" aria-hidden="true">
+                <i class="iconoir-square"></i>
+            </span>
+            <span class="checklist-item-text">${escapeHtml(item.title)}</span>
+            <button type="button" class="checklist-item-remove" onclick="removePendingChecklistItem(${idx})" title="Quitar">
+                <i class="iconoir-xmark"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function resetPendingChecklist() {
+    pendingChecklistItems = [];
+    const input = document.getElementById('new-checklist-input');
+    if (input) input.value = '';
+    renderPendingChecklist();
+}
+
 async function submitNewRequest(event) {
     event.preventDefault();
 

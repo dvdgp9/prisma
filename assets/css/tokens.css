@@ -1,0 +1,319 @@
+/* ============================================================
+   Prisma · Design Tokens (v2.4 redesign)
+   Cargar ANTES que styles.css. Mantiene aliases legacy para no romper.
+   ============================================================ */
+
+:root {
+    /* -------- Color · Ink scale (neutrals) -------- */
+    --ink-950: #0F1418;
+    --ink-900: #1A2128;
+    --ink-800: #232C35;
+    --ink-700: #3A4651;
+    --ink-600: #525F6C;
+    --ink-500: #6B7785;
+    --ink-400: #8B95A1;
+    --ink-300: #C8D0D8;
+    --ink-200: #E4E8EC;
+    --ink-100: #F2F4F6;
+    --ink-50:  #F9FAFB;
+
+    --surface:        #FFFFFF;
+    --surface-sunken: var(--ink-50);
+    --surface-raised: #FFFFFF;
+
+    /* -------- Color · Brand (Prisma logo) -------- */
+    --brand:        #42a0d1;
+    --brand-strong: #2F87B7;
+    --brand-ink:    #1F5F84;
+    --brand-soft:   rgba(66, 160, 209, 0.10);
+    --brand-line:   rgba(66, 160, 209, 0.22);
+
+    /* -------- Color · Semantic -------- */
+    --ok:          #3FA877;
+    --ok-soft:     rgba(63, 168, 119, 0.10);
+    --ok-line:     rgba(63, 168, 119, 0.22);
+
+    --warn:        #DB8A1F;       /* recalibrado, menos chillón que f9af51 puro */
+    --warn-soft:   rgba(249, 175, 81, 0.14);
+    --warn-line:   rgba(219, 138, 31, 0.25);
+
+    --danger:      #DB5147;       /* recalibrado de ed6f66 */
+    --danger-soft: rgba(237, 111, 102, 0.12);
+    --danger-line: rgba(219, 81, 71, 0.28);
+
+    --muted:       #8B95A1;
+    --muted-soft:  rgba(139, 149, 161, 0.12);
+    --muted-line:  rgba(139, 149, 161, 0.28);
+
+    /* -------- Color · Priority ramp -------- */
+    --prio-low:        var(--brand);
+    --prio-low-soft:   var(--brand-soft);
+    --prio-low-ink:    var(--brand-ink);
+
+    --prio-medium:     var(--warn);
+    --prio-medium-soft:var(--warn-soft);
+    --prio-medium-ink: #8A540F;
+
+    --prio-high:       #C56A2E;
+    --prio-high-soft:  rgba(197, 106, 46, 0.14);
+    --prio-high-ink:   #7C3F15;
+
+    --prio-critical:   var(--danger);
+    --prio-critical-soft: var(--danger-soft);
+    --prio-critical-ink:  #862A22;
+
+    /* -------- Color · Status ramp -------- */
+    --stat-pending:     var(--warn);
+    --stat-pending-soft:var(--warn-soft);
+
+    --stat-progress:     var(--brand);
+    --stat-progress-soft:var(--brand-soft);
+
+    --stat-completed:     var(--ok);
+    --stat-completed-soft:var(--ok-soft);
+
+    --stat-discarded:     var(--muted);
+    --stat-discarded-soft:var(--muted-soft);
+
+    /* -------- Color · Difficulty ramp (reuses priority feel) -------- */
+    --diff-low:    var(--ok);
+    --diff-medium: var(--warn);
+    --diff-high:   var(--danger);
+
+    /* -------- Typography -------- */
+    --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --fs-11: 0.6875rem;
+    --fs-12: 0.75rem;
+    --fs-13: 0.8125rem;
+    --fs-14: 0.875rem;
+    --fs-15: 0.9375rem;
+    --fs-16: 1rem;
+    --fs-18: 1.125rem;
+    --fs-22: 1.375rem;
+    --fs-28: 1.75rem;
+    --fs-36: 2.25rem;
+
+    --fw-regular: 400;
+    --fw-medium:  500;
+    --fw-semibold:600;
+
+    /* -------- Spacing (4px grid) -------- */
+    --sp-2:  2px;
+    --sp-4:  4px;
+    --sp-6:  6px;
+    --sp-8:  8px;
+    --sp-12: 12px;
+    --sp-16: 16px;
+    --sp-20: 20px;
+    --sp-24: 24px;
+    --sp-32: 32px;
+    --sp-48: 48px;
+    --sp-64: 64px;
+
+    /* -------- Radius -------- */
+    --r-4:   4px;
+    --r-6:   6px;
+    --r-8:   8px;
+    --r-12:  12px;
+    --r-16:  16px;
+    --r-full:999px;
+
+    /* -------- Shadows (tintadas, no negras puras) -------- */
+    --shadow-xs: 0 1px 1px rgba(20, 30, 40, 0.04);
+    --shadow-sm: 0 1px 2px rgba(20, 30, 40, 0.05), 0 1px 1px rgba(20, 30, 40, 0.03);
+    --shadow-md: 0 6px 20px -8px rgba(20, 30, 40, 0.12), 0 2px 4px rgba(20, 30, 40, 0.04);
+    --shadow-lg: 0 18px 40px -16px rgba(20, 30, 40, 0.18), 0 4px 8px rgba(20, 30, 40, 0.05);
+    --shadow-focus: 0 0 0 3px rgba(66, 160, 209, 0.22);
+
+    /* -------- Motion -------- */
+    --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-inout:  cubic-bezier(0.65, 0, 0.35, 1);
+    --dur-fast:    120ms;
+    --dur-base:    220ms;
+    --dur-slow:    380ms;
+
+    /* -------- Z-index scale -------- */
+    --z-base:    1;
+    --z-sticky:  100;
+    --z-dropdown:500;
+    --z-modal:   1000;
+    --z-toast:   2000;
+
+    /* ============================================================
+       LEGACY ALIASES — mapean nombres viejos al nuevo sistema.
+       No tocar styles.css existente; estos aliases lo mantienen vivo
+       mientras migramos componente a componente.
+       ============================================================ */
+    --prisma-red:    var(--danger);
+    --prisma-yellow: var(--warn);
+    --prisma-blue:   var(--brand);
+
+    --primary-color: var(--brand);
+    --primary-dark:  var(--brand-strong);
+    --primary-light: #66b3dc;
+
+    --secondary-color: var(--danger);
+    --secondary-dark:  #C2453C;
+    --secondary-light: #E78A82;
+
+    --accent-color: var(--warn);
+    --accent-dark:  #B97516;
+    --accent-light: #F2C078;
+
+    --success-color: var(--ok);
+    --success-dark:  #2F8C61;
+    --success-light: #8DD5B0;
+
+    --danger-color: var(--danger);
+    --danger-dark:  #B33D34;
+    --danger-light: #E78A82;
+
+    --priority-critical: var(--prio-critical);
+    --priority-high:     var(--prio-high);
+    --priority-medium:   var(--prio-medium);
+    --priority-low:      var(--prio-low);
+
+    --status-pending:     var(--stat-pending);
+    --status-in-progress: var(--stat-progress);
+    --status-completed:   var(--stat-completed);
+    --status-discarded:   var(--stat-discarded);
+
+    --bg-primary:   var(--surface);
+    --bg-secondary: var(--ink-50);
+    --bg-tertiary:  var(--ink-100);
+    --text-primary:   var(--ink-900);
+    --text-secondary: var(--ink-600);
+    --text-muted:     var(--ink-500);
+    --text-light:     var(--ink-400);
+    --border-color:   var(--ink-200);
+    --shadow:        rgba(20, 30, 40, 0.06);
+    --shadow-hover:  rgba(20, 30, 40, 0.10);
+
+    --spacing-xs:  var(--sp-4);
+    --spacing-sm:  var(--sp-8);
+    --spacing-md:  var(--sp-16);
+    --spacing-lg:  var(--sp-20);
+    --spacing-xl:  var(--sp-32);
+    --spacing-2xl: var(--sp-48);
+
+    --radius-sm:   var(--r-6);
+    --radius-md:   var(--r-8);
+    --radius-lg:   var(--r-12);
+    --radius-xl:   var(--r-16);
+    --radius-full: var(--r-full);
+
+    --font-family: var(--font-sans);
+}
+
+/* ============================================================
+   CHIP — Componente unificado para prioridad, estado, dificultad
+   y cualquier metadato con color semántico.
+   Variantes: --solid, --soft (default), --ghost, --dot
+   ============================================================ */
+
+.chip {
+    --chip-bg:     var(--ink-100);
+    --chip-fg:     var(--ink-700);
+    --chip-border: transparent;
+    --chip-dot:    var(--ink-400);
+
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-6);
+    padding: 0 var(--sp-8);
+    height: 22px;
+    min-height: 22px;
+    border-radius: var(--r-full);
+    background: var(--chip-bg);
+    color: var(--chip-fg);
+    border: 1px solid var(--chip-border);
+    font-family: var(--font-sans);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+    user-select: none;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+}
+
+.chip > i,
+.chip > svg {
+    font-size: var(--fs-12);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.chip--lg { height: 26px; padding: 0 var(--sp-12); font-size: var(--fs-13); }
+.chip--sm { height: 18px; padding: 0 var(--sp-6); font-size: var(--fs-11); gap: var(--sp-4); }
+
+.chip--soft  { background: var(--chip-bg); color: var(--chip-fg); border-color: transparent; }
+.chip--solid { background: var(--chip-fg); color: #fff; border-color: transparent; }
+.chip--ghost { background: transparent; color: var(--chip-fg); border-color: var(--chip-border, var(--ink-200)); }
+
+.chip--dot::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--chip-dot);
+    flex-shrink: 0;
+}
+
+button.chip,
+a.chip {
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+button.chip:hover,
+a.chip:hover {
+    transform: translateY(-1px);
+}
+
+button.chip:active,
+a.chip:active {
+    transform: translateY(0) scale(0.98);
+}
+
+button.chip:focus-visible,
+a.chip:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Tokens por severidad — los aplican `data-priority`, `data-status`, etc. */
+
+.chip[data-tone="brand"]    { --chip-bg: var(--brand-soft);    --chip-fg: var(--brand-ink);    --chip-dot: var(--brand); }
+.chip[data-tone="ok"]       { --chip-bg: var(--ok-soft);       --chip-fg: #1F6E48;            --chip-dot: var(--ok); }
+.chip[data-tone="warn"]     { --chip-bg: var(--warn-soft);     --chip-fg: #8A540F;            --chip-dot: var(--warn); }
+.chip[data-tone="danger"]   { --chip-bg: var(--danger-soft);   --chip-fg: #862A22;            --chip-dot: var(--danger); }
+.chip[data-tone="muted"]    { --chip-bg: var(--muted-soft);    --chip-fg: var(--ink-600);     --chip-dot: var(--ink-400); }
+
+/* Priority */
+.chip[data-priority="low"]      { --chip-bg: var(--prio-low-soft);      --chip-fg: var(--prio-low-ink);      --chip-dot: var(--prio-low); }
+.chip[data-priority="medium"]   { --chip-bg: var(--prio-medium-soft);   --chip-fg: var(--prio-medium-ink);   --chip-dot: var(--prio-medium); }
+.chip[data-priority="high"]     { --chip-bg: var(--prio-high-soft);     --chip-fg: var(--prio-high-ink);     --chip-dot: var(--prio-high); }
+.chip[data-priority="critical"] { --chip-bg: var(--prio-critical-soft); --chip-fg: var(--prio-critical-ink); --chip-dot: var(--prio-critical); }
+
+/* Status */
+.chip[data-status="pending"]     { --chip-bg: var(--stat-pending-soft);     --chip-fg: #8A540F;        --chip-dot: var(--stat-pending); }
+.chip[data-status="in_progress"] { --chip-bg: var(--stat-progress-soft);    --chip-fg: var(--brand-ink); --chip-dot: var(--stat-progress); }
+.chip[data-status="completed"]   { --chip-bg: var(--stat-completed-soft);   --chip-fg: #1F6E48;        --chip-dot: var(--stat-completed); }
+.chip[data-status="discarded"]   { --chip-bg: var(--muted-soft);            --chip-fg: var(--ink-600); --chip-dot: var(--stat-discarded); }
+
+/* Difficulty (texto) */
+.chip[data-difficulty="low"]    { --chip-bg: var(--ok-soft);     --chip-fg: #1F6E48;     --chip-dot: var(--diff-low); }
+.chip[data-difficulty="medium"] { --chip-bg: var(--warn-soft);   --chip-fg: #8A540F;     --chip-dot: var(--diff-medium); }
+.chip[data-difficulty="high"]   { --chip-bg: var(--danger-soft); --chip-fg: #862A22;     --chip-dot: var(--diff-high); }
+
+/* ============================================================
+   DIFFICULTY · 3 dots (sustituye barritas)
+   Reusa markup .difficulty-indicator > .difficulty-bar (×3)
+   Solo cambia el aspecto vía override en styles.css
+   ============================================================ */

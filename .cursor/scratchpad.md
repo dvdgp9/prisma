@@ -1168,3 +1168,171 @@ CREATE TABLE notifications (...);
 - **Emojis eliminados**: Reemplazados por texto limpio en selects del modal
 - **Mentions mejorados**: Dropdown compacto que aparece arriba del input, sin @ en los items
 - **Notificaciones automáticas**: Al mencionar, comentar en tareas asignadas, o asignar tareas
+
+---
+
+## Auditoría UX/UI Global (27 Mayo 2026)
+
+### Background and Motivation (anexo)
+El usuario reporta que Prisma "es regular" tanto en trabajo diario como en paneles de gestión. Solicita revisión completa y libertad para cambiar lo necesario, usando el enfoque de `/design-taste-frontend`. Modo elegido: **Planner → auditoría completa primero, luego decidir qué atacar**.
+
+Puntos de dolor confirmados por el usuario:
+- **Diario**: crear/editar peticiones farragoso · lista difícil de escanear · notas/comentarios incómodos.
+- **Gestión**: gestión apps/usuarios poco usable · difícil priorizar trabajo del equipo · estética desfasada/inconsistente.
+
+### Key Challenges and Analysis (anexo)
+
+**Hallazgos del audit (resumen — detalle en sección anterior de conversación):**
+
+1. 🔴 **BUG BLOQUEANTE**: `api/assignments.php` consulta tabla `request_assignments` que **no existe** en `schema.sql` ni en `migrations/`. Cualquier asignación rompe en producción nueva. *Verificar primero si en BD real existe vía migración manual no documentada.*
+2. 🔴 **Modales de crear/editar petición sobrecargados**: 2 columnas, 8+ campos, adjuntos drag-drop, solicitante colapsable, checklist, comentarios timeline, asignados, zona peligrosa. Estimado 2+ min por petición.
+3. 🟠 **Lista sin paginación ni virtualización**: `renderRequests()` mete todas las cards en DOM; `api/requests.php` no tiene `LIMIT`.
+4. 🟠 **3 dropdowns de orden en cascada + 7 chips quickview + búsqueda**: barra de filtros sobrecargada y poco intuitiva.
+5. 🟠 **Inconsistencia visual**: ~16 colores, prioridad con gradientes, estado outline, dificultad con barras de 32px. Tres lenguajes visuales para tres propiedades análogas.
+6. 🟠 **Notas/comentarios/checklist desintegrados**: notas de app en home, comentarios escondidos en modal, checklist invisible fuera del modal.
+7. 🟠 **Panel admin denso**: grid de empresas + grid de permisos por app en un mismo modal sin jerarquía.
+8. 🟡 **No hay vistas de carga por programador / KPIs de equipo** → priorización a ojo.
+9. 🟡 **Código duplicado**: modal crear vs editar casi clonados; 13 modales inline sin reutilizar.
+10. 🟡 **API destructiva sin partial updates**: assignments hace DELETE+INSERT completo; no hay PATCH.
+
+**Archivos clave detectados**:
+- `index.php` (981 líneas) — modales y layout principal
+- `assets/js/main.js` (3380 líneas) — renderRequests, createRequestCard, submitNewRequest, submitEditRequest
+- `assets/css/styles.css` (4057 líneas) — paleta y badges
+- `admin.php` (450+ líneas) — panel superadmin denso
+- `api/assignments.php` — tabla fantasma
+- `api/requests.php` — sin LIMIT/paginación
+
+### High-level Task Breakdown (anexo)
+
+Propongo dividir el trabajo en **5 fases** para que el usuario pueda elegir orden/alcance. Cada fase es entregable y verificable de forma independiente.
+
+#### Fase 0 — Saneamiento crítico (0.5 días)
+- **T0.1** Verificar en BD real si `request_assignments` existe; si no, añadir migración + actualizar `schema.sql`.
+  *Éxito*: asignar usuario a petición en local funciona end-to-end sin error SQL.
+- **T0.2** Añadir `LIMIT` + paginación server-side a `api/requests.php` (default 50, scroll/botón "cargar más").
+  *Éxito*: con 500 peticiones seed, la home carga <500ms y DOM <100 cards.
+
+#### Fase 1 — Sistema visual unificado (1–2 días)  ← donde brilla `/design-taste-frontend`
+- **T1.1** Definir design tokens (CSS custom properties): paleta reducida (6 colores semánticos, no 16), spacing scale, radius, shadows, type scale. Documentar en `assets/css/tokens.css`.
+  *Éxito*: todos los colores hardcoded reemplazados por tokens; ningún `#xxxxxx` fuera de `tokens.css`.
+- **T1.2** Unificar lenguaje de **prioridad / estado / dificultad** en un mismo componente "pill/chip" con la misma anatomía (color = severidad, icono opcional, texto). Eliminar gradientes y outlines mezclados.
+  *Éxito*: visualmente las tres propiedades se leen como variantes del mismo componente.
+- **T1.3** Rediseñar la **request card** con jerarquía clara: línea 1 = título + app (chip discreto), línea 2 = estado + prioridad + dificultad alineadas, línea 3 = meta (responsable, comentarios, edad). Eliminar el borde izquierdo coloreado o convertirlo en un indicador más sutil.
+  *Éxito*: en 1 segundo se identifica prioridad y estado de una card sin leer texto.
+- **T1.4** Rediseñar **filter bar**: 1 search + 1 dropdown "orden" (no 3) + chips de estado como segmented control. Mover orden secundario a un popover "avanzado".
+  *Éxito*: la barra cabe en una línea en desktop sin scroll lateral.
+
+#### Fase 2 — Flujo diario fluido (2–3 días)
+- **T2.1** **Quick-add inline** de petición desde la home: una sola fila (título + app + prioridad → Enter). Modal completo solo si el usuario pide "más detalles".
+  *Éxito*: crear una petición básica en <10 segundos sin abrir modal.
+- **T2.2** **Edición inline** de prioridad/estado/dificultad/responsable directamente en la card (ya parcial; consolidar).
+  *Éxito*: cambiar estado de 5 peticiones sin abrir ningún modal.
+- **T2.3** **Detalle de petición = panel lateral deslizante** (drawer), no modal central. Permite ver lista + detalle a la vez. Comentarios y checklist visibles sin scroll.
+  *Éxito*: navegar entre 3 peticiones sin perder contexto de la lista.
+- **T2.4** **Comentarios y checklist** con preview en card (contador clickeable abre directamente esa sección del drawer).
+  *Éxito*: usuario llega a comentarios en 1 click desde la card.
+
+#### Fase 3 — Paneles de gestión usables (2 días)
+- **T3.1** **Vista "Equipo"**: tabla de programadores con columnas (activas, en progreso, completadas-mes, edad media). Click → filtra peticiones de ese programador.
+  *Éxito*: superadmin identifica al programador más cargado en <5 segundos.
+- **T3.2** Rediseñar **modal de usuario** en `admin.php`: pestañas internas (Datos · Empresas · Permisos por app) en vez de un solo formulario denso.
+  *Éxito*: editar permisos de un usuario en empresa con 20 apps cabe sin scroll horizontal.
+- **T3.3** **Dashboard de KPIs** (nueva página o widget en home admin): peticiones por estado (donut), backlog por app (bar), envejecimiento (peticiones >30 días sin tocar).
+  *Éxito*: al entrar como admin, la primera pantalla responde a "¿qué hay que mover hoy?".
+
+#### Fase 4 — Refactor y limpieza (1 día)
+- **T4.1** Extraer componente único `requestModal` reutilizado por crear/editar (eliminar duplicación HTML+JS).
+- **T4.2** Añadir endpoints PATCH para updates parciales (`PATCH /api/requests/{id}` con solo el campo cambiado).
+- **T4.3** Mover los 13 modales inline a partials PHP en `includes/modals/`.
+  *Éxito*: `index.php` <500 líneas; cambios futuros tocan un solo archivo por modal.
+
+### Project Status Board (anexo)
+- [ ] **Fase 0.1** — Verificar/crear tabla `request_assignments`
+- [ ] **Fase 0.2** — Paginación `api/requests.php`
+- [ ] **Fase 1.1** — Design tokens
+- [ ] **Fase 1.2** — Componente pill/chip unificado
+- [ ] **Fase 1.3** — Rediseño request card
+- [ ] **Fase 1.4** — Filter bar simplificada
+- [ ] **Fase 2.1** — Quick-add inline
+- [ ] **Fase 2.2** — Edición inline consolidada
+- [ ] **Fase 2.3** — Drawer lateral en lugar de modal
+- [ ] **Fase 2.4** — Previews de comentarios/checklist en card
+- [ ] **Fase 3.1** — Vista Equipo (carga por programador)
+- [ ] **Fase 3.2** — Modal de usuario con tabs
+- [ ] **Fase 3.3** — Dashboard KPIs
+- [ ] **Fase 4.1** — Componente requestModal reutilizable
+- [ ] **Fase 4.2** — PATCH endpoints
+- [ ] **Fase 4.3** — Modales a partials
+
+### Executor's Feedback or Assistance Requests (anexo)
+Plan pendiente de aprobación del usuario. Preguntas abiertas antes de pasar a Executor:
+1. ¿Empezamos por **Fase 0** (saneamiento) o saltamos directos a **Fase 1** (sistema visual) por impacto percibido?
+2. ¿Hay restricciones de compatibilidad (navegadores antiguos, soporte móvil prioritario, etc.)?
+3. ¿Volumen real de peticiones por empresa hoy? (decide si Fase 0.2 paginación es urgente o cosmético)
+4. ¿Quieres mantener el branding actual (teal #00C9B7) o estás abierto a evolución de paleta en Fase 1.1?
+
+### Current Status / Progress Tracking (27 May 2026 — Fase 1 entrega 1)
+
+**Hecho:**
+- ✅ T1.1 · `assets/css/tokens.css` creado con sistema de design tokens (ink scale, brand, semantic, priority/status/difficulty ramps, type scale Geist, spacing 4px-grid, radius, shadows tintadas, motion). Incluye **aliases legacy** para mantener viva `styles.css` sin reescribirla entera.
+- ✅ T1.2 · Componente `.chip` unificado (variantes `--solid / --soft / --ghost / --dot`, tonos por `data-tone` / `data-priority` / `data-status` / `data-difficulty`).
+- ✅ T1.3 · Bloque "v2.4 Redesign overrides" añadido al final de `styles.css` que:
+  - Reestila `.priority-badge` como chip soft con punto, sin gradientes, sin animación heroica (pulse sutil solo en critical vía box-shadow tintado).
+  - Reestila `.status-badge` y `.status-badge-display` como chips con dot.
+  - Convierte las barras de dificultad (`.difficulty-bar`) en **3 puntos** ●●○ con colores ok/warn/danger.
+  - Refina `.card`: borde 1px ink-200 + shadow-xs, hover translateY(-1px) con shadow-md, sin elevación dramática.
+  - Nuevo `.request-card-topline` con app + #ID en monoespaciada.
+  - `.status-actions` y `.status-action-btn` más planos (26px, fondo neutro).
+- ✅ T1.4 · Filter bar simplificada:
+  - "Más filtros" toggle (`#toolbar-more-btn`) que añade clase `.is-advanced` y revela secondary/tertiary sort + chips secundarios (Mis · Sin asignar · Comentarios).
+  - Quick-views como **segmented control** (4 chips primarios: Todas / Pendientes / En curso / Hechas).
+  - View toggle cards/tabla a iconos sin texto, alineado a la derecha.
+  - Summary stat cards con números en mono (Geist Mono).
+- ✅ `createRequestCard()` rediseñada: topline (app · #id · difficulty · status), título limpio sin prefijo de app, descripción truncada vía `-webkit-line-clamp:2`, prioridad como chip en insights row, footer existente respetado.
+- ✅ Fuente Geist + Geist Mono cargada en todas las páginas (`index`, `tasks`, `admin`, `manage-apps`, `releases`, `changelog`, `login`, `solicitud`). Adiós Inter.
+- ✅ `tokens.css` enlazado antes de `styles.css` en todas esas páginas. Cache buster `?v=2.4`.
+
+**Pendiente verificación visual del usuario** antes de seguir con:
+- Modales (crear/editar petición) — siguen con look anterior, se ajustarán en una entrega 2 de Fase 1 si pasa la primera revisión.
+- Sidebar / navegación / login — no tocados aún (esperan a confirmar dirección visual).
+- Tabla `requests-table` — no tocada aún.
+
+**Sin cambios funcionales/JS** salvo:
+- Nueva función `toggleToolbarAdvanced()` en `main.js` (5 líneas).
+- `createRequestCard()` reorganizado pero todos los handlers y IDs preservados.
+
+### Current Status / Progress Tracking (27 May 2026 — Fase 1 entrega 2)
+
+**Hecho (orden A completado):**
+- ✅ **Summary fix**: `.requests-summary-bar` ahora es una tira horizontal con divisores verticales (sin card-overuse). "Con comentarios" eliminado (la info se ve en chips de filter bar y en insights row de cada card). 4 stats: Visibles · En progreso · Pendientes · Sin asignar. Números en Geist Mono.
+- ✅ **Card footer**: una sola fila, creator sutil con ellipsis, assigned-tags compactos, vote pill (24×24 redondo en ink-50), cluster acciones (rocket/edit/delete) con hover tintado por semántica. Sin duplicaciones de count comments/attachments.
+- ✅ **Modales visual refresh**: backdrop con blur, modal-content con borde 1px y shadow-lg, modal-header-icon en chip brand-soft, modal-title 18px semibold, side-section con borde y label uppercase mini, file-upload-area en ink-50 + brand-soft hover, animación de entrada `modal-pop`. Botones solid (no gradient).
+- ✅ **Sidebar reimaginado**:
+  - Header limpio: logo + wordmark tri-color discreto.
+  - Nav primaria: Vista global · Mis tareas · Por aprobar · Notificaciones (todos con icono + texto + counter pill cuando aplica).
+  - Apps section con search inline en el header.
+  - Counter por app (en mono) con conteo de peticiones activas — implementado en `updateAppCounters()`, llamado tras cada `loadRequests`.
+  - "Herramientas" agrupa Release Planner · Changelog · Panel Admin · Gestionar apps.
+  - User pill en footer con avatar (gradient tri-color) + nombre + rol uppercase + caret. Click despliega menu con Mi perfil y Cerrar sesión (este último en rojo).
+  - `toggleSidebarUserMenu()` con cierre on outside-click.
+  - `assets/js/sidebar.js` deja de inyectar el título "Aplicaciones" duplicado.
+- ✅ **Admin panel**:
+  - `.page-title` reducido a 22px.
+  - `.tabs` ahora segmented control (chip group), tab activa con surface y brand icon.
+  - Tablas con borde 1px ink-200, header en ink-50, hover en ink-50, sin sombras pesadas.
+  - `.badge-*` mapeados a chip-soft del sistema (superadmin solid ink-950, admin brand-soft, programador warn-soft, active ok-soft, etc.).
+  - `.actions-cell` con botones 28px bordered.
+
+**Bug operativo descubierto durante test local:**
+- En el entorno de pre-producción, varias páginas (`admin.php`, `manage-apps.php`, `tasks.php`, `releases.php`, `changelog.php`) llaman `require_once auth.php` DESPUÉS de emitir `<head>...</head>`. En prod funciona porque `output_buffering` está en On por defecto en hosting compartido; en local con PHP CLI viene a 0 y rompe `session_start` + `header(Location:)`. Solución: `.claude/launch.json` ahora arranca con `-d output_buffering=On -d display_errors=Off`.
+
+**Bug de schema persistido:**
+- `migrations/013_local_bootstrap.sql` añade las tablas/columnas que existían en prod pero no en `schema.sql`: `request_assignments`, `request_comments`, `comment_mentions`, `request_checklist_items`, `notifications`, `requests.difficulty`, `requests.assigned_to`. Cualquier nueva instalación funciona sin parches.
+
+**Pendiente para próxima iteración:**
+- Refinar pillpas de modales largos (Editar petición con checklist + comentarios + asignados).
+- Quizás drawer lateral en lugar de modal central (Fase 2 T2.3).
+- Refresh visual de `manage-apps.php` y `tasks.php` (heredan los tokens pero no se ha verificado uno por uno).
+- Vista equipo (carga por programador) — Fase 3.
+- Dashboard KPIs — Fase 3.
