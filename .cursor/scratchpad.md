@@ -730,6 +730,24 @@ CREATE TABLE user_companies (
 
 ## Executor's Feedback or Assistance Requests
 
+### 🔧 Ejecución sidebar visual (4 Junio 2026)
+
+El usuario reporta que, tras el restyling visual, el menú lateral quedó mal: en la captura las apps ocupan demasiado alto, la sección "Herramientas" queda mezclada con el listado y el footer de usuario compite con la navegación.
+
+#### Diagnóstico
+- El sidebar tenía `sidebar-nav` como único contenedor con scroll para navegación primaria, apps y herramientas.
+- Con muchas apps, el listado empujaba "Herramientas" hacia abajo y hacía que el bloque pareciera intercalado con aplicaciones.
+- En páginas fuera de `index.php`, `assets/js/sidebar.js` renderizaba los grupos de empresa con una estructura distinta a `main.js`.
+
+#### Implementado en esta pasada
+- `assets/css/styles.css`: el sidebar queda dividido en navegación superior, listado de apps con scroll propio, herramientas fijas bajo apps y footer de usuario fijo abajo.
+- `assets/js/sidebar.js`: render de grupos de empresa alineado con `main.js`, incluyendo grupo único y botón de colapsar.
+
+#### Criterio de validación
+- El usuario puede hacer scroll dentro de aplicaciones sin que "Herramientas" se mezcle con la lista.
+- El footer de usuario permanece visible y no tapa elementos navegables.
+- La estructura se mantiene consistente entre dashboard, tareas, changelog, releases, admin y gestionar apps.
+
 ### 🔧 Ejecución aprobada por el usuario (10 Marzo 2026)
 
 El usuario confirma proceder en **modo executor** con las fases equivalentes a 1, 2 y 3 del plan maestro, con dos restricciones funcionales importantes:

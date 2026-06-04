@@ -43,20 +43,21 @@ function renderSidebarApps() {
     const appsNav = document.getElementById('apps-nav');
     if (!appsNav) return;
     
-    // Check if we have multiple companies
-    const hasMultipleCompanies = sidebarAppsGrouped.length > 1;
-    
     let navContent = '';
 
-    if (hasMultipleCompanies) {
+    if (sidebarAppsGrouped.length > 0) {
         navContent += sidebarAppsGrouped.map(group => `
-            <div class="company-group" data-company-id="${group.id}">
-                <div class="company-group-header" onclick="toggleCompanyGroup(${group.id})">
-                    <div class="company-group-title">
-                        <i class="iconoir-building"></i>
-                        <span>${escapeHtml(group.name)}</span>
+            <div class="company-group ${sidebarAppsGrouped.length === 1 ? 'single-company' : ''}" data-company-id="${group.id}">
+                <div class="company-group-header">
+                    <div class="company-nav-item">
+                        <div class="company-group-title">
+                            <i class="iconoir-building"></i>
+                            <span>${escapeHtml(group.name)}</span>
+                        </div>
                     </div>
-                    <i class="iconoir-nav-arrow-down company-group-toggle"></i>
+                    <button type="button" class="company-group-toggle-btn" onclick="event.stopPropagation(); toggleCompanyGroup(${group.id})" title="Expandir/contraer apps">
+                        <i class="iconoir-nav-arrow-down company-group-toggle"></i>
+                    </button>
                 </div>
                 <div class="company-group-apps" style="max-height: none;">
                     ${group.apps.map(app => `

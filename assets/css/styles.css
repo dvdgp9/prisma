@@ -5255,6 +5255,7 @@ label {
     position: sticky;
     top: 0;
     gap: 0;
+    overflow: hidden;
 }
 
 .sidebar-header {
@@ -5290,12 +5291,13 @@ label {
 
 .sidebar-nav {
     flex: 1;
-    overflow-y: auto;
+    min-height: 0;
+    overflow: hidden;
     overflow-x: hidden;
     padding: var(--sp-12) var(--sp-12) var(--sp-16);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-16);
+    gap: var(--sp-12);
 }
 
 .nav-section {
@@ -5308,9 +5310,11 @@ label {
 .nav-section--apps {
     flex: 1;
     min-height: 0;
+    overflow: hidden;
 }
 
 .nav-section-header {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: var(--sp-6);
@@ -5331,6 +5335,42 @@ label {
 }
 .nav-section--apps .nav-section-title,
 .nav-section--tools .nav-section-title { padding: 0; }
+
+#apps-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: var(--sp-2);
+    scrollbar-gutter: stable;
+}
+
+#apps-nav::-webkit-scrollbar,
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+#apps-nav::-webkit-scrollbar-track,
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#apps-nav::-webkit-scrollbar-thumb,
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--ink-200);
+    border-radius: var(--r-full);
+}
+
+#apps-nav::-webkit-scrollbar-thumb:hover,
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-300);
+}
+
+.nav-section--tools {
+    flex-shrink: 0;
+    padding-top: var(--sp-10);
+    border-top: 1px solid var(--ink-200);
+}
 
 .nav-item {
     display: flex;
@@ -5641,6 +5681,30 @@ label {
 .sidebar-user-menu-item--danger { color: var(--danger); }
 .sidebar-user-menu-item--danger i { color: var(--danger); }
 .sidebar-user-menu-item--danger:hover { background: var(--danger-soft); color: var(--danger); }
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--ink-200);
+    }
+
+    .sidebar-nav {
+        overflow: visible;
+    }
+
+    .nav-section--apps {
+        flex: none;
+    }
+
+    #apps-nav {
+        flex: none;
+        max-height: 220px;
+    }
+}
 
 /* ============================================================
    v2.4 · Admin panel & table redesign
