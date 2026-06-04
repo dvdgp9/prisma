@@ -1,3 +1,10 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_role('superadmin');
+
+$user = get_logged_user();
+$userApps = get_user_apps();
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -472,14 +479,6 @@
         .modal .form-group { margin-bottom: var(--spacing-md); }
     </style>
 </head>
-
-<?php
-require_once __DIR__ . '/includes/auth.php';
-require_role('superadmin');
-
-$user = get_logged_user();
-$userApps = get_user_apps();
-?>
 
 <body>
     <div class="dashboard-container">

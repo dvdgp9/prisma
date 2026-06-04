@@ -1,3 +1,9 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_role('superadmin');
+
+$user = get_logged_user();
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -133,13 +139,6 @@
         }
     </style>
 </head>
-
-<?php
-require_once __DIR__ . '/includes/auth.php';
-require_role('superadmin');
-
-$user = get_logged_user();
-?>
 
 <body data-user-role="<?php echo htmlspecialchars($user['role']); ?>">
     <div class="dashboard-container">
