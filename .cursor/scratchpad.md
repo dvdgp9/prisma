@@ -1425,11 +1425,11 @@ El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en br
 ## Project Status Board (AI Inbox)
 
 - [x] T0. Verificar docs OpenRouter + crear docs/openrouter-api.md ✅
-- [ ] T1. Config + API key cifrada + probar conexión
-- [ ] T2. Endpoint api/ai-inbox.php (analizar)
-- [ ] T3. Vista Nota rápida (entrada)
-- [ ] T4. Pantalla de revisión editable
-- [ ] T5. Confirmación y creación vía APIs existentes
+- [x] T1. Config + API key cifrada + probar conexión ✅
+- [x] T2. Endpoint api/ai-inbox.php (analizar) ✅
+- [x] T3. Vista Nota rápida (entrada) ✅
+- [x] T4. Pantalla de revisión editable ✅
+- [x] T5. Confirmación y creación vía APIs existentes ✅
 - [ ] T6. Pulido y prueba end-to-end
 
 ## Current Status / Progress Tracking (AI Inbox)
@@ -1446,3 +1446,5 @@ El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en br
 ## Lessons (PWA)
 - El service worker usa network-first pero `fetch(request)` pasa por la caché HTTP del navegador: al cambiar JS/CSS hay que versionar la URL (`?v=...`) y/o subir `CACHE_NAME` en sw.js.
 - `cache.put` falla con peticiones `chrome-extension://`; filtrar por `url.startsWith('http')` en el handler de fetch.
+- 10 Jun 2026 (Executor): T1 verificada por el usuario ✅ (key guardada y test de conexión OK en producción). **T2 implementada**: `api/ai-inbox.php` — POST {note}, valida longitud (10k), construye prompt con apps reales del usuario (get_user_apps), llama a OpenRouter con structured outputs (strict json_schema), valida en servidor que los app_id devueltos existen (si no → null), sanea campos y devuelve items sin escribir en BD. Sintaxis OK. Prueba real pendiente: se probará junto con la UI (T3/T4), o el usuario puede probar vía curl autenticado.
+- 10 Jun 2026 (Executor): **T3+T4+T5 implementadas como un único flujo verificable**: `ai-inbox.php` (página con 4 estados: nota → analizando → revisión → resumen), `assets/js/ai-inbox.js` (render de tarjetas editables, incluir/descartar, validación de mejoras sin app, creación vía requests.php + request-checklist.php + tasks.php con manejo de fallos parciales), entrada "Nota rápida" en sidebar.php, estilos en styles.css (con prefers-reduced-motion). Verificado contrato real de las APIs (checklist espera request_id en body; tasks no requiere app). Sintaxis PHP/JS OK. Pendiente prueba end-to-end del usuario (T6).

@@ -51,6 +51,11 @@ $company_name = $user['company_name'] ?? '';
                 <span class="nav-count" id="tasks-count" hidden></span>
             </a>
 
+            <a href="/ai-inbox.php" class="nav-item <?php echo $current_page === 'ai-inbox' ? 'active' : ''; ?>" data-nav="ai-inbox">
+                <i class="iconoir-sparks"></i>
+                <span>Nota rápida</span>
+            </a>
+
             <?php if (has_role('admin')): ?>
                 <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>"
                    onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>"
