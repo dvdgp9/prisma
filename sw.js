@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prisma-v1';
+const CACHE_NAME = 'prisma-v2';
 const RUNTIME_CACHE = 'prisma-runtime';
 
 const PRECACHE_URLS = [
@@ -35,6 +35,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Ignorar esquemas no http(s) (p.ej. chrome-extension://), no se pueden cachear
+  if (!event.request.url.startsWith('http')) {
     return;
   }
 

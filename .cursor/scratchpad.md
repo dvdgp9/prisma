@@ -1441,3 +1441,8 @@ El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en br
 - Las URLs de docs de OpenRouter cambiaron: ahora viven bajo `openrouter.ai/docs/guides/...` y `openrouter.ai/docs/api/...` (las rutas antiguas `docs/features/...` dan 404).
 - Structured outputs: usar siempre `strict: true` + `additionalProperties: false` + `description` en cada propiedad; el JSON viene como string en `choices[0].message.content`.
 - 10 Jun 2026 (Executor): **T1 implementada** (pendiente de que el usuario ejecute la migración y verifique). Creados: `migrations/014_ai_settings.sql` (tabla `app_settings` clave/valor + modelo por defecto), `api/ai-settings.php` (superadmin; GET ajustes sin exponer key, POST guardar key cifrada/modelo, POST ?action=test llamada real a OpenRouter), pestaña "IA" en `admin.php`, funciones en `assets/js/admin.js`, estilos en `assets/css/styles.css`. Sintaxis PHP/JS verificada con php -l y node --check. No se puede probar en navegador hasta que la migración esté ejecutada en la BD.
+- 10 Jun 2026 (Executor): Bug T1 reportado por usuario (PWA servía admin.js antiguo cacheado → "testAiConnection is not defined"). Fix: cache-busting `admin.js?v=ai1` en admin.php, bump `CACHE_NAME` a prisma-v2 en sw.js, y guard en sw.js para ignorar esquemas no-http (error chrome-extension en cache.put).
+
+## Lessons (PWA)
+- El service worker usa network-first pero `fetch(request)` pasa por la caché HTTP del navegador: al cambiar JS/CSS hay que versionar la URL (`?v=...`) y/o subir `CACHE_NAME` en sw.js.
+- `cache.put` falla con peticiones `chrome-extension://`; filtrar por `url.startsWith('http')` en el handler de fetch.

@@ -450,7 +450,7 @@ $user = get_logged_user();
         </div>
     </div>
 
-    <script src="/assets/js/admin.js"></script>
+    <script src="/assets/js/admin.js?v=ai1"></script>
     <script src="/assets/js/pwa.js"></script>
 </body>
 
