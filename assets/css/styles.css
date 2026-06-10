@@ -6027,18 +6027,25 @@ tbody tr:hover td { background: var(--ink-50); }
     background: var(--bg-card, #fff);
     border: 1px solid var(--border-color, #e5e7eb);
     border-radius: var(--radius-lg, 12px);
-    padding: var(--spacing-md, 1rem);
-    margin-bottom: var(--spacing-sm, 0.5rem);
-    transition: opacity 0.2s, border-color 0.2s;
+    padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.25rem);
+    margin-bottom: var(--spacing-md, 0.75rem);
+    transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.ai-item-card:hover {
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.07);
 }
 
 .ai-item-card.is-discarded {
-    opacity: 0.6;
+    opacity: 0.55;
     background: var(--bg-secondary, #f9fafb);
+    box-shadow: none;
 }
 
 .ai-item-card.needs-app {
     border-color: var(--critical, #FF4757);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--critical, #FF4757) 12%, transparent);
 }
 
 .ai-item-header {
@@ -6052,52 +6059,106 @@ tbody tr:hover td { background: var(--ink-50); }
 
 .ai-item-header-controls {
     display: flex;
+    align-items: center;
     gap: var(--spacing-xs, 0.25rem);
     flex-wrap: wrap;
 }
 
-.ai-item-app {
-    max-width: 200px;
+/* Pills: selects compactos estilo badge (anulan el select global a ancho completo) */
+.ai-item-header-controls select.ai-pill {
+    width: auto;
+    height: 26px;
+    padding: 0 26px 0 12px;
+    font-size: 0.78rem;
+    font-weight: var(--fw-semibold, 600);
+    line-height: 1;
+    border: 1px solid var(--ink-200, #e5e7eb);
+    border-radius: var(--r-full, 999px);
+    background-color: var(--surface, #fff);
+    color: var(--ink-700, #374151);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    box-shadow: none;
 }
 
-.ai-item-include {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm, 0.5rem);
-    font-size: 0.85rem;
-    font-weight: var(--font-weight-semibold, 600);
-    cursor: pointer;
-    color: var(--primary, #00C9B7);
+.ai-item-header-controls select.ai-pill:hover {
+    border-color: var(--ink-300, #d1d5db);
+}
+
+.ai-item-header-controls select.ai-pill:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Prioridad con los colores soft de Prisma */
+select.ai-pill-prio.prio-low      { background-color: var(--prio-low-soft);      color: var(--prio-low-ink);      border-color: transparent; }
+select.ai-pill-prio.prio-medium   { background-color: var(--prio-medium-soft);   color: var(--prio-medium-ink);   border-color: transparent; }
+select.ai-pill-prio.prio-high     { background-color: var(--prio-high-soft);     color: var(--prio-high-ink);     border-color: transparent; }
+select.ai-pill-prio.prio-critical { background-color: var(--prio-critical-soft); color: var(--prio-critical-ink); border-color: transparent; }
+
+.ai-pill-app {
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+/* App sin asignar: aviso visual */
+select.ai-pill.is-missing {
+    border-color: var(--prio-high, #FF8C42);
+    color: var(--prio-high-ink, #b45309);
+    background-color: var(--prio-high-soft, #fff3e6);
+}
+
+.ai-item-include {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 12px 0 8px;
+    font-size: 0.78rem;
+    font-weight: var(--fw-semibold, 600);
+    cursor: pointer;
+    white-space: nowrap;
+    border-radius: var(--r-full, 999px);
+    background: color-mix(in srgb, var(--primary, #00C9B7) 10%, transparent);
+    color: color-mix(in srgb, var(--primary, #00C9B7) 70%, #000);
+    transition: background 0.15s;
+}
+
+.ai-item-include input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--primary, #00C9B7);
+    margin: 0;
+}
+
 .ai-item-card.is-discarded .ai-item-include {
+    background: var(--bg-secondary, #f3f4f6);
     color: var(--text-muted, #9ca3af);
 }
 
-.ai-item-type {
-    font-size: 0.85rem;
-    padding: 4px 8px;
-    border-radius: var(--radius-md, 8px);
-    border: 1px solid var(--border-color, #e5e7eb);
-    background: var(--bg-card, #fff);
-    color: var(--text-primary, #111827);
-}
 
 .ai-item-title {
-    width: 100%;
-    font-size: 1rem;
-    font-weight: var(--font-weight-semibold, 600);
+    width: calc(100% + 16px);
+    font-size: 1.02rem;
+    font-weight: var(--fw-semibold, 600);
     border: 1px solid transparent;
     border-radius: var(--radius-md, 8px);
-    padding: 6px 8px;
-    margin: 0 -8px 2px;
+    padding: 5px 8px;
+    margin: 0 -8px 0;
     background: transparent;
     color: var(--text-primary, #111827);
+    box-shadow: none;
 }
 
 .ai-item-desc {
-    width: 100%;
+    width: calc(100% + 16px);
+    min-height: 34px;
     font-size: 0.88rem;
     font-family: inherit;
     line-height: 1.5;
@@ -6107,7 +6168,9 @@ tbody tr:hover td { background: var(--ink-50); }
     margin: 0 -8px;
     background: transparent;
     color: var(--text-secondary, #6b7280);
-    resize: vertical;
+    resize: none;
+    field-sizing: content;
+    box-shadow: none;
 }
 
 .ai-item-title:hover,
@@ -6124,17 +6187,21 @@ tbody tr:hover td { background: var(--ink-50); }
 
 .ai-item-reasoning {
     display: flex;
-    gap: var(--spacing-xs, 0.25rem);
+    gap: 6px;
     align-items: flex-start;
     font-size: 0.78rem;
     color: var(--text-muted, #9ca3af);
-    margin-top: var(--spacing-sm, 0.5rem);
+    margin-top: var(--spacing-md, 0.75rem);
+    padding-top: var(--spacing-sm, 0.5rem);
+    border-top: 1px dashed var(--border-color, #e5e7eb);
     font-style: italic;
 }
 
 .ai-item-reasoning i {
     margin-top: 2px;
     flex-shrink: 0;
+    color: var(--primary, #00C9B7);
+    font-style: normal;
 }
 
 /* Subtareas */

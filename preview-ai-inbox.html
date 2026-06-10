@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- Harness temporal para previsualizar la pantalla de revisión con datos de ejemplo. NO subir a producción. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview AI Inbox</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <style>body { padding: 2rem; background: var(--bg-secondary, #f7f8fa); }</style>
+</head>
+<body>
+    <main class="main-content" style="margin:0">
+        <section id="ai-step-note" class="ai-step" hidden>
+            <textarea id="ai-note-input"></textarea><span id="ai-note-counter"></span>
+            <p id="ai-note-error" hidden></p>
+        </section>
+        <section id="ai-step-loading" class="ai-step" hidden></section>
+
+        <section id="ai-step-review" class="ai-step">
+            <div class="ai-review-intro">
+                <i class="iconoir-eye"></i>
+                <div>
+                    <strong id="ai-review-summary">La IA ha detectado varios elementos.</strong>
+                    <p>Revisa cada propuesta: puedes <strong>editar el texto, cambiar el tipo, la app, la prioridad y
+                        las subtareas</strong>, o descartar lo que no quieras.
+                        <strong>No se creará nada hasta que pulses "Crear seleccionados".</strong></p>
+                </div>
+            </div>
+            <div id="ai-review-list"></div>
+            <div class="ai-review-actions">
+                <button class="btn btn-outline"><i class="iconoir-arrow-left"></i> Volver a la nota</button>
+                <button id="ai-confirm-btn" class="btn btn-primary"><i class="iconoir-check"></i>
+                    <span id="ai-confirm-label">Crear seleccionados</span></button>
+            </div>
+            <p id="ai-review-error" class="ai-error" hidden></p>
+        </section>
+        <section id="ai-step-done" class="ai-step" hidden></section>
+    </main>
+
+    <script>
+        const AI_USER_APPS = [
+            { id: 1, name: 'Tenerife', company: 'Ebone' },
+            { id: 2, name: 'Aquatiq', company: 'Ebone' },
+            { id: 3, name: 'Campus', company: 'Ebone' }
+        ];
+    </script>
+    <script src="/assets/js/ai-inbox.js"></script>
+    <script>
+        aiItems = [
+            { _id: 0, included: true, tipo: 'mejora', app_id: 1, title: "Cambiar texto 'Censo Oficial de Tenerife' por 'Censo en Tenerife'", description: "Se solicita eliminar la palabra 'Oficial' del título del censo en la plataforma.", priority: 'medium', subtasks: [], reasoning: 'Es una mejora directa en la interfaz de la aplicación Tenerife solicitada explícitamente.' },
+            { _id: 1, included: true, tipo: 'mejora', app_id: null, title: 'Implementar navegación clickeable en modalidades', description: 'Habilitar que al hacer clic en cada modalidad se despliegue su foto y descripción correspondiente.', priority: 'high', subtasks: ['Diseñar el desplegable', 'Subir fotos de cada modalidad'], reasoning: 'La nota menciona modalidades pero no queda claro a qué aplicación pertenece.' },
+            { _id: 2, included: false, tipo: 'tarea', app_id: null, title: 'Llamar a Juan para renovar el dominio', description: '', priority: 'medium', subtasks: [], reasoning: 'Es una gestión personal, no una mejora de software.' }
+        ];
+        renderReview();
+    </script>
+</body>
+</html>

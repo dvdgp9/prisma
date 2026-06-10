@@ -94,8 +94,9 @@ function renderReview() {
     updateConfirmButton();
 }
 
-function appOptions(selectedId) {
-    const none = `<option value="" ${selectedId === null ? 'selected' : ''}>⚠ Elegir aplicación...</option>`;
+function appOptions(selectedId, isMejora) {
+    const noneLabel = isMejora ? '⚠ Elegir aplicación...' : 'Sin aplicación';
+    const none = `<option value="" ${selectedId === null ? 'selected' : ''}>${noneLabel}</option>`;
     return none + AI_USER_APPS.map(a =>
         `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escapeAiHtml(a.name)} (${escapeAiHtml(a.company || '')})</option>`
     ).join('');
@@ -111,20 +112,21 @@ function renderItemCard(item) {
                 <span>${item.included ? 'Se creará' : 'Descartado'}</span>
             </label>
             <div class="ai-item-header-controls">
-                <select class="ai-item-type" onchange="updateItem(${item._id}, 'tipo', this.value)" ${item.included ? '' : 'disabled'} title="Tipo">
+                <select class="ai-pill ai-pill-type" onchange="updateItem(${item._id}, 'tipo', this.value)" ${item.included ? '' : 'disabled'} title="Tipo">
                     <option value="mejora" ${isMejora ? 'selected' : ''}>Mejora</option>
                     <option value="tarea" ${!isMejora ? 'selected' : ''}>Tarea rápida</option>
                 </select>
-                <select class="ai-item-type" onchange="updateItem(${item._id}, 'priority', this.value)" title="Prioridad"
+                <select class="ai-pill ai-pill-prio prio-${item.priority}" onchange="updateItem(${item._id}, 'priority', this.value); renderReview();" title="Prioridad"
                     ${!item.included || !isMejora ? 'disabled' : ''}>
                     <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Baja</option>
                     <option value="medium" ${item.priority === 'medium' ? 'selected' : ''}>Media</option>
                     <option value="high" ${item.priority === 'high' ? 'selected' : ''}>Alta</option>
                     <option value="critical" ${item.priority === 'critical' ? 'selected' : ''}>Crítica</option>
                 </select>
-                <select class="ai-item-type ai-item-app" onchange="updateItem(${item._id}, 'app_id', this.value ? parseInt(this.value) : null)"
+                <select class="ai-pill ai-pill-app ${item.app_id === null && isMejora ? 'is-missing' : ''}"
+                    onchange="updateItem(${item._id}, 'app_id', this.value ? parseInt(this.value) : null); renderReview();"
                     title="Aplicación" ${item.included ? '' : 'disabled'}>
-                    ${appOptions(item.app_id)}
+                    ${appOptions(item.app_id, isMejora)}
                 </select>
             </div>
         </div>
