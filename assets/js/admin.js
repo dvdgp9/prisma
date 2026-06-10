@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     loadCompanies();
     loadUsers();
     loadApps();
+    loadAiSettings();
 });
 
 // Tab switching
@@ -632,3 +633,80 @@ window.addEventListener('click', (e) => {
         e.target.classList.remove('active');
     }
 });
+
+// ========== AI SETTINGS ==========
+
+async function loadAiSettings() {
+    try {
+        const response = await fetch('/api/ai-settings.php');
+        const data = await response.json();
+        if (!data.success) return;
+
+        document.getElementById('ai-model').value = data.data.model || '';
+        const status = document.getElementById('ai-key-status');
+        if (data.data.key_set) {
+            status.textContent = 'Hay una API key guardada. Deja el campo vacío para mantenerla.';
+            status.classList.add('is-set');
+        } else {
+            status.textContent = 'Aún no hay API key configurada.';
+            status.classList.remove('is-set');
+        }
+    } catch (error) {
+        console.error('Error loading AI settings:', error);
+    }
+}
+
+async function submitAiSettings(event) {
+    event.preventDefault();
+    const apiKey = document.getElementById('ai-api-key').value.trim();
+    const model = document.getElementById('ai-model').value.trim();
+    const result = document.getElementById('ai-test-result');
+    result.textContent = '';
+    result.className = 'ai-test-result';
+
+    try {
+        const response = await fetch('/api/ai-settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: apiKey || undefined, model: model || undefined })
+        });
+        const data = await response.json();
+        if (data.success) {
+            result.textContent = '✓ Ajustes guardados';
+            result.classList.add('is-ok');
+            document.getElementById('ai-api-key').value = '';
+            loadAiSettings();
+        } else {
+            result.textContent = data.error || 'Error al guardar';
+            result.classList.add('is-error');
+        }
+    } catch (error) {
+        result.textContent = 'Error de red al guardar: ' + error.message;
+        result.classList.add('is-error');
+    }
+}
+
+async function testAiConnection() {
+    const btn = document.getElementById('ai-test-btn');
+    const result = document.getElementById('ai-test-result');
+    btn.disabled = true;
+    result.className = 'ai-test-result';
+    result.textContent = 'Probando conexión con OpenRouter...';
+
+    try {
+        const response = await fetch('/api/ai-settings.php?action=test', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            result.textContent = '✓ ' + (data.message || 'Conexión correcta');
+            result.classList.add('is-ok');
+        } else {
+            result.textContent = '✗ ' + (data.error || 'La conexión falló');
+            result.classList.add('is-error');
+        }
+    } catch (error) {
+        result.textContent = '✗ Error de red: ' + error.message;
+        result.classList.add('is-error');
+    } finally {
+        btn.disabled = false;
+    }
+}

@@ -1354,3 +1354,90 @@ Plan pendiente de aprobación del usuario. Preguntas abiertas antes de pasar a E
 - Refresh visual de `manage-apps.php` y `tasks.php` (heredan los tokens pero no se ha verificado uno por uno).
 - Vista equipo (carga por programador) — Fase 3.
 - Dashboard KPIs — Fase 3.
+
+---
+
+# Feature: AI Inbox — Nota rápida procesada con IA (Planner, 10 Junio 2026)
+
+## Background and Motivation (AI Inbox)
+
+El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en bruto. Luego tiene que transcribir manualmente a Prisma. Objetivo: una vista de "Nota rápida" en Prisma donde vuelca texto libre, y una capa de IA (vía OpenRouter, modelo Gemini Flash-lite o similar) que propone automáticamente qué crear: mejoras (requests), subtareas (checklist items) y tareas rápidas (tasks), asignadas a la app correcta.
+
+**Requisito explícito del usuario**: la pantalla de revisión debe ser MUY clara, con UX óptima, explicaciones visibles y posibilidad total de cambio/edición antes de crear nada.
+
+## Key Challenges and Analysis (AI Inbox)
+
+1. **Infraestructura ya resuelta**: 
+   - Crear mejoras: `POST api/requests.php` (app_id + title obligatorios; description, priority opcionales).
+   - Subtareas: ya existen como `request_checklist_items` (`api/request-checklist.php`), se crean tras la mejora.
+   - Tareas rápidas: `POST api/tasks.php`.
+   - Cifrado de secretos: `includes/encryption.php` (AES-256-CBC, patrón usado para SMTP) → reutilizar para la API key de OpenRouter.
+2. **Llamada a OpenRouter desde PHP en hosting compartido**: cURL HTTPS estándar, sin dependencias nuevas. Usar `response_format` con JSON Schema (structured outputs) para garantizar salida parseable. Timeout generoso (~60s) y manejo de error claro.
+3. **Clasificación contra apps reales**: el prompt debe incluir la lista de apps a las que el usuario tiene acceso (id + nombre + descripción) para que el modelo asigne `app_id` válidos. Si no está seguro, debe poder devolver `app_id: null` ("sin asignar") y la UI obliga a elegir.
+4. **Modelo**: el usuario propone "Gemini 3.1 Flash-lite" vía OpenRouter. ⚠️ Verificar ID exacto y pricing en openrouter.ai/models antes de implementar (pedir al usuario búsqueda web de docs actuales, según norma del proyecto). El modelo debe ser configurable (constante o campo en config), no hardcodeado en varios sitios.
+5. **El riesgo principal es la confianza**: si la IA clasifica mal y se crean cosas erróneas, el usuario dejará de usarlo. Mitigación: **nunca crear nada automáticamente** — siempre pantalla de revisión con edición completa, y solo se persiste al confirmar.
+6. **UX de la pantalla de revisión** (requisito central):
+   - Cada item propuesto = una tarjeta con: tipo (badge "Mejora" / "Tarea rápida"), app asignada (selector editable), título (input editable), descripción (textarea editable), prioridad (selector), subtareas (lista editable: añadir/quitar/renombrar).
+   - Razonamiento de la IA visible: campo `reasoning` corto por item ("Lo asigné a App X porque mencionas...") mostrado como texto explicativo en la tarjeta.
+   - Checkbox por item para incluir/descartar; botón "Descartar" visual.
+   - Resumen superior: "La IA ha detectado N mejoras y M tareas. Revisa, edita y confirma. No se creará nada hasta que pulses Confirmar."
+   - Estado vacío y errores explicados en lenguaje natural.
+   - Tras confirmar: resumen de lo creado con enlaces a cada elemento.
+7. **Seguridad**: endpoint solo para usuarios autenticados con permisos de creación; la API key nunca viaja al frontend; sanitizar/limitar tamaño de la nota (p.ej. 10.000 caracteres).
+8. **Simplicidad (no overengineering)**: sin colas, sin historial de notas en BD en v1 (la nota se procesa y se descarta; opcional guardar la nota original como referencia en una tabla simple si se ve necesario más adelante).
+
+## High-level Task Breakdown (AI Inbox)
+
+> Cada tarea se ejecuta de una en una; el Executor espera verificación del usuario antes de continuar.
+
+- **T0. Verificación de docs de OpenRouter** (bloqueante)
+  - El usuario lanza búsqueda web de la doc actual de OpenRouter (endpoint chat/completions, structured outputs, ID y precio del modelo Gemini Flash-lite vigente).
+  - Crear `docs/openrouter-api.md` con lo aprendido.
+  - ✅ Éxito: archivo .md creado con endpoint, headers, formato structured outputs, ID de modelo confirmado.
+
+- **T1. Configuración y almacenamiento de la API key**
+  - Migración `014_ai_settings.sql`: tabla o filas de settings para `openrouter_api_key` (cifrada) y `ai_model`.
+  - UI mínima en panel admin para guardar la key (reutilizar patrón SMTP) + botón "Probar conexión".
+  - ✅ Éxito: key guardada cifrada en BD; "Probar conexión" devuelve OK con una llamada real mínima.
+
+- **T2. Endpoint `api/ai-inbox.php` (acción: analizar)**
+  - POST con `{ note: "texto" }` → auth, validación de longitud → construye prompt con lista de apps del usuario → llama a OpenRouter con JSON Schema → devuelve `{ items: [...] }` con tipo, app_id, title, description, priority, subtasks[], reasoning.
+  - No escribe nada en BD.
+  - ✅ Éxito: probado con una nota real de reunión, devuelve JSON válido y razonable; errores (key inválida, timeout) devuelven mensaje claro.
+
+- **T3. Vista "Nota rápida" (entrada)**
+  - Nueva página `ai-inbox.php` + entrada en sidebar: textarea grande, contador de caracteres, botón "Analizar con IA", estado de carga con explicación ("Analizando tu nota..."), CSS en `styles.css`.
+  - ✅ Éxito: se puede pegar una nota y lanzar el análisis; loading y errores visibles y comprensibles.
+
+- **T4. Pantalla de revisión (núcleo UX)**
+  - Render de tarjetas editables según el diseño del punto 6 del análisis: todo editable, razonamiento visible, incluir/descartar, resumen superior explicativo.
+  - ✅ Éxito: el usuario puede cambiar app, tipo, título, descripción, prioridad y subtareas de cada item, y descartar items, antes de confirmar. Nada se crea aún.
+
+- **T5. Confirmación y creación**
+  - Al pulsar "Confirmar": el frontend crea cada item aceptado vía APIs existentes (`requests.php` → luego `request-checklist.php` por subtarea; `tasks.php` para tareas rápidas). Manejo de fallos parciales (mostrar qué se creó y qué falló).
+  - Pantalla final de resumen con enlaces a lo creado.
+  - ✅ Éxito: flujo completo nota → revisión → elementos visibles en sus vistas correspondientes de Prisma.
+
+- **T6. Pulido y prueba end-to-end**
+  - Probar con 2-3 notas reales de reuniones del usuario; ajustar prompt si clasifica mal; revisar móvil/PWA.
+  - ✅ Éxito: el usuario confirma que el flujo reemplaza su nota de Apple Notas en un caso real.
+
+## Project Status Board (AI Inbox)
+
+- [x] T0. Verificar docs OpenRouter + crear docs/openrouter-api.md ✅
+- [ ] T1. Config + API key cifrada + probar conexión
+- [ ] T2. Endpoint api/ai-inbox.php (analizar)
+- [ ] T3. Vista Nota rápida (entrada)
+- [ ] T4. Pantalla de revisión editable
+- [ ] T5. Confirmación y creación vía APIs existentes
+- [ ] T6. Pulido y prueba end-to-end
+
+## Current Status / Progress Tracking (AI Inbox)
+
+- 10 Jun 2026 (Executor): **T0 completada**. Doc oficial de OpenRouter verificada vía web. Modelo confirmado: `google/gemini-3.1-flash-lite` ($0.25/$1.50 por 1M tokens, contexto 1M, soporta structured outputs). Creado `docs/openrouter-api.md` con endpoint, headers, schema JSON exacto para el inbox y notas de implementación PHP. Pendiente verificación del usuario para continuar con T1.
+
+## Lessons (AI Inbox)
+
+- Las URLs de docs de OpenRouter cambiaron: ahora viven bajo `openrouter.ai/docs/guides/...` y `openrouter.ai/docs/api/...` (las rutas antiguas `docs/features/...` dan 404).
+- Structured outputs: usar siempre `strict: true` + `additionalProperties: false` + `description` en cada propiedad; el JSON viene como string en `choices[0].message.content`.
+- 10 Jun 2026 (Executor): **T1 implementada** (pendiente de que el usuario ejecute la migración y verifique). Creados: `migrations/014_ai_settings.sql` (tabla `app_settings` clave/valor + modelo por defecto), `api/ai-settings.php` (superadmin; GET ajustes sin exponer key, POST guardar key cifrada/modelo, POST ?action=test llamada real a OpenRouter), pestaña "IA" en `admin.php`, funciones en `assets/js/admin.js`, estilos en `assets/css/styles.css`. Sintaxis PHP/JS verificada con php -l y node --check. No se puede probar en navegador hasta que la migración esté ejecutada en la BD.

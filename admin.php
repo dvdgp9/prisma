@@ -164,6 +164,10 @@ $user = get_logged_user();
                     <i class="iconoir-app-window"></i>
                     Aplicaciones
                 </button>
+                <button class="tab" onclick="switchTab('ai')">
+                    <i class="iconoir-sparks"></i>
+                    IA
+                </button>
             </div>
 
             <!-- Companies Tab -->
@@ -243,6 +247,35 @@ $user = get_logged_user();
                         <!-- Will be loaded dynamically -->
                     </tbody>
                 </table>
+            </div>
+            <!-- AI Tab -->
+            <div id="ai-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-lg);">
+                    <h2 style="font-size: 1.25rem; font-weight: var(--font-weight-semibold);">Configuración de IA</h2>
+                </div>
+                <div class="ai-settings-card">
+                    <p class="ai-settings-intro">
+                        Prisma usa OpenRouter para analizar tus notas y proponer mejoras y tareas automáticamente.
+                        La API key se guarda cifrada y nunca se muestra ni sale del servidor.
+                    </p>
+                    <form id="ai-settings-form" onsubmit="submitAiSettings(event)">
+                        <div class="form-group">
+                            <label for="ai-api-key">API key de OpenRouter</label>
+                            <input type="password" id="ai-api-key" placeholder="sk-or-..." autocomplete="off">
+                            <small id="ai-key-status" class="ai-key-status"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="ai-model">Modelo</label>
+                            <input type="text" id="ai-model" placeholder="google/gemini-3.1-flash-lite">
+                            <small>ID de modelo de OpenRouter. Debe soportar structured outputs.</small>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                            <button type="button" class="btn btn-outline" id="ai-test-btn" onclick="testAiConnection()">Probar conexión</button>
+                        </div>
+                        <p id="ai-test-result" class="ai-test-result"></p>
+                    </form>
+                </div>
             </div>
         </main>
     </div>
