@@ -76,7 +76,7 @@ Reglas:
 - Títulos cortos y accionables (máx ~80 caracteres). Descripción con el contexto útil de la nota.
 - Prioridad: usa "high"/"critical" solo si la nota lo sugiere (urgente, bloqueante, "para ya"); por defecto "medium".
 - subtasks: solo si la nota describe pasos concretos; si no, array vacío.
-- reasoning: UNA frase en español explicando por qué lo clasificaste así (se mostrará al usuario).
+- reasoning: déjalo VACÍO ("") en la mayoría de casos. Escribe una frase corta en español SOLO si: la clasificación es dudosa (no estás seguro de la app o del tipo), falta información relevante en la nota, o hay algo importante que el usuario deba saber antes de crear el elemento. No expliques clasificaciones obvias.
 - Todo el texto de salida en español.
 PROMPT;
 
@@ -94,7 +94,7 @@ $schema = [
                     'description' => ['type' => 'string', 'description' => 'Contexto útil extraído de la nota'],
                     'priority' => ['type' => 'string', 'enum' => ['low', 'medium', 'high', 'critical']],
                     'subtasks' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Pasos concretos si la nota los describe'],
-                    'reasoning' => ['type' => 'string', 'description' => 'Una frase en español explicando la clasificación']
+                    'reasoning' => ['type' => 'string', 'description' => 'Vacío salvo clasificación dudosa, información que falta o aviso importante; entonces una frase en español']
                 ],
                 'required' => ['tipo', 'app_id', 'title', 'description', 'priority', 'subtasks', 'reasoning'],
                 'additionalProperties' => false

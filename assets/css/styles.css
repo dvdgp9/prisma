@@ -5975,15 +5975,19 @@ tbody tr:hover td { background: var(--ink-50); }
     color: var(--prio-high-ink, #b45309);
 }
 
+/* Masonry: las tarjetas fluyen en columnas sin dejar huecos */
 .ai-group-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: var(--spacing-md, 0.75rem);
-    align-items: start;
+    columns: 2;
+    column-gap: var(--spacing-md, 0.75rem);
+}
+
+.ai-group-grid .ai-item-card {
+    break-inside: avoid;
+    margin-bottom: var(--spacing-md, 0.75rem);
 }
 
 @media (max-width: 860px) {
-    .ai-group-grid { grid-template-columns: 1fr; }
+    .ai-group-grid { columns: 1; }
 }
 
 .ai-note-card {
