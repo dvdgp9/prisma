@@ -110,39 +110,30 @@ function renderItemCard(item) {
                 <input type="checkbox" ${item.included ? 'checked' : ''} onchange="toggleItem(${item._id}, this.checked)">
                 <span>${item.included ? 'Se creará' : 'Descartado'}</span>
             </label>
-            <select class="ai-item-type" onchange="updateItem(${item._id}, 'tipo', this.value)" ${item.included ? '' : 'disabled'}>
-                <option value="mejora" ${isMejora ? 'selected' : ''}>Mejora de una app</option>
-                <option value="tarea" ${!isMejora ? 'selected' : ''}>Tarea rápida</option>
-            </select>
+            <div class="ai-item-header-controls">
+                <select class="ai-item-type" onchange="updateItem(${item._id}, 'tipo', this.value)" ${item.included ? '' : 'disabled'} title="Tipo">
+                    <option value="mejora" ${isMejora ? 'selected' : ''}>Mejora</option>
+                    <option value="tarea" ${!isMejora ? 'selected' : ''}>Tarea rápida</option>
+                </select>
+                <select class="ai-item-type" onchange="updateItem(${item._id}, 'priority', this.value)" title="Prioridad"
+                    ${!item.included || !isMejora ? 'disabled' : ''}>
+                    <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Baja</option>
+                    <option value="medium" ${item.priority === 'medium' ? 'selected' : ''}>Media</option>
+                    <option value="high" ${item.priority === 'high' ? 'selected' : ''}>Alta</option>
+                    <option value="critical" ${item.priority === 'critical' ? 'selected' : ''}>Crítica</option>
+                </select>
+                <select class="ai-item-type ai-item-app" onchange="updateItem(${item._id}, 'app_id', this.value ? parseInt(this.value) : null)"
+                    title="Aplicación" ${item.included ? '' : 'disabled'}>
+                    ${appOptions(item.app_id)}
+                </select>
+            </div>
         </div>
 
         <div class="ai-item-body" ${item.included ? '' : 'style="opacity:.45;pointer-events:none"'}>
-            <div class="form-group">
-                <label>Título</label>
-                <input type="text" value="${escapeAiAttr(item.title)}" maxlength="200"
-                    onchange="updateItem(${item._id}, 'title', this.value)">
-            </div>
-            <div class="form-group">
-                <label>Descripción</label>
-                <textarea rows="2" onchange="updateItem(${item._id}, 'description', this.value)">${escapeAiHtml(item.description)}</textarea>
-            </div>
-            <div class="ai-item-row">
-                <div class="form-group">
-                    <label>Aplicación ${isMejora ? '' : '(opcional)'}</label>
-                    <select onchange="updateItem(${item._id}, 'app_id', this.value ? parseInt(this.value) : null)">
-                        ${appOptions(item.app_id)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Prioridad</label>
-                    <select onchange="updateItem(${item._id}, 'priority', this.value)" ${isMejora ? '' : 'disabled title="Las tareas rápidas no tienen prioridad"'}>
-                        <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Baja</option>
-                        <option value="medium" ${item.priority === 'medium' ? 'selected' : ''}>Media</option>
-                        <option value="high" ${item.priority === 'high' ? 'selected' : ''}>Alta</option>
-                        <option value="critical" ${item.priority === 'critical' ? 'selected' : ''}>Crítica</option>
-                    </select>
-                </div>
-            </div>
+            <input type="text" class="ai-item-title" value="${escapeAiAttr(item.title)}" maxlength="200"
+                placeholder="Título" onchange="updateItem(${item._id}, 'title', this.value)">
+            <textarea class="ai-item-desc" rows="2" placeholder="Descripción (opcional)"
+                onchange="updateItem(${item._id}, 'description', this.value)">${escapeAiHtml(item.description)}</textarea>
 
             ${isMejora ? renderSubtasks(item) : ''}
 
@@ -166,10 +157,9 @@ function renderSubtasks(item) {
         </div>`).join('');
 
     return `
-    <div class="form-group">
-        <label>Subtareas (checklist de la mejora)</label>
-        ${rows || '<p class="text-muted ai-subtasks-empty">Sin subtareas. Puedes añadir pasos concretos:</p>'}
-        <button type="button" class="btn btn-sm btn-outline ai-subtask-add" onclick="addSubtask(${item._id})">
+    <div class="ai-subtasks">
+        ${rows}
+        <button type="button" class="ai-subtask-add" onclick="addSubtask(${item._id})">
             <i class="iconoir-plus"></i> Añadir subtarea
         </button>
     </div>`;
