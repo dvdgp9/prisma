@@ -90,8 +90,76 @@ function renderReview() {
         return;
     }
 
-    list.innerHTML = aiItems.map(renderItemCard).join('');
+    list.innerHTML = buildGroups().map(renderGroup).join('');
     updateConfirmButton();
+}
+
+// Agrupa: mejoras por app (orden alfabético), luego mejoras sin app, luego tareas rápidas
+function buildGroups() {
+    const groups = [];
+    const byApp = new Map();
+
+    aiItems.filter(i => i.tipo === 'mejora' && i.app_id !== null).forEach(i => {
+        if (!byApp.has(i.app_id)) byApp.set(i.app_id, []);
+        byApp.get(i.app_id).push(i);
+    });
+
+    [...byApp.entries()]
+        .sort((a, b) => {
+            const an = AI_USER_APPS.find(x => x.id === a[0])?.name || '';
+            const bn = AI_USER_APPS.find(x => x.id === b[0])?.name || '';
+            return an.localeCompare(bn);
+        })
+        .forEach(([appId, items]) => {
+            const app = AI_USER_APPS.find(a => a.id === appId);
+            groups.push({
+                kind: 'app',
+                icon: 'iconoir-app-window',
+                title: app?.name || 'App',
+                subtitle: app?.company || '',
+                items
+            });
+        });
+
+    const sinApp = aiItems.filter(i => i.tipo === 'mejora' && i.app_id === null);
+    if (sinApp.length) {
+        groups.push({
+            kind: 'unassigned',
+            icon: 'iconoir-warning-triangle',
+            title: 'Sin aplicación asignada',
+            subtitle: 'Elige una app en cada tarjeta para poder crearlas',
+            items: sinApp
+        });
+    }
+
+    const tareas = aiItems.filter(i => i.tipo === 'tarea');
+    if (tareas.length) {
+        groups.push({
+            kind: 'tasks',
+            icon: 'iconoir-task-list',
+            title: 'Tareas rápidas',
+            subtitle: 'Irán a Mis tareas',
+            items: tareas
+        });
+    }
+
+    return groups;
+}
+
+function renderGroup(group) {
+    const included = group.items.filter(i => i.included).length;
+    return `
+    <div class="ai-group ai-group-${group.kind}">
+        <div class="ai-group-header">
+            <i class="${group.icon}"></i>
+            <span class="ai-group-title">${escapeAiHtml(group.title)}</span>
+            <span class="ai-group-subtitle">${escapeAiHtml(group.subtitle)}</span>
+            <span class="ai-group-count">${included}/${group.items.length}</span>
+        </div>
+        <div class="ai-group-grid">
+            ${group.items.map(renderItemCard).join('')}
+        </div>
+    </div>`;
 }
 
 function appOptions(selectedId, isMejora) {
