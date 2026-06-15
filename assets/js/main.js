@@ -2267,29 +2267,28 @@ function setupEditModalFileUpload() {
             
             const files = e.target.files;
             if (files.length === 0) return;
-            
-            const formData = new FormData();
-            formData.append('request_id', requestId);
-            for (let i = 0; i < files.length; i++) {
-                formData.append('files[]', files[i]);
-            }
-            
+
             try {
                 editArea.style.opacity = '0.5';
                 editArea.style.pointerEvents = 'none';
-                
-                const response = await fetch('/api/upload.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    await loadRequestAttachments(requestId);
-                    editInput.value = ''; // Reset input
-                } else {
-                    alert(data.error || 'Error al subir archivos');
+
+                for (let i = 0; i < files.length; i++) {
+                    const formData = new FormData();
+                    formData.append('request_id', requestId);
+                    formData.append('file', files[i]);
+                    const response = await fetch('/api/upload.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (!data.success) {
+                        alert(data.error || 'Error al subir archivos');
+                        break;
+                    }
                 }
+
+                await loadRequestAttachments(requestId);
+                editInput.value = ''; // Reset input
             } catch (error) {
                 console.error('Error uploading files:', error);
                 alert('Error al subir archivos');
@@ -2314,25 +2313,24 @@ function setupEditModalFileUpload() {
             
             const files = e.dataTransfer.files;
             if (files.length === 0) return;
-            
-            const formData = new FormData();
-            formData.append('request_id', requestId);
-            for (let i = 0; i < files.length; i++) {
-                formData.append('files[]', files[i]);
-            }
-            
+
             try {
                 editArea.style.opacity = '0.5';
-                const response = await fetch('/api/upload.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (data.success) {
-                    await loadRequestAttachments(requestId);
-                } else {
-                    alert(data.error || 'Error al subir archivos');
+                for (let i = 0; i < files.length; i++) {
+                    const formData = new FormData();
+                    formData.append('request_id', requestId);
+                    formData.append('file', files[i]);
+                    const response = await fetch('/api/upload.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (!data.success) {
+                        alert(data.error || 'Error al subir archivos');
+                        break;
+                    }
                 }
+                await loadRequestAttachments(requestId);
             } catch (error) {
                 console.error('Error uploading files:', error);
             } finally {

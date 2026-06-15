@@ -44,16 +44,20 @@ switch ($method) {
                 $params[] = $companyId;
             }
 
-            // Scope non-superadmins to their allowed companies when no company filter is provided
-            if ($user['role'] !== 'superadmin' && empty($_GET['company_id'])) {
-                $companies = get_user_companies();
-                $companyIds = array_map('intval', array_column($companies, 'id'));
-                if (empty($companyIds)) {
-                    $companyIds = [(int)$user['company_id']];
+            // Scope non-superadmins to the apps they can actually see. get_user_apps()
+            // already resolves both company-level access and per-app permissions
+            // (user_app_permissions), so this also covers users limited to a single app.
+            if ($user['role'] !== 'superadmin') {
+                $allowedApps = get_user_apps();
+                $allowedAppIds = array_map('intval', array_column($allowedApps, 'id'));
+                if (empty($allowedAppIds)) {
+                    // No accessible apps: return nothing rather than everything.
+                    $where[] = '1=0';
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($allowedAppIds), '?'));
+                    $where[] = "r.app_id IN ($placeholders)";
+                    $params = array_merge($params, $allowedAppIds);
                 }
-                $placeholders = implode(',', array_fill(0, count($companyIds), '?'));
-                $where[] = "a.company_id IN ($placeholders)";
-                $params = array_merge($params, $companyIds);
             }
 
             // Filter by priority
