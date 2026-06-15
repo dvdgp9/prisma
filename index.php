@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=2.4">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=2.9">
 </head>
 
 <?php
@@ -353,6 +353,23 @@ $company_name = $user['company_name'] ?? '';
                                 </div>
                             </div>
                         </div>
+
+                        <?php if (has_role('programador')): ?>
+                        <div class="modal-side-section">
+                            <div class="modal-side-title">
+                                <div class="modal-side-title-content">
+                                    <i class="iconoir-user-badge-check"></i> Asignados
+                                </div>
+                            </div>
+                            <div class="modal-side-content">
+                                <div id="new-assigned-tags" class="assigned-tags"></div>
+                                <div class="assign-search-wrapper">
+                                    <input type="text" id="new-assign-search" class="assign-search-input" placeholder="Buscar usuario..." autocomplete="off">
+                                    <div id="new-assign-dropdown" class="assign-dropdown" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <div class="modal-side-section collapsible" id="new-requester-section">
                             <div class="modal-side-title" onclick="this.parentElement.classList.toggle('active')">
@@ -992,7 +1009,7 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=2.9"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

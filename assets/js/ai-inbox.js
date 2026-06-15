@@ -207,6 +207,15 @@ function renderItemCard(item) {
 
             ${isMejora ? renderSubtasks(item) : ''}
 
+            ${isMejora && item.assignee_id ? `
+            <div class="ai-item-assignee" title="Responsable detectado en la nota">
+                <i class="iconoir-user-badge-check"></i>
+                <span>Responsable: <strong>${escapeAiHtml(item.assignee_name)}</strong></span>
+                <button type="button" class="ai-assignee-remove" title="Quitar responsable" onclick="removeAssignee(${item._id})">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>` : ''}
+
             ${item.reasoning ? `
             <div class="ai-item-reasoning">
                 <i class="iconoir-sparks"></i>
@@ -263,6 +272,13 @@ function addSubtask(id) {
     renderReview();
 }
 
+function removeAssignee(id) {
+    const item = getItem(id);
+    item.assignee_id = null;
+    item.assignee_name = null;
+    renderReview();
+}
+
 function updateConfirmButton() {
     const included = aiItems.filter(i => i.included);
     const btn = document.getElementById('ai-confirm-btn');
@@ -311,6 +327,15 @@ async function confirmItems() {
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || 'Error al crear la mejora');
                 const requestId = data.data.id;
+
+                // Responsable detectado en la nota (si lo hay y no se ha quitado)
+                if (item.assignee_id) {
+                    await fetch('/api/assignments.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, user_ids: [item.assignee_id] })
+                    });
+                }
 
                 // Subtareas como checklist
                 const subtasks = item.subtasks.map(s => s.trim()).filter(Boolean);

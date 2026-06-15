@@ -1498,6 +1498,13 @@ function openNewRequestModal() {
         }
     }
 
+    // Reset & wire assignment widget (only present for programador+)
+    window.newAssignments = [];
+    if (document.getElementById('new-assigned-tags')) {
+        renderAssignedTags('new');
+        setupAssignSearchInput('new');
+    }
+
     // Open modal
     document.getElementById('new-request-modal').classList.add('active');
 
@@ -1623,6 +1630,18 @@ async function submitNewRequest(event) {
         if (data.success) {
             const requestId = data.data.id;
 
+            // Save assignments if any were selected (programador+ only)
+            if (window.newAssignments && window.newAssignments.length > 0) {
+                await fetch('/api/assignments.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        request_id: requestId,
+                        user_ids: window.newAssignments.map(a => a.id)
+                    })
+                });
+            }
+
             // Upload files if any
             if (selectedFiles.length > 0) {
                 for (const file of selectedFiles) {
@@ -1631,6 +1650,7 @@ async function submitNewRequest(event) {
             }
 
             // Reset form
+            window.newAssignments = [];
             document.getElementById('new-request-form').reset();
             selectedFiles = [];
             document.getElementById('file-list').innerHTML = '';
@@ -3177,34 +3197,49 @@ async function quickAssignUser(requestId, userId, name) {
     }
 }
 
-// Multi-select assignment in edit modal
-function renderAssignedTags() {
-    const container = document.getElementById('edit-assigned-tags');
+// Multi-select assignment (shared by edit modal · prefix 'edit', and new modal · prefix 'new')
+function getAssignmentState(prefix) {
+    if (prefix === 'new') {
+        if (!window.newAssignments) window.newAssignments = [];
+        return window.newAssignments;
+    }
+    if (!window.currentAssignments) window.currentAssignments = [];
+    return window.currentAssignments;
+}
+
+function setAssignmentState(prefix, arr) {
+    if (prefix === 'new') window.newAssignments = arr;
+    else window.currentAssignments = arr;
+}
+
+function renderAssignedTags(prefix = 'edit') {
+    const container = document.getElementById(`${prefix}-assigned-tags`);
     if (!container) return;
-    
-    if (!window.currentAssignments || window.currentAssignments.length === 0) {
+
+    const state = getAssignmentState(prefix);
+    if (state.length === 0) {
         container.innerHTML = '<span class="text-muted text-small">Sin asignar</span>';
         return;
     }
-    
-    container.innerHTML = window.currentAssignments.map((a, index) => `
+
+    container.innerHTML = state.map((a, index) => `
         <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}">
             ${escapeHtml(a.full_name || a.username)}${index === 0 ? ' · Resp.' : ''}
-            <span class="remove-tag" onclick="removeAssignment(${a.id})">
+            <span class="remove-tag" onclick="removeAssignment(${a.id}, '${prefix}')">
                 ×
             </span>
         </span>
     `).join('');
 }
 
-function removeAssignment(userId) {
-    window.currentAssignments = window.currentAssignments.filter(a => a.id !== userId);
-    renderAssignedTags();
+function removeAssignment(userId, prefix = 'edit') {
+    setAssignmentState(prefix, getAssignmentState(prefix).filter(a => a.id !== userId));
+    renderAssignedTags(prefix);
 }
 
-function setupAssignSearchInput() {
-    const input = document.getElementById('edit-assign-search');
-    const dropdown = document.getElementById('edit-assign-dropdown');
+function setupAssignSearchInput(prefix = 'edit') {
+    const input = document.getElementById(`${prefix}-assign-search`);
+    const dropdown = document.getElementById(`${prefix}-assign-dropdown`);
     if (!input || !dropdown) return;
     
     // Remove old listeners by cloning
@@ -3218,8 +3253,8 @@ function setupAssignSearchInput() {
             return;
         }
         
-        const assignedIds = (window.currentAssignments || []).map(a => a.id);
-        const filtered = availableUsers.filter(u => 
+        const assignedIds = getAssignmentState(prefix).map(a => a.id);
+        const filtered = availableUsers.filter(u =>
             !assignedIds.includes(u.id) &&
             (u.username.toLowerCase().includes(search) ||
              (u.full_name && u.full_name.toLowerCase().includes(search)))
@@ -3246,10 +3281,9 @@ function setupAssignSearchInput() {
                 const username = item.dataset.username;
                 const fullName = item.dataset.fullname;
                 
-                if (!window.currentAssignments) window.currentAssignments = [];
-                window.currentAssignments.push({ id: userId, username, full_name: fullName });
-                renderAssignedTags();
-                
+                getAssignmentState(prefix).push({ id: userId, username, full_name: fullName });
+                renderAssignedTags(prefix);
+
                 newInput.value = '';
                 dropdown.style.display = 'none';
             };

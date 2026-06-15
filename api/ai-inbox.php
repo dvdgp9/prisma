@@ -56,6 +56,35 @@ $appsList = implode("\n", array_map(function ($a) {
 
 $validAppIds = array_map('intval', array_column($apps, 'id'));
 
+// --- Usuarios asignables (para emparejar responsables nombrados en la nota) ---
+$stmt = $db->query("SELECT id, username, full_name FROM users WHERE is_active = 1");
+$assignableUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/**
+ * Empareja un nombre suelto (lo que la IA detecta como responsable) con un usuario real.
+ * Conservador: exige coincidencia exacta de username/nombre completo, o que el nombre
+ * coincida con el primer nombre del usuario. Devuelve null si hay duda o ambigüedad.
+ */
+function match_assignee(string $name, array $users): ?array
+{
+    $needle = mb_strtolower(trim($name));
+    if ($needle === '') return null;
+
+    $matches = [];
+    foreach ($users as $u) {
+        $full = mb_strtolower(trim($u['full_name'] ?? ''));
+        $username = mb_strtolower(trim($u['username'] ?? ''));
+        $firstName = $full !== '' ? explode(' ', $full)[0] : '';
+
+        if ($needle === $username || $needle === $full || ($firstName !== '' && $needle === $firstName)) {
+            $matches[$u['id']] = $u;
+        }
+    }
+
+    // Solo asignamos si la coincidencia es inequívoca (un único usuario).
+    return count($matches) === 1 ? reset($matches) : null;
+}
+
 // --- Prompt ---
 $systemPrompt = <<<PROMPT
 Eres el asistente de Prisma, una herramienta de gestión de mejoras y tareas de desarrollo.
@@ -76,6 +105,7 @@ Reglas:
 - Títulos cortos y accionables (máx ~80 caracteres). Descripción con el contexto útil de la nota.
 - Prioridad: usa "high"/"critical" solo si la nota lo sugiere (urgente, bloqueante, "para ya"); por defecto "medium".
 - subtasks: solo si la nota describe pasos concretos; si no, array vacío.
+- assignee_name: nombre de la persona responsable de ese elemento, SOLO si la nota la nombra explícitamente como encargada (p.ej. "que lo haga Juan", "lo lleva María", "asignar a Pedro"). Copia el nombre tal cual aparece. Si no se nombra a nadie como responsable, deja "". NUNCA infieras ni inventes responsables.
 - reasoning: déjalo VACÍO ("") en la mayoría de casos. Escribe una frase corta en español SOLO si: la clasificación es dudosa (no estás seguro de la app o del tipo), falta información relevante en la nota, o hay algo importante que el usuario deba saber antes de crear el elemento. No expliques clasificaciones obvias.
 - Todo el texto de salida en español.
 PROMPT;
@@ -94,9 +124,10 @@ $schema = [
                     'description' => ['type' => 'string', 'description' => 'Contexto útil extraído de la nota'],
                     'priority' => ['type' => 'string', 'enum' => ['low', 'medium', 'high', 'critical']],
                     'subtasks' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Pasos concretos si la nota los describe'],
+                    'assignee_name' => ['type' => 'string', 'description' => 'Nombre del responsable SOLO si la nota lo nombra explícitamente; si no, ""'],
                     'reasoning' => ['type' => 'string', 'description' => 'Vacío salvo clasificación dudosa, información que falta o aviso importante; entonces una frase en español']
                 ],
-                'required' => ['tipo', 'app_id', 'title', 'description', 'priority', 'subtasks', 'reasoning'],
+                'required' => ['tipo', 'app_id', 'title', 'description', 'priority', 'subtasks', 'assignee_name', 'reasoning'],
                 'additionalProperties' => false
             ]
         ]
@@ -172,14 +203,29 @@ foreach ($parsed['items'] as $item) {
     if ($title === '') {
         continue;
     }
+    $tipo = ($item['tipo'] ?? 'mejora') === 'tarea' ? 'tarea' : 'mejora';
+
+    // Responsable: solo para mejoras y solo si la IA nombró a alguien que casa con un usuario real.
+    $assigneeId = null;
+    $assigneeName = null;
+    if ($tipo === 'mejora' && !empty($item['assignee_name'])) {
+        $matched = match_assignee($item['assignee_name'], $assignableUsers);
+        if ($matched) {
+            $assigneeId = (int) $matched['id'];
+            $assigneeName = $matched['full_name'] ?: $matched['username'];
+        }
+    }
+
     $items[] = [
-        'tipo' => ($item['tipo'] ?? 'mejora') === 'tarea' ? 'tarea' : 'mejora',
+        'tipo' => $tipo,
         'app_id' => $appId,
         'app_name' => $appId !== null ? $appNames[$appId] : null,
         'title' => mb_substr($title, 0, 200),
         'description' => trim($item['description'] ?? ''),
         'priority' => in_array($item['priority'] ?? '', ['low', 'medium', 'high', 'critical'], true) ? $item['priority'] : 'medium',
         'subtasks' => array_values(array_filter(array_map('trim', $item['subtasks'] ?? []))),
+        'assignee_id' => $assigneeId,
+        'assignee_name' => $assigneeName,
         'reasoning' => trim($item['reasoning'] ?? '')
     ];
 }

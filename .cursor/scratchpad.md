@@ -1430,7 +1430,7 @@ El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en br
 - [x] T3. Vista Nota rápida (entrada) ✅
 - [x] T4. Pantalla de revisión editable ✅
 - [x] T5. Confirmación y creación vía APIs existentes ✅
-- [ ] T6. Pulido y prueba end-to-end
+- [x] T6. Pulido y prueba end-to-end ✅
 
 ## Current Status / Progress Tracking (AI Inbox)
 
@@ -1452,3 +1452,23 @@ El usuario hoy abre la app "Notas" de Apple durante las reuniones y apunta en br
 - 10 Jun 2026 (Executor): Segundo pase de diseño de la revisión, verificado visualmente en preview local con harness estático (`preview-ai-inbox.html`, NO subir a producción). Causa raíz del layout roto: `select { width: 100% }` y `textarea { min-height: 90px }` globales. Solución: selects como pills compactas (override width:auto, appearance none, chevron SVG), prioridad tintada con los colores soft existentes (--prio-*-soft/-ink), app sin asignar en mejoras con pill naranja de aviso (y "Sin aplicación" neutra en tareas), checkbox "Se creará" como chip teal, descripción con field-sizing:content, razonamiento como pie con borde discontinuo. Versiones: styles v2.7, ai-inbox.js ai3. Consola sin errores.
 - 10 Jun 2026 (Executor): Revisión agrupada por aplicación (petición del usuario): bloques con cabecera de app (nombre + empresa + contador incluidos/total), grupo destacado en naranja "Sin aplicación asignada", grupo "Tareas rápidas" al final. Grid responsivo auto-fill minmax(380px,1fr) (2 columnas en escritorio, 1 en <860px), vista de revisión ensanchada a 1100px. Verificado en preview con harness. Al cambiar la app de una tarjeta se reagrupa automáticamente (renderReview re-render).
 - 10 Jun 2026 (Executor): Masonry en la revisión (CSS columns:2 + break-inside:avoid, 1 columna <860px) para que tarjetas de distinta altura no dejen huecos. Razonamiento de la IA ahora condicional: prompt y schema de api/ai-inbox.php instruyen reasoning vacío salvo clasificación dudosa, falta de información o aviso importante (el frontend ya solo lo pinta si viene relleno). Verificado en preview. styles v2.8.
+- 10 Jun 2026: **Feature AI Inbox COMPLETADA y verificada por el usuario en producción** (T0-T6). Flujo: Nota rápida → análisis con OpenRouter (google/gemini-3.1-flash-lite, structured outputs) → revisión agrupada por app (masonry 2 col, todo editable, razonamiento solo cuando aporta) → creación vía APIs existentes. Nota: `preview-ai-inbox.html` y `.claude/launch.json` son harness de desarrollo local, no subir al servidor.
+
+## Current Status / Progress Tracking (15 Jun 2026 — Asignación en alta + restyling formularios)
+
+Petición del usuario (Executor directo): (1) añadir asignación de responsable al alta de mejoras (modal "Nueva Petición" y nota IA), (2) mejorar UX/estilo de los formularios de alta y edición, botones y selectores feos.
+
+Decisiones del usuario: asignación en alta solo para rol programador+ (igual que el modal de edición); en la nota IA asignar **solo cuando se nombre explícitamente un responsable** en el elemento.
+
+Implementado:
+- **A. Asignación en "Nueva Petición"** (`index.php`): nueva sección lateral "Asignados" (tags + buscador), gated `has_role('programador')`. `assets/js/main.js`: funciones de asignación generalizadas con parámetro `prefix` ('edit' por defecto, 'new' para el alta) y estado separado `window.newAssignments`; al crear, POST a `api/assignments.php` con los user_ids seleccionados. Sin cambios en el backend (reutiliza `assignments.php`).
+- **C. Asignación por IA** (`api/ai-inbox.php`): nuevo campo `assignee_name` en prompt+schema (solo si la nota nombra al responsable explícitamente; "" si no). Emparejado server-side conservador con `match_assignee()` (exacto username/nombre completo/primer nombre; null si ambiguo) contra usuarios activos → devuelve `assignee_id`/`assignee_name` solo en mejoras. `assets/js/ai-inbox.js`: chip "Responsable" en la tarjeta (con botón quitar) y, al confirmar, POST a `assignments.php` tras crear la mejora.
+- **B. Restyling** (`assets/css/styles.css`): selects con chevron propio (appearance none + SVG, hover/focus con tokens), botones aplanados (color sólido brand/semántico en vez de degradados, hover sutil con `--shadow-sm` y translateY(-1px), active scale), placeholders y hover de inputs con tokens. Ajuste de padding-right del select en secciones laterales del modal.
+- Cache-busting subido: `styles.css?v=2.9` en todas las páginas, `ai-inbox.js?v=ai4`, `main.js?v=2.9`.
+
+Verificación: `php -l` OK (ai-inbox.php, index.php), `node --check` OK (main.js, ai-inbox.js). **Pendiente verificación visual/funcional del usuario en navegador autenticado** (el dashboard está tras `require_login()` + BD, no accesible desde el harness autónomo). Sugerencia de pruebas: (1) crear mejora como programador asignando responsable; (2) nota IA con texto tipo "...que lo haga Juan" comprobando que aparece el chip de responsable y se asigna al crear; (3) revisar botones y selects en alta/edición.
+
+## Lessons (Asignación + restyling)
+- `background: <color>` (shorthand) resetea `background-image`; para selects con chevron usar `background-color` o redefinir el chevron en la regla específica (caso `.sort-select` que ya lo hacía bien).
+- Las funciones de asignación de `main.js` ahora aceptan `prefix`; el modal de edición sigue llamándolas sin args (default 'edit'), no romper esa compatibilidad.
+- `api/assignments.php` POST exige `can_edit_requests()`; si un usuario sin permiso usa la nota IA, la asignación falla en silencio (la mejora se crea igual) — comportamiento aceptado.
