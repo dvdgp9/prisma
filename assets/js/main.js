@@ -2267,7 +2267,12 @@ async function uploadFilesToRequest(requestId, files) {
             payload = new Blob([buffer], { type: file.type || 'application/octet-stream' });
         } catch (readErr) {
             console.error('No se pudo leer el archivo antes de subirlo:', readErr);
-            alert(`No se pudo leer "${file.name}". Vuelve a seleccionarlo e inténtalo de nuevo.`);
+            alert(
+                `No se pudo leer "${file.name}".\n\n` +
+                `Esto suele pasar cuando el archivo está en una carpeta temporal o bloqueada ` +
+                `(por ejemplo, un adjunto abierto directamente desde el correo, o un archivo abierto en otro programa).\n\n` +
+                `Solución: guárdalo o cópialo en una carpeta normal (como Descargas) y vuelve a subirlo desde ahí.`
+            );
             return false;
         }
 
