@@ -2253,6 +2253,54 @@ async function handleAppFileUpload(files) {
     await loadAppResources();
 }
 
+// Upload one or more files to a request, reading each into memory first.
+// Reading the file before fetch avoids Chrome's lazy disk read, which can throw
+// ERR_ACCESS_DENIED / ERR_UPLOAD_FILE_CHANGED when re-uploading a previously
+// selected file (notably inside an installed PWA). Returns true if all succeeded.
+async function uploadFilesToRequest(requestId, files) {
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let payload;
+        try {
+            // Snapshot the bytes now, while read access is fresh.
+            const buffer = await file.arrayBuffer();
+            payload = new Blob([buffer], { type: file.type || 'application/octet-stream' });
+        } catch (readErr) {
+            console.error('No se pudo leer el archivo antes de subirlo:', readErr);
+            alert(`No se pudo leer "${file.name}". Vuelve a seleccionarlo e inténtalo de nuevo.`);
+            return false;
+        }
+
+        const formData = new FormData();
+        formData.append('request_id', requestId);
+        formData.append('file', payload, file.name);
+
+        let response;
+        try {
+            response = await fetch('/api/upload.php', { method: 'POST', body: formData });
+        } catch (fetchErr) {
+            console.error('Fallo de red al subir el archivo:', fetchErr);
+            alert(`Error de red al subir "${file.name}".`);
+            return false;
+        }
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (_) {
+            console.error('Respuesta no válida del servidor (status ' + response.status + ')');
+            alert(`Error del servidor al subir "${file.name}" (código ${response.status}).`);
+            return false;
+        }
+
+        if (!data.success) {
+            alert(data.error || 'Error al subir archivos');
+            return false;
+        }
+    }
+    return true;
+}
+
 // Setup file upload for edit modal
 function setupEditModalFileUpload() {
     const editArea = document.getElementById('edit-file-upload-area');
@@ -2272,23 +2320,11 @@ function setupEditModalFileUpload() {
                 editArea.style.opacity = '0.5';
                 editArea.style.pointerEvents = 'none';
 
-                for (let i = 0; i < files.length; i++) {
-                    const formData = new FormData();
-                    formData.append('request_id', requestId);
-                    formData.append('file', files[i]);
-                    const response = await fetch('/api/upload.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (!data.success) {
-                        alert(data.error || 'Error al subir archivos');
-                        break;
-                    }
+                const ok = await uploadFilesToRequest(requestId, files);
+                if (ok) {
+                    await loadRequestAttachments(requestId);
                 }
-
-                await loadRequestAttachments(requestId);
-                editInput.value = ''; // Reset input
+                editInput.value = ''; // Reset input so the same file can be picked again
             } catch (error) {
                 console.error('Error uploading files:', error);
                 alert('Error al subir archivos');
@@ -2316,21 +2352,10 @@ function setupEditModalFileUpload() {
 
             try {
                 editArea.style.opacity = '0.5';
-                for (let i = 0; i < files.length; i++) {
-                    const formData = new FormData();
-                    formData.append('request_id', requestId);
-                    formData.append('file', files[i]);
-                    const response = await fetch('/api/upload.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (!data.success) {
-                        alert(data.error || 'Error al subir archivos');
-                        break;
-                    }
+                const ok = await uploadFilesToRequest(requestId, files);
+                if (ok) {
+                    await loadRequestAttachments(requestId);
                 }
-                await loadRequestAttachments(requestId);
             } catch (error) {
                 console.error('Error uploading files:', error);
             } finally {

@@ -27,7 +27,7 @@ $userApps = get_user_apps();
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.0">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.1">
     <style>
         .view-toggle {
             display: flex;
