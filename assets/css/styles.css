@@ -5320,7 +5320,7 @@ label {
 }
 
 .sidebar-header {
-    padding: var(--sp-20) var(--sp-20) var(--sp-16);
+    padding: var(--sp-16) var(--sp-20) var(--sp-12);
     border-bottom: 1px solid var(--ink-200);
 }
 
@@ -5355,10 +5355,10 @@ label {
     min-height: 0;
     overflow: hidden;
     overflow-x: hidden;
-    padding: var(--sp-12) var(--sp-12) var(--sp-16);
+    padding: var(--sp-8) var(--sp-12) var(--sp-12);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-12);
+    gap: var(--sp-8);
 }
 
 .nav-section {
@@ -5378,9 +5378,9 @@ label {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--sp-6);
+    gap: var(--sp-4);
     padding: 0 var(--sp-8);
-    margin-bottom: var(--sp-6);
+    margin-bottom: var(--sp-4);
 }
 
 .nav-section-title {
@@ -5391,8 +5391,8 @@ label {
     letter-spacing: 0.06em;
     color: var(--ink-400);
     padding: 0 var(--sp-8);
-    margin: 0 0 var(--sp-4);
-    line-height: 1.8;
+    margin: 0 0 var(--sp-2);
+    line-height: 1.4;
 }
 .nav-section--apps .nav-section-title,
 .nav-section--tools .nav-section-title { padding: 0; }
@@ -5438,7 +5438,7 @@ label {
     align-items: center;
     gap: var(--sp-10);
     padding: 0 var(--sp-10);
-    height: 32px;
+    height: 30px;
     margin: 0;
     border-radius: var(--r-6);
     color: var(--ink-700);
