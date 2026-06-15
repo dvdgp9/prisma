@@ -5429,8 +5429,39 @@ label {
 
 .nav-section--tools {
     flex-shrink: 0;
-    padding-top: var(--sp-10);
+    padding-top: var(--sp-8);
     border-top: 1px solid var(--ink-200);
+}
+
+/* Tools as a single row of icon buttons (labels via tooltip + aria-label) */
+.nav-tools-row {
+    display: flex;
+    align-items: stretch;
+    gap: var(--sp-4);
+}
+
+.nav-tools-row .nav-item {
+    flex: 1;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    height: 34px;
+}
+
+.nav-tools-row .nav-item span:not(.nav-count) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.nav-tools-row .nav-item i {
+    font-size: var(--fs-18);
 }
 
 .nav-item {

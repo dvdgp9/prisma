@@ -89,29 +89,30 @@ $company_name = $user['company_name'] ?? '';
 
         <!-- Tools / Admin section -->
         <div class="nav-section nav-section--tools">
-            <div class="nav-section-title">Herramientas</div>
-            <?php if (has_role('superadmin')): ?>
-                <a href="/releases.php" class="nav-item <?php echo $current_page === 'releases' ? 'active' : ''; ?>">
-                    <i class="iconoir-rocket"></i>
-                    <span>Release Planner</span>
-                </a>
-            <?php endif; ?>
-            <a href="/changelog.php" class="nav-item <?php echo $current_page === 'changelog' ? 'active' : ''; ?>">
-                <i class="iconoir-journal"></i>
-                <span>Changelog</span>
-            </a>
-            <?php if (has_role('admin')): ?>
+            <div class="nav-tools-row">
                 <?php if (has_role('superadmin')): ?>
-                    <a href="/admin.php" class="nav-item <?php echo $current_page === 'admin' ? 'active' : ''; ?>">
-                        <i class="iconoir-shield-check"></i>
-                        <span>Panel Admin</span>
+                    <a href="/releases.php" class="nav-item nav-tool-icon <?php echo $current_page === 'releases' ? 'active' : ''; ?>" title="Release Planner" aria-label="Release Planner">
+                        <i class="iconoir-rocket"></i>
+                        <span>Release Planner</span>
                     </a>
                 <?php endif; ?>
-                <a href="/manage-apps.php" class="nav-item <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>">
-                    <i class="iconoir-settings"></i>
-                    <span>Gestionar apps</span>
+                <a href="/changelog.php" class="nav-item nav-tool-icon <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog" aria-label="Changelog">
+                    <i class="iconoir-journal"></i>
+                    <span>Changelog</span>
                 </a>
-            <?php endif; ?>
+                <?php if (has_role('admin')): ?>
+                    <?php if (has_role('superadmin')): ?>
+                        <a href="/admin.php" class="nav-item nav-tool-icon <?php echo $current_page === 'admin' ? 'active' : ''; ?>" title="Panel Admin" aria-label="Panel Admin">
+                            <i class="iconoir-shield-check"></i>
+                            <span>Panel Admin</span>
+                        </a>
+                    <?php endif; ?>
+                    <a href="/manage-apps.php" class="nav-item nav-tool-icon <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>" title="Gestionar apps" aria-label="Gestionar apps">
+                        <i class="iconoir-settings"></i>
+                        <span>Gestionar apps</span>
+                    </a>
+                <?php endif; ?>
+            </div>
         </div>
     </nav>
 
