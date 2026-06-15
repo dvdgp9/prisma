@@ -309,6 +309,12 @@ label {
     transform: translateY(-4px);
 }
 
+/* Card with an open dropdown must sit above sibling cards. The hover transform
+   creates a stacking context that would otherwise trap the dropdown's z-index. */
+.card:has(.badge-dropdown.active) {
+    z-index: var(--z-dropdown);
+}
+
 .card-header {
     display: flex;
     justify-content: space-between;
