@@ -5446,6 +5446,53 @@ label {
     gap: 0;
     padding: 0;
     height: 34px;
+    overflow: visible;
+}
+
+/* Custom hover tooltip for the icon-only tools */
+.nav-tool-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 8px;
+    background: var(--ink-900);
+    color: #fff;
+    font-size: var(--fs-11);
+    font-weight: var(--fw-medium);
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: var(--r-6);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    z-index: var(--z-dropdown);
+    transition: opacity var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+}
+
+.nav-tool-icon::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 5px solid transparent;
+    border-top-color: var(--ink-900);
+    pointer-events: none;
+    opacity: 0;
+    z-index: var(--z-dropdown);
+    transition: opacity var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+}
+
+.nav-tool-icon:hover::after,
+.nav-tool-icon:focus-visible::after,
+.nav-tool-icon:hover::before,
+.nav-tool-icon:focus-visible::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 .nav-tools-row .nav-item span:not(.nav-count) {

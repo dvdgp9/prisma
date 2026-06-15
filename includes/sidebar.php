@@ -91,23 +91,23 @@ $company_name = $user['company_name'] ?? '';
         <div class="nav-section nav-section--tools">
             <div class="nav-tools-row">
                 <?php if (has_role('superadmin')): ?>
-                    <a href="/releases.php" class="nav-item nav-tool-icon <?php echo $current_page === 'releases' ? 'active' : ''; ?>" title="Release Planner" aria-label="Release Planner">
+                    <a href="/releases.php" class="nav-item nav-tool-icon <?php echo $current_page === 'releases' ? 'active' : ''; ?>" aria-label="Release Planner" data-tooltip="Release Planner">
                         <i class="iconoir-rocket"></i>
                         <span>Release Planner</span>
                     </a>
                 <?php endif; ?>
-                <a href="/changelog.php" class="nav-item nav-tool-icon <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" title="Changelog" aria-label="Changelog">
+                <a href="/changelog.php" class="nav-item nav-tool-icon <?php echo $current_page === 'changelog' ? 'active' : ''; ?>" aria-label="Changelog" data-tooltip="Changelog">
                     <i class="iconoir-journal"></i>
                     <span>Changelog</span>
                 </a>
                 <?php if (has_role('admin')): ?>
                     <?php if (has_role('superadmin')): ?>
-                        <a href="/admin.php" class="nav-item nav-tool-icon <?php echo $current_page === 'admin' ? 'active' : ''; ?>" title="Panel Admin" aria-label="Panel Admin">
+                        <a href="/admin.php" class="nav-item nav-tool-icon <?php echo $current_page === 'admin' ? 'active' : ''; ?>" aria-label="Panel Admin" data-tooltip="Panel Admin">
                             <i class="iconoir-shield-check"></i>
                             <span>Panel Admin</span>
                         </a>
                     <?php endif; ?>
-                    <a href="/manage-apps.php" class="nav-item nav-tool-icon <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>" title="Gestionar apps" aria-label="Gestionar apps">
+                    <a href="/manage-apps.php" class="nav-item nav-tool-icon <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>" aria-label="Gestionar apps" data-tooltip="Gestionar apps">
                         <i class="iconoir-settings"></i>
                         <span>Gestionar apps</span>
                     </a>
