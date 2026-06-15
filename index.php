@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.2">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.3">
 </head>
 
 <?php
@@ -1009,7 +1009,7 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/main.js?v=3.2"></script>
+    <script src="/assets/js/main.js?v=3.3"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

@@ -1,6 +1,7 @@
 // Prisma AI Inbox - Nota rápida con IA
 
 let aiItems = []; // items propuestos por la IA (estado editable)
+let aiUsers = []; // usuarios asignables (cargados de /api/users-list.php)
 
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('ai-note-input');
@@ -8,7 +9,25 @@ document.addEventListener('DOMContentLoaded', function () {
     input.addEventListener('input', () => {
         counter.textContent = `${input.value.length.toLocaleString('es-ES')} / 10.000`;
     });
+    loadAiUsers();
 });
+
+async function loadAiUsers() {
+    try {
+        const res = await fetch('/api/users-list.php');
+        const data = await res.json();
+        if (data.success) {
+            aiUsers = (data.data || []).map(u => ({
+                id: Number(u.id),
+                name: u.full_name || u.username
+            }));
+            // Si ya estamos en la revisión, repinta para poblar los selectores.
+            if (!document.getElementById('ai-step-review').hidden) renderReview();
+        }
+    } catch (_) {
+        // Sin lista: el selector quedará solo con "Sin responsable".
+    }
+}
 
 function showStep(step) {
     ['note', 'loading', 'review', 'done'].forEach(s => {
@@ -164,10 +183,22 @@ function renderGroup(group) {
 
 function appOptions(selectedId, isMejora) {
     const noneLabel = isMejora ? '⚠ Elegir aplicación...' : 'Sin aplicación';
-    const none = `<option value="" ${selectedId === null ? 'selected' : ''}>${noneLabel}</option>`;
-    return none + AI_USER_APPS.map(a =>
+    const noneOpt = `<option value="" ${selectedId === null ? 'selected' : ''}>${noneLabel}</option>`;
+    return noneOpt + AI_USER_APPS.map(a =>
         `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escapeAiHtml(a.name)} (${escapeAiHtml(a.company || '')})</option>`
     ).join('');
+}
+
+function assigneeOptions(item) {
+    const selectedId = item.assignee_id != null ? Number(item.assignee_id) : null;
+    const opts = aiUsers.map(u =>
+        `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${escapeAiHtml(u.name)}</option>`
+    );
+    // Si la IA detectó un responsable que no está en la lista cargada, lo añadimos como fallback.
+    if (selectedId !== null && !aiUsers.some(u => u.id === selectedId)) {
+        opts.unshift(`<option value="${selectedId}" selected>${escapeAiHtml(item.assignee_name || 'Responsable')}</option>`);
+    }
+    return `<option value="">Sin responsable</option>` + opts.join('');
 }
 
 function renderItemCard(item) {
@@ -196,6 +227,11 @@ function renderItemCard(item) {
                     title="Aplicación" ${item.included ? '' : 'disabled'}>
                     ${appOptions(item.app_id, isMejora)}
                 </select>
+                <select class="ai-pill ai-pill-assignee ${item.assignee_id ? 'has-assignee' : ''}"
+                    onchange="updateAssignee(${item._id}, this.value)"
+                    title="Responsable" ${!item.included || !isMejora ? 'disabled' : ''}>
+                    ${assigneeOptions(item)}
+                </select>
             </div>
         </div>
 
@@ -206,15 +242,6 @@ function renderItemCard(item) {
                 onchange="updateItem(${item._id}, 'description', this.value)">${escapeAiHtml(item.description)}</textarea>
 
             ${isMejora ? renderSubtasks(item) : ''}
-
-            ${isMejora && item.assignee_id ? `
-            <div class="ai-item-assignee" title="Responsable detectado en la nota">
-                <i class="iconoir-user-badge-check"></i>
-                <span>Responsable: <strong>${escapeAiHtml(item.assignee_name)}</strong></span>
-                <button type="button" class="ai-assignee-remove" title="Quitar responsable" onclick="removeAssignee(${item._id})">
-                    <i class="iconoir-xmark"></i>
-                </button>
-            </div>` : ''}
 
             ${item.reasoning ? `
             <div class="ai-item-reasoning">
@@ -272,11 +299,20 @@ function addSubtask(id) {
     renderReview();
 }
 
-function removeAssignee(id) {
+function updateAssignee(id, value) {
     const item = getItem(id);
-    item.assignee_id = null;
-    item.assignee_name = null;
-    renderReview();
+    if (!value) {
+        item.assignee_id = null;
+        item.assignee_name = null;
+    } else {
+        const uid = parseInt(value, 10);
+        item.assignee_id = uid;
+        const u = aiUsers.find(x => x.id === uid);
+        if (u) item.assignee_name = u.name;
+    }
+    // Refleja el estado visual (clase has-assignee) sin re-render completo.
+    const sel = document.querySelector(`#ai-item-${id} .ai-pill-assignee`);
+    if (sel) sel.classList.toggle('has-assignee', !!item.assignee_id);
 }
 
 function updateConfirmButton() {
