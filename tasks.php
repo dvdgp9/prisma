@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
     <link rel="stylesheet" href="/assets/css/styles.css?v=3.4">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.5">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.6">
 </head>
 
 <?php
@@ -44,6 +44,16 @@ $userApps = get_user_apps();
                     <p class="text-muted">Apunta rápidamente lo que necesitas recordar</p>
                 </div>
                 <div class="header-actions">
+                    <div class="view-toggle" id="view-toggle" role="group" aria-label="Cambiar vista">
+                        <button type="button" class="view-toggle-btn" data-view="agenda" onclick="setTasksView('agenda')" title="Vista por fechas">
+                            <i class="iconoir-calendar"></i>
+                            <span>Agenda</span>
+                        </button>
+                        <button type="button" class="view-toggle-btn" data-view="list" onclick="setTasksView('list')" title="Lista simple">
+                            <i class="iconoir-list"></i>
+                            <span>Lista</span>
+                        </button>
+                    </div>
                     <div class="filter-group">
                         <select id="app-filter" class="sort-select" onchange="loadTasks()">
                             <option value="">Todas las apps</option>
@@ -274,8 +284,8 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=2"></script>
+    <script src="/assets/js/task-parser.js?v=2"></script>
+    <script src="/assets/js/tasks.js?v=3"></script>
     <script src="/assets/js/pwa.js"></script>
 </body>
 

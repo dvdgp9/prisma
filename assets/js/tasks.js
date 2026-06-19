@@ -12,6 +12,7 @@ let shareWithAll = false;
 let quickIgnore = { date: false, app: false };
 
 document.addEventListener('DOMContentLoaded', () => {
+    updateViewToggleUI();
     loadTasks();
     setupQuickAdd();
     setupTaskModal();
@@ -216,62 +217,87 @@ async function loadTasks() {
     }
 }
 
-// Render tasks list
-function renderTasks(tasks) {
-    const container = document.getElementById('tasks-list');
-    const emptyState = document.getElementById('empty-state');
-    
-    if (tasks.length === 0) {
-        container.innerHTML = '';
-        emptyState.style.display = 'block';
-        return;
-    }
-    
-    emptyState.style.display = 'none';
-    
-    const today = new Date();
-    // Use local date instead of UTC to avoid timezone shifts
-    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    container.innerHTML = tasks.map(task => {
-        let dueDateHtml = '';
-        let dueDateClass = '';
-        
-        if (task.due_date && !task.is_completed) {
-            // Parse date manually to avoid timezone shift from "YYYY-MM-DD" string
-            const [y, m, d] = task.due_date.split('-').map(Number);
-            const dueDate = new Date(y, m - 1, d);
-            const diffDays = Math.ceil((dueDate - localToday) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays < 0) {
-                dueDateClass = 'overdue';
-                dueDateHtml = `<span class="task-due-date overdue" title="Vencida">
-                    <i class="iconoir-warning-triangle"></i>
-                    ${formatDueDate(task.due_date)}
-                </span>`;
-            } else if (diffDays === 0) {
-                dueDateClass = 'today';
-                dueDateHtml = `<span class="task-due-date today" title="Hoy">
-                    <i class="iconoir-clock"></i>
-                    Hoy
-                </span>`;
-            } else if (diffDays <= 3) {
-                dueDateClass = 'soon';
-                dueDateHtml = `<span class="task-due-date soon" title="Próximamente">
-                    <i class="iconoir-calendar"></i>
-                    ${formatDueDate(task.due_date)}
-                </span>`;
-            } else {
-                dueDateHtml = `<span class="task-due-date" title="Fecha límite">
-                    <i class="iconoir-calendar"></i>
-                    ${formatDueDate(task.due_date)}
-                </span>`;
-            }
+// Última tanda de tareas cargada (para re-render al cambiar de vista sin refetch).
+let lastTasks = [];
+
+// Definición de buckets de la vista Agenda, en orden de presentación.
+const AGENDA_BUCKETS = [
+    { key: 'overdue', label: 'Vencidas', icon: 'iconoir-warning-triangle' },
+    { key: 'today', label: 'Hoy', icon: 'iconoir-sun-light' },
+    { key: 'tomorrow', label: 'Mañana', icon: 'iconoir-calendar' },
+    { key: 'week', label: 'Esta semana', icon: 'iconoir-calendar' },
+    { key: 'later', label: 'Más adelante', icon: 'iconoir-calendar' },
+    { key: 'nodate', label: 'Sin fecha', icon: 'iconoir-minus' },
+    { key: 'done', label: 'Completadas', icon: 'iconoir-check-circle' }
+];
+
+// Día local (sin hora) para cálculos de fecha.
+function getLocalToday() {
+    const t = new Date();
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
+// Diferencia en días entre due_date (YYYY-MM-DD) y hoy, en horario local.
+function diffDaysFromToday(dueDate, localToday) {
+    const [y, m, d] = dueDate.split('-').map(Number);
+    const due = new Date(y, m - 1, d);
+    return Math.round((due - localToday) / (1000 * 60 * 60 * 24));
+}
+
+// Clasifica una tarea en su bucket de agenda.
+function getTaskBucket(task, localToday) {
+    if (task.is_completed) return 'done';
+    if (!task.due_date) return 'nodate';
+    const diff = diffDaysFromToday(task.due_date, localToday);
+    if (diff < 0) return 'overdue';
+    if (diff === 0) return 'today';
+    if (diff === 1) return 'tomorrow';
+    if (diff <= 7) return 'week';
+    return 'later';
+}
+
+// Vista actual ('agenda' por defecto), persistida en localStorage.
+function getTasksView() {
+    return localStorage.getItem('prisma_tasks_view') === 'list' ? 'list' : 'agenda';
+}
+
+// Construye el HTML de una tarjeta de tarea.
+function buildTaskCard(task, localToday) {
+    let dueDateHtml = '';
+    let dueDateClass = '';
+
+    if (task.due_date && !task.is_completed) {
+        const diffDays = diffDaysFromToday(task.due_date, localToday);
+
+        if (diffDays < 0) {
+            dueDateClass = 'overdue';
+            dueDateHtml = `<span class="task-due-date overdue" title="Vencida">
+                <i class="iconoir-warning-triangle"></i>
+                ${formatDueDate(task.due_date)}
+            </span>`;
+        } else if (diffDays === 0) {
+            dueDateClass = 'today';
+            dueDateHtml = `<span class="task-due-date today" title="Hoy">
+                <i class="iconoir-clock"></i>
+                Hoy
+            </span>`;
+        } else if (diffDays <= 3) {
+            dueDateClass = 'soon';
+            dueDateHtml = `<span class="task-due-date soon" title="Próximamente">
+                <i class="iconoir-calendar"></i>
+                ${formatDueDate(task.due_date)}
+            </span>`;
+        } else {
+            dueDateHtml = `<span class="task-due-date" title="Fecha límite">
+                <i class="iconoir-calendar"></i>
+                ${formatDueDate(task.due_date)}
+            </span>`;
         }
-        
-        return `
+    }
+
+    return `
         <div class="task-item ${task.is_completed ? 'completed' : ''} ${dueDateClass}" data-id="${task.id}">
-            <div class="task-checkbox ${task.is_completed ? 'checked' : ''}" 
+            <div class="task-checkbox ${task.is_completed ? 'checked' : ''}"
                  onclick="toggleTask(${task.id}, ${task.is_completed ? 'false' : 'true'}, event)">
             </div>
             <div class="task-content" onclick="openTaskModal(${task.id})">
@@ -316,9 +342,71 @@ function renderTasks(tasks) {
                     <i class="iconoir-trash"></i>
                 </button>
             </div>
-        </div>
-    `;
-    }).join('');
+        </div>`;
+}
+
+// Render principal: guarda los datos y delega según la vista activa.
+function renderTasks(tasks) {
+    lastTasks = tasks || [];
+    const container = document.getElementById('tasks-list');
+    const emptyState = document.getElementById('empty-state');
+
+    if (lastTasks.length === 0) {
+        container.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+    }
+
+    emptyState.style.display = 'none';
+    const localToday = getLocalToday();
+
+    if (getTasksView() === 'list') {
+        container.innerHTML = lastTasks.map(t => buildTaskCard(t, localToday)).join('');
+    } else {
+        renderAgenda(container, lastTasks, localToday);
+    }
+}
+
+// Render agrupado por buckets temporales.
+function renderAgenda(container, tasks, localToday) {
+    const groups = {};
+    tasks.forEach(task => {
+        const bucket = getTaskBucket(task, localToday);
+        (groups[bucket] = groups[bucket] || []).push(task);
+    });
+
+    const html = AGENDA_BUCKETS
+        .filter(b => groups[b.key] && groups[b.key].length)
+        .map(b => {
+            const items = groups[b.key].map(t => buildTaskCard(t, localToday)).join('');
+            return `
+                <section class="agenda-section agenda-${b.key}">
+                    <header class="agenda-section-header">
+                        <i class="${b.icon}"></i>
+                        <span class="agenda-section-title">${b.label}</span>
+                        <span class="agenda-section-count">${groups[b.key].length}</span>
+                    </header>
+                    <div class="agenda-section-items">${items}</div>
+                </section>`;
+        })
+        .join('');
+
+    container.innerHTML = html;
+}
+
+// Cambia la vista, persiste la preferencia y re-renderiza sin refetch.
+function setTasksView(view) {
+    localStorage.setItem('prisma_tasks_view', view === 'list' ? 'list' : 'agenda');
+    updateViewToggleUI();
+    renderTasks(lastTasks);
+}
+
+// Marca el botón activo del toggle según la preferencia guardada.
+function updateViewToggleUI() {
+    const current = getTasksView();
+    document.querySelectorAll('#view-toggle .view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === current);
+    });
 }
 
 // Toggle task completion

@@ -52,12 +52,38 @@
         sabado: 6, sab: 6
     };
 
+    // Meses por nombre normalizado -> índice (0 = enero).
+    const MONTHS = {
+        enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+        julio: 6, agosto: 7, septiembre: 8, setiembre: 8,
+        octubre: 9, noviembre: 10, diciembre: 11
+    };
+
+    // Prefijo opcional de día de la semana (para absorberlo en fechas explícitas:
+    // "martes 30 junio" / "viernes 15/07" se limpian enteros del título).
+    const WD_PREFIX = '(?:(?:lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo|lun|mar|mie|mié|jue|vie|sab|s[áa]b|dom)\\s+)?';
+
     // Patrones de fecha en orden de prioridad (el primero que casa, gana).
     // Cada entrada: { re, resolve(matchArray, today) -> Date|null }
     const DATE_PATTERNS = [
         {
-            // Fecha numérica: 15/07, 15-7, 15/07/2026
-            re: /\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/i,
+            // Fecha con mes por nombre: "30 junio", "30 de junio", "1 de julio de 2026".
+            // Absorbe un día de la semana previo opcional ("martes 30 junio").
+            re: new RegExp('\\b' + WD_PREFIX + '(\\d{1,2})\\s+(?:de\\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\\s+(?:de\\s+)?(\\d{4}))?\\b', 'i'),
+            resolve: function (m, today) {
+                const day = parseInt(m[1], 10);
+                const month = MONTHS[normalize(m[2])];
+                if (month === undefined || day < 1 || day > 31) return null;
+                let year = m[3] ? parseInt(m[3], 10) : today.getFullYear();
+                let date = localDate(year, month, day);
+                if (date.getMonth() !== month) return null; // día inválido (ej. 31 de febrero)
+                if (!m[3] && date < today) date = localDate(year + 1, month, day);
+                return date;
+            }
+        },
+        {
+            // Fecha numérica: 15/07, 15-7, 15/07/2026 (con día de semana previo opcional).
+            re: new RegExp('\\b' + WD_PREFIX + '(\\d{1,2})[\\/\\-](\\d{1,2})(?:[\\/\\-](\\d{2,4}))?\\b', 'i'),
             resolve: function (m, today) {
                 const day = parseInt(m[1], 10);
                 const month = parseInt(m[2], 10);

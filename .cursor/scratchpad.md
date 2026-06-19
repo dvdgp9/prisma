@@ -1514,12 +1514,12 @@ Decisiones tomadas con el usuario (Planner, 2026-06-19):
   - Éxito: usuario nuevo entiende la sintaxis sin documentación externa.
 - [x] 1.5 Versionar assets (`?v=`) y `CACHE_NAME` de sw.js.
 
-### FASE 2 — Vista Agenda (página tareas)
-- [ ] 2.1 Agrupar tareas en buckets temporales en `renderTasks()` (Vencidas/Hoy/Mañana/Esta semana/Más adelante/Sin fecha). Encabezados de sección con jerarquía por peso/color (Vencidas en rojo de tokens, no punto decorativo).
+### FASE 2 — Vista Agenda (página tareas) — IMPLEMENTADA (pend. verificación usuario)
+- [x] 2.1 Agrupar tareas en buckets temporales en `renderTasks()` (Vencidas/Hoy/Mañana/Esta semana/Más adelante/Sin fecha). Encabezados de sección con jerarquía por peso/color (Vencidas en rojo de tokens, no punto decorativo).
   - Éxito: las tareas aparecen bajo el bucket correcto según `due_date` y fecha local; secciones vacías no se muestran.
-- [ ] 2.2 Toggle de vista (Agenda / Lista plana) **REQUISITO FIRME del usuario**, recordando preferencia en localStorage.
+- [x] 2.2 Toggle de vista (Agenda / Lista plana) **REQUISITO FIRME del usuario**, recordando preferencia en localStorage.
   - Éxito: cambiar vista persiste entre recargas.
-- [ ] 2.3 Versionar assets.
+- [x] 2.3 Versionar assets.
 
 ### FASE 3 — Widget "Qué toca" en vista global (home)
 - [ ] 3.1 Identificar dónde inyectar la tarjeta en la vista global de index.php/main.js.
@@ -1546,3 +1546,13 @@ Verificación hecha (Executor): `node --check` OK (parser, tasks.js), `php -l ta
 ## Lessons (Revamp Tareas)
 - El `php -S :8765` que suele estar levantado NO sirve este proyecto (404). Para preview visual usar la config `prisma-preview` (puerto 8799).
 - Fechas relativas: construir con `new Date(y, m-1, d)` (local); `new Date('YYYY-MM-DD')` es UTC y desplaza el día.
+
+## Current Status / Progress Tracking (19 Jun 2026 — Fase 2 Agenda + toggle)
+**Fase 2 IMPLEMENTADA.** Vista Agenda con buckets (Vencidas/Hoy/Mañana/Esta semana/Más adelante/Sin fecha/Completadas) + toggle Agenda/Lista persistente en localStorage (`prisma_tasks_view`, default 'agenda').
+- `assets/js/tasks.js`: refactor de `renderTasks()` → `buildTaskCard()` (helper, mismo HTML de tarjeta), `getTaskBucket()`, `renderAgenda()`, `setTasksView()`, `updateViewToggleUI()`, `getTasksView()`. `lastTasks` cachea la última tanda para re-render al cambiar de vista sin refetch. `diffDaysFromToday` usa `Math.round` (local). Buckets: <0 vencida, 0 hoy, 1 mañana, ≤7 esta semana, resto más adelante; completadas siempre al final.
+- `tasks.php`: segmented control `#view-toggle` en `.header-actions`; `tasks.css?v=2.6`, `tasks.js?v=3`.
+- `assets/css/tasks.css`: `.view-toggle(-btn)`, `.agenda-section(-header/-title/-count/-items)`, color de "Vencidas" (rojo) y "Hoy" (naranja) por jerarquía de color (sin puntos decorativos).
+- `sw.js`: caché → v6.
+- Harness NUEVO `preview-tasks-agenda.html` (carga tasks.js real con fetch simulado). No subir a producción.
+
+Verificación (Executor): `node --check` + `php -l` OK; en preview los 7 buckets salen en orden con counts correctos, toggle a Lista da 7 tarjetas planas / 0 secciones, preferencia persiste tras recarga, sin errores de consola. **Pendiente verificación del usuario.** Tras OK → Fase 3 (widget "Qué toca" en vista global de index.php).
