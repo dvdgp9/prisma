@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.4">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.5">
 </head>
 
 <?php
@@ -52,6 +52,19 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-plus"></i>
                         Nueva Mejora
                     </button>
+                </div>
+            </div>
+
+            <!-- Widget "Qué toca": resumen de tareas propias (solo en Vista Global) -->
+            <div class="tasks-widget" id="tasks-widget" style="display: none;">
+                <div class="tasks-widget-head">
+                    <span class="tasks-widget-title">
+                        <i class="iconoir-task-list"></i> Qué toca
+                    </span>
+                    <a class="tasks-widget-link" href="/tasks.php">Ir a Mis tareas <i class="iconoir-arrow-right"></i></a>
+                </div>
+                <div class="tasks-widget-stats" id="tasks-widget-stats">
+                    <!-- Rellenado por JS -->
                 </div>
             </div>
 
@@ -1009,7 +1022,7 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/main.js?v=3.3"></script>
+    <script src="/assets/js/main.js?v=3.4"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

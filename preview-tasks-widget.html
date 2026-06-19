@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- Harness LOCAL del widget "Qué toca". No subir a producción.
+     Carga main.js REAL (su init no se dispara: se evalúa tras 'load') y llama a las funciones del widget. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview · Widget Qué toca</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <style> body { font-family:'Geist',sans-serif; padding:2rem; max-width:760px; margin:0 auto; } </style>
+</head>
+<body data-user-role="admin">
+    <div class="tasks-widget" id="tasks-widget" style="display:none">
+        <div class="tasks-widget-head">
+            <span class="tasks-widget-title"><i class="iconoir-task-list"></i> Qué toca</span>
+            <a class="tasks-widget-link" href="/tasks.php">Ir a Mis tareas <i class="iconoir-arrow-right"></i></a>
+        </div>
+        <div class="tasks-widget-stats" id="tasks-widget-stats"></div>
+    </div>
+
+    <script>
+        function iso(o){ const d=new Date(); d.setDate(d.getDate()+o); return d.toISOString().slice(0,10); }
+        const MOCK = [
+            { id:1, due_date:iso(-2), is_completed:0 },
+            { id:2, due_date:iso(-5), is_completed:0 },
+            { id:3, due_date:iso(0), is_completed:0 },
+            { id:4, due_date:iso(3), is_completed:0 },
+            { id:5, due_date:iso(6), is_completed:0 },
+            { id:6, due_date:iso(20), is_completed:0 },
+            { id:7, due_date:iso(-1), is_completed:1 }
+        ];
+        const realFetch = window.fetch.bind(window);
+        window.fetch = (url, opts) => {
+            if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+                return Promise.resolve({ json: () => Promise.resolve(
+                    url.indexOf('/api/tasks.php') === 0 ? { success:true, data:MOCK } : { success:true, data:[] }
+                )});
+            }
+            return realFetch(url, opts);
+        };
+        // Cargar main.js tras 'load' para que su listener DOMContentLoaded no se dispare.
+        window.addEventListener('load', async () => {
+            const code = await (await realFetch('/assets/js/main.js?v=3.4')).text();
+            (0, eval)(code);
+            currentView = 'global';
+            updateTasksWidgetVisibility();
+        });
+    </script>
+</body>
+</html>

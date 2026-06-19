@@ -285,7 +285,7 @@ $userApps = get_user_apps();
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
     <script src="/assets/js/task-parser.js?v=2"></script>
-    <script src="/assets/js/tasks.js?v=3"></script>
+    <script src="/assets/js/tasks.js?v=4"></script>
     <script src="/assets/js/pwa.js"></script>
 </body>
 

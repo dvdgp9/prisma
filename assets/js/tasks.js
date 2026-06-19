@@ -211,10 +211,25 @@ async function loadTasks() {
         
         if (data.success) {
             renderTasks(data.data);
+            maybeScrollToBucket();
         }
     } catch (error) {
         console.error('Error loading tasks:', error);
     }
+}
+
+// Si se llega con #overdue / #today / #week (desde el widget del home),
+// forzar vista Agenda y desplazar a esa sección.
+function maybeScrollToBucket() {
+    const bucket = (location.hash || '').replace('#', '');
+    if (['overdue', 'today', 'week'].indexOf(bucket) === -1) return;
+    if (getTasksView() !== 'agenda') {
+        localStorage.setItem('prisma_tasks_view', 'agenda');
+        updateViewToggleUI();
+        renderTasks(lastTasks);
+    }
+    const el = document.querySelector('.agenda-' + bucket);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Última tanda de tareas cargada (para re-render al cambiar de vista sin refetch).

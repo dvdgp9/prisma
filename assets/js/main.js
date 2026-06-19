@@ -76,6 +76,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupEditModalFileUpload();
     syncRequestsViewModeUI();
 
+    // Widget "Qué toca": cargar y mostrar si arrancamos en vista global
+    updateTasksWidgetVisibility();
+
     // Cmd/Ctrl + Enter to submit new request form
     const newRequestForm = document.getElementById('new-request-form');
     if (newRequestForm) {
@@ -961,6 +964,68 @@ function loadView(type, entityId = null, sourceEvent = null) {
 
     // Reload requests
     loadRequests();
+
+    // El widget de tareas solo se muestra en la vista global
+    updateTasksWidgetVisibility();
+}
+
+// ===== Widget "Qué toca" (resumen de tareas propias, solo en Vista Global) =====
+let tasksWidgetData = null;
+
+async function loadTasksWidget() {
+    try {
+        const res = await fetch('/api/tasks.php?completed=0&shared=0');
+        const data = await res.json();
+        if (data.success) {
+            tasksWidgetData = computeTasksWidgetCounts(data.data);
+            renderTasksWidget();
+        }
+    } catch (e) {
+        console.error('Error loading tasks widget:', e);
+    }
+}
+
+function computeTasksWidgetCounts(tasks) {
+    const t = new Date();
+    const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    let overdue = 0, todayCount = 0, week = 0;
+    (tasks || []).forEach(task => {
+        if (task.is_completed == 1 || !task.due_date) return;
+        const [y, m, d] = task.due_date.split('-').map(Number);
+        const due = new Date(y, m - 1, d);
+        const diff = Math.round((due - today) / (1000 * 60 * 60 * 24));
+        if (diff < 0) overdue++;
+        else if (diff === 0) todayCount++;
+        else if (diff <= 7) week++;
+    });
+    return { overdue, today: todayCount, week };
+}
+
+function renderTasksWidget() {
+    const container = document.getElementById('tasks-widget-stats');
+    if (!container || !tasksWidgetData) return;
+    const { overdue, today, week } = tasksWidgetData;
+    const tiles = [
+        { key: 'overdue', label: 'Vencidas', value: overdue, cls: 'overdue' },
+        { key: 'today', label: 'Para hoy', value: today, cls: 'today' },
+        { key: 'week', label: 'Próximos 7 días', value: week, cls: 'week' }
+    ];
+    container.innerHTML = tiles.map(t => `
+        <a class="tasks-widget-stat ${t.value > 0 ? t.cls : 'is-empty'}" href="/tasks.php#${t.key}">
+            <span class="tasks-widget-stat-value">${t.value}</span>
+            <span class="tasks-widget-stat-label">${t.label}</span>
+        </a>`).join('');
+}
+
+function updateTasksWidgetVisibility() {
+    const widget = document.getElementById('tasks-widget');
+    if (!widget) return;
+    if (currentView === 'global') {
+        widget.style.display = 'block';
+        if (!tasksWidgetData) loadTasksWidget();
+    } else {
+        widget.style.display = 'none';
+    }
 }
 
 // Load requests with multi-level sorting and filters

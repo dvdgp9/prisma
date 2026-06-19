@@ -6651,3 +6651,108 @@ select.ai-pill-assignee.has-assignee {
     font-size: 0.8rem;
     color: var(--critical, #FF4757);
 }
+
+/* ===== Widget "Qué toca" (Vista Global) ===== */
+.tasks-widget {
+    display: block;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tasks-widget-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.tasks-widget-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.tasks-widget-title i {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.tasks-widget-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: gap 0.15s ease;
+}
+
+.tasks-widget-link:hover {
+    gap: 8px;
+}
+
+.tasks-widget-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+}
+
+.tasks-widget-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    background: var(--bg-secondary);
+    transition: all 0.15s ease;
+}
+
+.tasks-widget-stat:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.tasks-widget-stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.tasks-widget-stat-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* Tonos por severidad (jerarquía por color, solo cuando hay tareas) */
+.tasks-widget-stat.overdue .tasks-widget-stat-value { color: #ff4d4d; }
+.tasks-widget-stat.overdue { border-color: rgba(255, 77, 77, 0.3); background: rgba(255, 77, 77, 0.06); }
+.tasks-widget-stat.today .tasks-widget-stat-value { color: #ff9800; }
+.tasks-widget-stat.today { border-color: rgba(255, 152, 0, 0.3); background: rgba(255, 152, 0, 0.06); }
+.tasks-widget-stat.week .tasks-widget-stat-value { color: var(--primary-color); }
+
+/* Sin tareas en esa categoría: apagado */
+.tasks-widget-stat.is-empty {
+    opacity: 0.65;
+}
+
+.tasks-widget-stat.is-empty:hover {
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .tasks-widget-stats {
+        grid-template-columns: 1fr;
+    }
+}

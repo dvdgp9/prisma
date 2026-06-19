@@ -1521,11 +1521,11 @@ Decisiones tomadas con el usuario (Planner, 2026-06-19):
   - Éxito: cambiar vista persiste entre recargas.
 - [x] 2.3 Versionar assets.
 
-### FASE 3 — Widget "Qué toca" en vista global (home)
-- [ ] 3.1 Identificar dónde inyectar la tarjeta en la vista global de index.php/main.js.
-- [ ] 3.2 Tarjeta con contadores Vencidas / Hoy / Esta semana (reusando `api/tasks.php` GET), cada uno enlazando a tasks.php (con filtro/anchor de bucket).
+### FASE 3 — Widget "Qué toca" en vista global (home) — IMPLEMENTADA (pend. verificación usuario)
+- [x] 3.1 Identificar dónde inyectar la tarjeta en la vista global de index.php/main.js.
+- [x] 3.2 Tarjeta con contadores Vencidas / Hoy / Esta semana (reusando `api/tasks.php` GET), cada uno enlazando a tasks.php (con filtro/anchor de bucket).
   - Éxito: contadores correctos; clic lleva a la sección/bucket correspondiente en tareas.
-- [ ] 3.3 Versionar assets.
+- [x] 3.3 Versionar assets.
 
 ## Notas
 - Email diario y Web Push: documentados como opciones descartadas en este alcance; retomar si el usuario lo pide.
@@ -1556,3 +1556,16 @@ Verificación hecha (Executor): `node --check` OK (parser, tasks.js), `php -l ta
 - Harness NUEVO `preview-tasks-agenda.html` (carga tasks.js real con fetch simulado). No subir a producción.
 
 Verificación (Executor): `node --check` + `php -l` OK; en preview los 7 buckets salen en orden con counts correctos, toggle a Lista da 7 tarjetas planas / 0 secciones, preferencia persiste tras recarga, sin errores de consola. **Pendiente verificación del usuario.** Tras OK → Fase 3 (widget "Qué toca" en vista global de index.php).
+
+## Current Status / Progress Tracking (19 Jun 2026 — Fase 3 Widget "Qué toca")
+**Fase 3 IMPLEMENTADA. Las 3 fases del plan de revamp de Tareas están completas (pend. verificación del usuario en producción).**
+- `index.php`: contenedor `#tasks-widget` (oculto por defecto) tras `.content-header`, con head (título + enlace "Ir a Mis tareas") y `#tasks-widget-stats`.
+- `assets/js/main.js`: `loadTasksWidget()` (fetch `/api/tasks.php?completed=0&shared=0`), `computeTasksWidgetCounts()` (overdue / hoy / próximos 7 días, excluye completadas y sin fecha), `renderTasksWidget()` (3 tiles enlazando a `/tasks.php#overdue|#today|#week`), `updateTasksWidgetVisibility()` (solo `currentView==='global'`, carga perezosa). Enganchado en init y en `loadView()`.
+- `assets/js/tasks.js`: `maybeScrollToBucket()` tras render en `loadTasks()` — si la URL trae `#overdue|#today|#week`, fuerza vista Agenda y hace scroll a `.agenda-<bucket>`.
+- `assets/css/styles.css`: bloque `.tasks-widget*` (grid 3 col, 1 col <600px; tonos por severidad; tiles `.is-empty` apagados).
+- Versiones: `styles.css?v=3.5`, `main.js?v=3.4` (index.php), `tasks.js?v=4` (tasks.php), caché PWA → v7.
+- Harness NUEVO `preview-tasks-widget.html` (evalúa main.js real tras 'load' para no disparar su init; fetch simulado solo en `/api/`). No subir a producción.
+
+Verificación (Executor): `node --check` (main.js, tasks.js) + `php -l` (index.php, tasks.php) OK; en preview con main.js REAL los contadores salen correctos (2 vencidas / 1 hoy / 2 próximos 7 días con el mock), hrefs por bucket correctos, 3 col en escritorio y 1 col en móvil, sin errores de consola. **Pendiente verificación del usuario.**
+
+Archivos a subir (Fase 3): `index.php`, `assets/js/main.js`, `assets/js/tasks.js`, `assets/css/styles.css`, `sw.js`. (Harness `preview-tasks-*.html` y la config `prisma-preview` de launch.json NO subir.)
