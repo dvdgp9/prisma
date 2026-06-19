@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
     <link rel="stylesheet" href="/assets/css/styles.css?v=3.4">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.4">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.5">
 </head>
 
 <?php
@@ -75,11 +75,11 @@ $userApps = get_user_apps();
             <div class="quick-add-container">
                 <div class="quick-add-input-wrapper">
                     <i class="iconoir-plus quick-add-icon"></i>
-                    <input 
-                        type="text" 
-                        id="quick-add-input" 
-                        class="quick-add-input" 
-                        placeholder="Escribe una tarea y pulsa Enter..."
+                    <input
+                        type="text"
+                        id="quick-add-input"
+                        class="quick-add-input"
+                        placeholder="Escribe una tarea y pulsa Enter…  (prueba: mañana, viernes, 15/07, @app)"
                         autocomplete="off"
                     >
                     <div class="quick-add-actions">
@@ -88,6 +88,9 @@ $userApps = get_user_apps();
                         </button>
                     </div>
                 </div>
+
+                <!-- Chips de detección en vivo (fecha / app a partir del texto) -->
+                <div class="quick-add-chips" id="quick-add-chips" hidden></div>
                 
                 <!-- Expanded options (hidden by default) -->
                 <div class="quick-add-expanded" id="quick-add-expanded">
@@ -265,7 +268,14 @@ $userApps = get_user_apps();
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <script src="/assets/js/tasks.js"></script>
+    <script>
+        // Apps del usuario para el parser de creación rápida.
+        const QUICK_APPS = <?php echo json_encode(array_map(function ($a) {
+            return ['id' => (int) $a['id'], 'name' => $a['name']];
+        }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
+    </script>
+    <script src="/assets/js/task-parser.js?v=1"></script>
+    <script src="/assets/js/tasks.js?v=2"></script>
     <script src="/assets/js/pwa.js"></script>
 </body>
 

@@ -6,6 +6,12 @@
       "runtimeExecutable": "php",
       "runtimeArgs": ["-d", "output_buffering=On", "-d", "display_errors=Off", "-S", "localhost:8765", "-t", "."],
       "port": 8765
+    },
+    {
+      "name": "prisma-preview",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["-d", "output_buffering=On", "-d", "display_errors=Off", "-S", "localhost:8799", "-t", "."],
+      "port": 8799
     }
   ]
 }

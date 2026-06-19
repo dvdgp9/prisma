@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+  Harness LOCAL de verificación visual para la creación rápida de tareas.
+  No subir a producción. Carga el parser real y replica el markup mínimo
+  del quick-add para comprobar los chips de detección en vivo.
+-->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview · Quick Add tareas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/assets/css/tasks.css">
+    <style>
+        body { font-family: 'Geist', sans-serif; padding: 2rem; max-width: 720px; margin: 0 auto; }
+        .log { margin-top: 1rem; font-family: monospace; font-size: 0.8rem; color: var(--text-secondary); white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h2>Creación rápida (preview local)</h2>
+    <div class="quick-add-container">
+        <div class="quick-add-input-wrapper">
+            <i class="iconoir-plus quick-add-icon"></i>
+            <input type="text" id="quick-add-input" class="quick-add-input"
+                placeholder="Escribe una tarea y pulsa Enter…  (prueba: mañana, viernes, 15/07, @app)" autocomplete="off">
+        </div>
+        <div class="quick-add-chips" id="quick-add-chips" hidden></div>
+    </div>
+    <div class="log" id="log"></div>
+
+    <script src="/assets/js/task-parser.js"></script>
+    <script>
+        const QUICK_APPS = [
+            { id: 1, name: 'Puri' },
+            { id: 7, name: 'Reservas' },
+            { id: 9, name: 'Internal Tools' }
+        ];
+        let quickIgnore = { date: false, app: false };
+        function escapeHtml(t){ const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML; }
+        function formatDueDate(s){ const [y,m,d]=s.split('-').map(Number); const dt=new Date(y,m-1,d);
+            const t=new Date(); const lt=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+            const diff=Math.ceil((dt-lt)/86400000); if(diff===0)return 'Hoy'; if(diff===1)return 'Mañana';
+            return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+        function parseQuickInput(){ return parseQuickTask(document.getElementById('quick-add-input').value, QUICK_APPS); }
+        function renderQuickPreview(){
+            const c=document.getElementById('quick-add-chips'); const p=parseQuickInput(); const chips=[];
+            if(p.date&&!quickIgnore.date) chips.push(`<span class="quick-chip"><i class="iconoir-calendar"></i><span>${escapeHtml(formatDueDate(p.date.value))}</span><button type="button" class="quick-chip-remove" onclick="dismissQuickChip('date')"><i class="iconoir-xmark"></i></button></span>`);
+            if(p.app&&!quickIgnore.app) chips.push(`<span class="quick-chip"><i class="iconoir-app-window"></i><span>${escapeHtml(p.app.name)}</span><button type="button" class="quick-chip-remove" onclick="dismissQuickChip('app')"><i class="iconoir-xmark"></i></button></span>`);
+            c.hidden=chips.length===0; c.innerHTML=chips.join('');
+            document.getElementById('log').textContent = 'parsed: '+JSON.stringify(p,null,0);
+        }
+        function dismissQuickChip(k){ quickIgnore[k]=true; renderQuickPreview(); }
+        function resetQuickPreview(){ quickIgnore={date:false,app:false}; const c=document.getElementById('quick-add-chips'); c.hidden=true; c.innerHTML=''; }
+        const input=document.getElementById('quick-add-input');
+        let timer=null;
+        input.addEventListener('input',()=>{ if(!input.value.trim()){resetQuickPreview();return;} clearTimeout(timer); timer=setTimeout(renderQuickPreview,120); });
+        input.value='Llamar a Juan mañana @puri'; renderQuickPreview();
+    </script>
+</body>
+</html>

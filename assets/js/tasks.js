@@ -7,6 +7,10 @@ let teamMembers = [];
 let selectedShareUsers = [];
 let shareWithAll = false;
 
+// Detección descartada por el usuario en la creación rápida (chips con la "x").
+// Se mantiene hasta que se crea la tarea o se vacía el input.
+let quickIgnore = { date: false, app: false };
+
 document.addEventListener('DOMContentLoaded', () => {
     loadTasks();
     setupQuickAdd();
@@ -32,9 +36,21 @@ function setupQuickAdd() {
             input.blur();
             expanded.classList.remove('visible');
             expandBtn.classList.remove('active');
+            resetQuickPreview();
         }
     });
-    
+
+    // Preview en vivo de fecha/app detectadas (con debounce ligero).
+    let previewTimer = null;
+    input.addEventListener('input', () => {
+        if (!input.value.trim()) {
+            resetQuickPreview();
+            return;
+        }
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(renderQuickPreview, 120);
+    });
+
     // Toggle expanded options
     expandBtn.addEventListener('click', () => {
         expanded.classList.toggle('visible');
@@ -42,31 +58,113 @@ function setupQuickAdd() {
     });
 }
 
+// Analiza el input actual con el parser (si está disponible).
+function parseQuickInput() {
+    const input = document.getElementById('quick-add-input');
+    if (typeof parseQuickTask !== 'function') return { date: null, app: null };
+    return parseQuickTask(input.value, typeof QUICK_APPS !== 'undefined' ? QUICK_APPS : []);
+}
+
+// Pinta los chips de detección bajo el input.
+function renderQuickPreview() {
+    const container = document.getElementById('quick-add-chips');
+    if (!container) return;
+
+    const parsed = parseQuickInput();
+    const chips = [];
+
+    if (parsed.date && !quickIgnore.date) {
+        chips.push(`
+            <span class="quick-chip" data-kind="date">
+                <i class="iconoir-calendar"></i>
+                <span>${escapeHtml(formatDueDate(parsed.date.value))}</span>
+                <button type="button" class="quick-chip-remove" onclick="dismissQuickChip('date')" title="No usar la fecha">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </span>`);
+    }
+    if (parsed.app && !quickIgnore.app) {
+        chips.push(`
+            <span class="quick-chip" data-kind="app">
+                <i class="iconoir-app-window"></i>
+                <span>${escapeHtml(parsed.app.name)}</span>
+                <button type="button" class="quick-chip-remove" onclick="dismissQuickChip('app')" title="No usar la app">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </span>`);
+    }
+
+    if (chips.length === 0) {
+        container.hidden = true;
+        container.innerHTML = '';
+        return;
+    }
+    container.hidden = false;
+    container.innerHTML = chips.join('');
+}
+
+// El usuario descarta una detección: se conserva como texto literal del título.
+function dismissQuickChip(kind) {
+    quickIgnore[kind] = true;
+    renderQuickPreview();
+    document.getElementById('quick-add-input').focus();
+}
+
+// Limpia preview y estado de descartes.
+function resetQuickPreview() {
+    quickIgnore = { date: false, app: false };
+    const container = document.getElementById('quick-add-chips');
+    if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+    }
+}
+
 // Create task from quick add
 async function createQuickTask() {
     const input = document.getElementById('quick-add-input');
-    const title = input.value.trim();
-    
-    if (!title) return;
-    
+    const raw = input.value.trim();
+
+    if (!raw) return;
+
+    // Detección NLP: limpiamos del título solo los tokens no descartados.
+    const parsed = parseQuickInput();
+    let title = raw;
+    let parsedAppId = null;
+    let parsedDueDate = null;
+
+    if (parsed.date && !quickIgnore.date) {
+        title = stripQuickMatch(title, parsed.date.match);
+        parsedDueDate = parsed.date.value;
+    }
+    if (parsed.app && !quickIgnore.app) {
+        title = stripQuickMatch(title, parsed.app.match);
+        parsedAppId = parsed.app.id;
+    }
+    title = title.trim();
+    if (!title) title = raw; // no dejar el título vacío si todo era metadato
+
     const expanded = document.getElementById('quick-add-expanded');
     const isExpanded = expanded.classList.contains('visible');
-    
+
     const taskData = {
         title: title
     };
-    
-    // Get expanded options if visible
+
+    if (parsedAppId) taskData.app_id = parsedAppId;
+    if (parsedDueDate) taskData.due_date = parsedDueDate;
+
+    // Las opciones manuales del panel expandido tienen prioridad si se rellenan.
     if (isExpanded) {
         const appId = document.getElementById('quick-add-app').value;
         const description = document.getElementById('quick-add-description').value.trim();
         const dueDate = document.getElementById('quick-add-due-date').value;
-        
+
         if (appId) taskData.app_id = parseInt(appId);
         if (description) taskData.description = description;
         if (dueDate) taskData.due_date = dueDate;
     }
-    
+
     try {
         const response = await fetch('/api/tasks.php', {
             method: 'POST',
@@ -81,7 +179,8 @@ async function createQuickTask() {
             input.value = '';
             document.getElementById('quick-add-description').value = '';
             document.getElementById('quick-add-due-date').value = '';
-            
+            resetQuickPreview();
+
             // Reload tasks
             await loadTasks();
             

@@ -1472,3 +1472,77 @@ Verificación: `php -l` OK (ai-inbox.php, index.php), `node --check` OK (main.js
 - `background: <color>` (shorthand) resetea `background-image`; para selects con chevron usar `background-color` o redefinir el chevron en la regla específica (caso `.sort-select` que ya lo hacía bien).
 - Las funciones de asignación de `main.js` ahora aceptan `prefix`; el modal de edición sigue llamándolas sin args (default 'edit'), no romper esa compatibilidad.
 - `api/assignments.php` POST exige `can_edit_requests()`; si un usuario sin permiso usa la nota IA, la asignación falla en silencio (la mejora se crea igual) — comportamiento aceptado.
+
+---
+
+# PLAN: Revamp de Tareas (Creación rápida NLP + Agenda/Dashboard) — 2026-06-19
+
+## Background and Motivation
+La parte de Mejoras funciona bien y es "atemporal". La parte de Tareas es mejorable en dos frentes:
+1. **Creación**: rápida para el título, pero poner fecha/app es tedioso (date picker nativo + abrir "más opciones"). Se quiere mantener la creación rapidísima pero poder configurar sobre la marcha.
+2. **El "después"**: faltan vistas que muestren tareas futuras y avisen claramente de lo que toca.
+
+Decisiones tomadas con el usuario (Planner, 2026-06-19):
+- Creación: **Parser local de lenguaje natural** (Opción A). Sin IA por tarea (latencia/coste/offline). El AI Inbox ya cubre notas largas.
+- "Después": **Vista Agenda en la página de tareas** + **widget en la vista global (index.php, home)**. (Email y Web Push quedan fuera de este alcance.)
+- Prioridad: **NO** se añade campo de prioridad. Solo fecha y app.
+- Principios UX (de taste-skill, adaptados a PHP plano): jerarquía por peso/color en vez de cajas, sin puntos de color decorativos, sin em-dashes, densidad media, agrupación temporal clara.
+
+## Key Challenges and Analysis
+- **Sin build / hosting compartido**: todo JS plano en `assets/js/`, CSS en `assets/css/`. Versionar `?v=` y `CACHE_NAME` de sw.js al tocar assets (PWA cachea).
+- **Parser NLP en español, client-side**: detectar fecha y app dentro del texto del input y limpiarlas del título. Sin dependencias externas (escribir parser propio pequeño).
+  - Fechas soportadas: `hoy`, `mañana`, `pasado mañana`, días de semana (`lunes`..`domingo` y abreviaturas `lun`,`mar`...), `en N días/semanas`, `próxima semana`/`semana que viene`, fechas numéricas `15/07`, `15-07`, `15/7/2026`.
+  - App: `@nombre` o `#nombre` (match difuso contra apps del usuario por prefijo/inclusión, case-insensitive, sin acentos).
+  - Salida: `{ cleanTitle, dueDate (YYYY-MM-DD|null), appId (int|null), appName }`.
+  - Resolución de fechas relativas en horario local del navegador (cuidado con `new Date('YYYY-MM-DD')` que es UTC; construir con `new Date(y,m,d)`).
+- **Confirmación visual ("chips en vivo")**: bajo el input, mostrar pills con lo detectado a medida que se escribe (debounce input). El usuario ve "📅 mañana · @Puri" antes de pulsar Enter. Pills con botón "x" para quitar el token detectado (vuelve a literal en el título). Reusar estilo de chips existente, no inventar puntos de color.
+- **Compatibilidad API**: `api/tasks.php` POST ya acepta `title`, `app_id`, `due_date`. NO requiere cambios de backend para la creación. El parser solo rellena ese payload.
+- **Vista Agenda**: agrupar las tareas ya devueltas por `api/tasks.php` (que ya ordena por due_date) en buckets en el cliente: Vencidas / Hoy / Mañana / Esta semana / Más adelante / Sin fecha. Cálculo de buckets en horario local. Tareas completadas quedan fuera de buckets (o en su sección actual con el filtro existente).
+- **Widget home (index.php / vista global)**: index.php usa carga por JS (`loadView('global')` en main.js). Añadir una tarjeta "Qué toca" con contadores (Vencidas / Hoy / Esta semana) que enlacen a tasks.php con filtro. Necesita un endpoint o reutilizar `api/tasks.php` GET (shared=0). Lo más simple: fetch a `/api/tasks.php`, contar en cliente. Evaluar si la vista global ya hace fetch de algo reutilizable.
+- **Riesgos**: el override global de `styles.css` (`input/select width:100%`, `textarea min-height:90px`) obliga a overrides por clase en cualquier UI compacta (pills, contadores).
+
+## High-level Task Breakdown
+
+### FASE 1 — Parser NLP en creación rápida (página tareas) — IMPLEMENTADA (pend. verificación usuario)
+- [x] 1.1 Escribir `parseQuickTask(text, userApps)` en `assets/js/tasks.js` (o nuevo `assets/js/task-parser.js`) que devuelva `{cleanTitle, dueDate, appId, appName, matchedTokens}`. 
+  - Éxito: con casos de prueba manuales ("Llamar a Juan mañana @puri", "Revisar informe viernes", "Pagar dominio 15/07 #reservas") devuelve título limpio + fecha + app correctos.
+- [x] 1.2 Render de chips en vivo bajo el input (debounce ~150ms) mostrando fecha y app detectadas, con "x" para descartar token. CSS en `assets/css/tasks.css` (sin puntos decorativos).
+  - Éxito: al teclear, aparecen/desaparecen los chips correctos; quitar un chip devuelve el literal al título al crear.
+- [x] 1.3 Conectar al submit (Enter): usar `cleanTitle`/`dueDate`/`appId` del parser en el payload POST existente. Mantener fallback "más opciones" manual.
+  - Éxito: Enter crea la tarea con fecha/app sin abrir el panel; el input se limpia y re-enfoca.
+- [x] 1.4 Pequeña ayuda/hint visible (placeholder o tooltip) explicando la sintaxis (`mañana`, `@app`, `15/07`).
+  - Éxito: usuario nuevo entiende la sintaxis sin documentación externa.
+- [x] 1.5 Versionar assets (`?v=`) y `CACHE_NAME` de sw.js.
+
+### FASE 2 — Vista Agenda (página tareas)
+- [ ] 2.1 Agrupar tareas en buckets temporales en `renderTasks()` (Vencidas/Hoy/Mañana/Esta semana/Más adelante/Sin fecha). Encabezados de sección con jerarquía por peso/color (Vencidas en rojo de tokens, no punto decorativo).
+  - Éxito: las tareas aparecen bajo el bucket correcto según `due_date` y fecha local; secciones vacías no se muestran.
+- [ ] 2.2 Toggle de vista (Agenda / Lista plana) **REQUISITO FIRME del usuario**, recordando preferencia en localStorage.
+  - Éxito: cambiar vista persiste entre recargas.
+- [ ] 2.3 Versionar assets.
+
+### FASE 3 — Widget "Qué toca" en vista global (home)
+- [ ] 3.1 Identificar dónde inyectar la tarjeta en la vista global de index.php/main.js.
+- [ ] 3.2 Tarjeta con contadores Vencidas / Hoy / Esta semana (reusando `api/tasks.php` GET), cada uno enlazando a tasks.php (con filtro/anchor de bucket).
+  - Éxito: contadores correctos; clic lleva a la sección/bucket correspondiente en tareas.
+- [ ] 3.3 Versionar assets.
+
+## Notas
+- Email diario y Web Push: documentados como opciones descartadas en este alcance; retomar si el usuario lo pide.
+
+## Current Status / Progress Tracking (19 Jun 2026 — Revamp Tareas, Fase 1)
+**Fase 1 (parser NLP en creación rápida) IMPLEMENTADA.** Archivos:
+- `assets/js/task-parser.js` (NUEVO): `parseQuickTask(text, apps)` + `stripQuickMatch()`. Detecta fecha (hoy/mañana/pasado mañana/día de semana/en N días/próxima semana/numérica DD/MM[/AAAA]) y app (@/# difuso sin acentos). Devuelve `{date:{value,match}, app:{id,name,match}}`.
+- `assets/js/tasks.js`: estado `quickIgnore`, `renderQuickPreview()` (chips en vivo, debounce 120ms), `dismissQuickChip()`, `resetQuickPreview()`; `createQuickTask()` limpia el título con los tokens no descartados; el panel "más opciones" manual sigue teniendo prioridad si se rellena.
+- `tasks.php`: `QUICK_APPS` (JSON apps), include `task-parser.js?v=1` + `tasks.js?v=2`, contenedor `#quick-add-chips`, placeholder con pista de sintaxis, `tasks.css?v=2.5`.
+- `assets/css/tasks.css`: `.quick-add-chips`, `.quick-chip`, `.quick-chip-remove`.
+- `sw.js`: `CACHE_NAME`/`RUNTIME_CACHE` → v4.
+- Harness local NUEVO `preview-tasks-quickadd.html` + config `prisma-preview` (puerto 8799) en `.claude/launch.json`. **No subir a producción.**
+
+Verificación hecha (Executor): `node --check` OK (parser, tasks.js), `php -l tasks.php` OK; 10 casos de parser correctos vía node (incl. 31/02 inválido descartado, viernes→próximo viernes); render visual de chips + descarte verificado en preview (sin errores de consola). Sin cambios de backend (`api/tasks.php` ya acepta title/app_id/due_date).
+
+**Pendiente: verificación del usuario en el dashboard autenticado** (subir assets + refrescar PWA). Tras OK, continuar con Fase 2 (Agenda + toggle Agenda/Lista persistente).
+
+## Lessons (Revamp Tareas)
+- El `php -S :8765` que suele estar levantado NO sirve este proyecto (404). Para preview visual usar la config `prisma-preview` (puerto 8799).
+- Fechas relativas: construir con `new Date(y, m-1, d)` (local); `new Date('YYYY-MM-DD')` es UTC y desplaza el día.
