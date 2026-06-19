@@ -56,16 +56,6 @@ $company_name = $user['company_name'] ?? '';
                 <span>Nota rápida</span>
             </a>
 
-            <?php if (has_role('admin')): ?>
-                <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>"
-                   onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>"
-                   class="nav-item" id="pending-approvals-nav" data-nav="pending">
-                    <i class="iconoir-hourglass"></i>
-                    <span>Por aprobar</span>
-                    <span class="nav-count" id="pending-count" hidden></span>
-                </a>
-            <?php endif; ?>
-
             <a href="javascript:void(0)" class="nav-item" onclick="toggleInbox()" id="inbox-nav-btn" data-nav="inbox">
                 <i class="iconoir-bell"></i>
                 <span>Notificaciones</span>
@@ -90,6 +80,15 @@ $company_name = $user['company_name'] ?? '';
         <!-- Tools / Admin section -->
         <div class="nav-section nav-section--tools">
             <div class="nav-tools-row">
+                <?php if (has_role('admin')): ?>
+                    <a href="<?php echo $current_page === 'index' ? '#' : '/index.php#pending'; ?>"
+                       onclick="<?php echo $current_page === 'index' ? 'openPendingApprovalsView(event); return false;' : 'return true;'; ?>"
+                       class="nav-item nav-tool-icon" id="pending-approvals-nav" data-nav="pending" aria-label="Por aprobar" data-tooltip="Por aprobar">
+                        <i class="iconoir-hourglass"></i>
+                        <span>Por aprobar</span>
+                        <span class="nav-count nav-count--accent" id="pending-count" hidden></span>
+                    </a>
+                <?php endif; ?>
                 <?php if (has_role('superadmin')): ?>
                     <a href="/releases.php" class="nav-item nav-tool-icon <?php echo $current_page === 'releases' ? 'active' : ''; ?>" aria-label="Release Planner" data-tooltip="Release Planner">
                         <i class="iconoir-rocket"></i>
@@ -100,13 +99,13 @@ $company_name = $user['company_name'] ?? '';
                     <i class="iconoir-journal"></i>
                     <span>Changelog</span>
                 </a>
-                <?php if (has_role('admin')): ?>
-                    <?php if (has_role('superadmin')): ?>
-                        <a href="/admin.php" class="nav-item nav-tool-icon <?php echo $current_page === 'admin' ? 'active' : ''; ?>" aria-label="Panel Admin" data-tooltip="Panel Admin">
-                            <i class="iconoir-shield-check"></i>
-                            <span>Panel Admin</span>
-                        </a>
-                    <?php endif; ?>
+                <?php if (has_role('superadmin')): ?>
+                    <a href="/admin.php" class="nav-item nav-tool-icon <?php echo $current_page === 'admin' ? 'active' : ''; ?>" aria-label="Panel Admin" data-tooltip="Panel Admin">
+                        <i class="iconoir-shield-check"></i>
+                        <span>Panel Admin</span>
+                    </a>
+                <?php elseif (has_role('admin')): ?>
+                    <!-- Admins no superadmin gestionan apps aquí (no tienen acceso al Panel Admin) -->
                     <a href="/manage-apps.php" class="nav-item nav-tool-icon <?php echo $current_page === 'manage-apps' ? 'active' : ''; ?>" aria-label="Gestionar apps" data-tooltip="Gestionar apps">
                         <i class="iconoir-settings"></i>
                         <span>Gestionar apps</span>

@@ -5600,6 +5600,23 @@ label {
     font-size: var(--fs-18);
 }
 
+/* Contador (p.ej. "Por aprobar") como badge en la esquina del icono */
+.nav-tools-row .nav-item {
+    position: relative;
+}
+
+.nav-tools-row .nav-item .nav-count {
+    position: absolute;
+    top: -4px;
+    right: 2px;
+    margin: 0;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: var(--fs-10, 0.625rem);
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
 .nav-item {
     display: flex;
     align-items: center;

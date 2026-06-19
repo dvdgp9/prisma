@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- Harness LOCAL: fila de iconos del sidebar con "Por aprobar" + badge. No subir a producción. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <style> body{font-family:'Geist',sans-serif;background:var(--surface,#fff);padding:2rem;} .box{max-width:240px;border:1px solid var(--ink-100,#eee);border-radius:8px;padding:12px;} </style>
+</head>
+<body>
+    <div class="box">
+        <div class="nav-section nav-section--tools">
+            <div class="nav-tools-row">
+                <a href="#" class="nav-item nav-tool-icon" id="pending-approvals-nav" aria-label="Por aprobar" data-tooltip="Por aprobar">
+                    <i class="iconoir-hourglass"></i>
+                    <span>Por aprobar</span>
+                    <span class="nav-count nav-count--accent" id="pending-count">3</span>
+                </a>
+                <a href="#" class="nav-item nav-tool-icon" aria-label="Release Planner" data-tooltip="Release Planner">
+                    <i class="iconoir-rocket"></i><span>Release Planner</span>
+                </a>
+                <a href="#" class="nav-item nav-tool-icon" aria-label="Changelog" data-tooltip="Changelog">
+                    <i class="iconoir-journal"></i><span>Changelog</span>
+                </a>
+                <a href="#" class="nav-item nav-tool-icon active" aria-label="Panel Admin" data-tooltip="Panel Admin">
+                    <i class="iconoir-shield-check"></i><span>Panel Admin</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
