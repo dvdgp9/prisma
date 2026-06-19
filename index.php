@@ -1010,7 +1010,7 @@ $company_name = $user['company_name'] ?? '';
         <i class="iconoir-plus"></i>
     </div>
     <div class="floating-task-input" id="floating-task-input">
-        <input type="text" id="floating-task-title" placeholder="Nueva tarea rápida..." onkeydown="handleFloatingTaskKeydown(event)">
+        <input type="text" id="floating-task-title" placeholder="Tarea rápida…  (mañana, viernes, 15/07, @app)" onkeydown="handleFloatingTaskKeydown(event)">
         <button class="floating-task-submit" onclick="submitFloatingTask()">
             <i class="iconoir-send"></i>
         </button>
@@ -1022,7 +1022,8 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/main.js?v=3.4"></script>
+    <script src="/assets/js/task-parser.js?v=2"></script>
+    <script src="/assets/js/main.js?v=3.5"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

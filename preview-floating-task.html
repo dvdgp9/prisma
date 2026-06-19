@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- Harness LOCAL del botón flotante de tarea rápida. No subir a producción. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body data-user-role="admin">
+    <div class="floating-task-btn" id="floating-task-btn"><i class="iconoir-plus"></i></div>
+    <div class="floating-task-input" id="floating-task-input">
+        <input type="text" id="floating-task-title">
+        <button class="floating-task-submit" onclick="submitFloatingTask()"></button>
+    </div>
+    <div id="toast-container"></div>
+
+    <script>
+        window.__posts = [];
+        const realFetch = window.fetch.bind(window);
+        window.fetch = (url, opts) => {
+            if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+                if (opts && opts.method === 'POST') window.__posts.push(JSON.parse(opts.body));
+                return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [], id: 99 }) });
+            }
+            return realFetch(url, opts);
+        };
+        window.addEventListener('load', async () => {
+            const p = await (await realFetch('/assets/js/task-parser.js?v=2')).text();
+            (0, eval)(p);
+            const m = await (await realFetch('/assets/js/main.js?v=3.5')).text();
+            (0, eval)(m);
+            window.apps = [{ id: 1, name: 'Puri' }, { id: 7, name: 'Reservas' }];
+            window.__test = async (val) => {
+                window.__posts = [];
+                document.getElementById('floating-task-title').value = val;
+                document.getElementById('floating-task-input').classList.add('active');
+                await submitFloatingTask();
+                return window.__posts[0];
+            };
+            window.__ready = true;
+        });
+    </script>
+</body>
+</html>

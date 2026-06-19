@@ -1569,3 +1569,14 @@ Verificación (Executor): `node --check` + `php -l` OK; en preview los 7 buckets
 Verificación (Executor): `node --check` (main.js, tasks.js) + `php -l` (index.php, tasks.php) OK; en preview con main.js REAL los contadores salen correctos (2 vencidas / 1 hoy / 2 próximos 7 días con el mock), hrefs por bucket correctos, 3 col en escritorio y 1 col en móvil, sin errores de consola. **Pendiente verificación del usuario.**
 
 Archivos a subir (Fase 3): `index.php`, `assets/js/main.js`, `assets/js/tasks.js`, `assets/css/styles.css`, `sw.js`. (Harness `preview-tasks-*.html` y la config `prisma-preview` de launch.json NO subir.)
+
+## Current Status / Progress Tracking (19 Jun 2026 — Parser en botón flotante)
+**Añadido el parseo NLP también al botón flotante de tarea rápida** (solo está en `index.php`, no en toda la app pese a parecerlo).
+- `index.php`: incluido `task-parser.js?v=2` antes de `main.js?v=3.5`; placeholder del input flotante con pista de sintaxis.
+- `assets/js/main.js`: `submitFloatingTask()` ahora parsea con `parseQuickTask(raw, apps)` (reusa el array global `apps` ya poblado por `loadApps()`), limpia el título con `stripQuickMatch`, envía `due_date`/`app_id`, y el toast muestra lo detectado (fecha + @app). Nuevo helper `formatFloatingDate()`.
+- `sw.js`: caché → v8.
+- Harness NUEVO `preview-floating-task.html` (no subir).
+
+Verificación (Executor): `node --check` + `php -l` OK; end-to-end con main.js+parser reales y `apps` poblado vía `loadApps`: "...mañana @puri" → {due_date, app_id:1, title limpio}; "...30 junio #reservas" → {due_date 30/06, app_id:7, title limpio}. Pendiente verificación del usuario.
+
+Archivos a subir: `index.php`, `assets/js/main.js`, `sw.js`. (No subir harness `preview-*.html`.)

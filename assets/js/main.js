@@ -2464,6 +2464,19 @@ function formatDate(dateString) {
 
 // ========== Floating Task Button ==========
 
+// Etiqueta breve de fecha (Hoy / Mañana / "5 jul") en horario local.
+function formatFloatingDate(dateString) {
+    if (!dateString) return '';
+    const [y, m, d] = dateString.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const t = new Date();
+    const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    const diff = Math.round((date - today) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'Hoy';
+    if (diff === 1) return 'Mañana';
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
 function toggleFloatingTaskInput() {
     const btn = document.getElementById('floating-task-btn');
     const input = document.getElementById('floating-task-input');
@@ -2488,25 +2501,47 @@ function handleFloatingTaskKeydown(e) {
 
 async function submitFloatingTask() {
     const titleInput = document.getElementById('floating-task-title');
-    const title = titleInput.value.trim();
-    
-    if (!title) return;
-    
+    const raw = titleInput.value.trim();
+
+    if (!raw) return;
+
+    // Mismo parseo NLP que la creación rápida de la página de tareas.
+    const parsed = (typeof parseQuickTask === 'function') ? parseQuickTask(raw, apps) : { date: null, app: null };
+    let title = raw;
+    const payload = {};
+
+    if (parsed.date) {
+        title = stripQuickMatch(title, parsed.date.match);
+        payload.due_date = parsed.date.value;
+    }
+    if (parsed.app) {
+        title = stripQuickMatch(title, parsed.app.match);
+        payload.app_id = parsed.app.id;
+    }
+    title = title.trim();
+    if (!title) title = raw;
+    payload.title = title;
+
+    // Feedback de lo detectado en el toast.
+    const detected = [];
+    if (parsed.date) detected.push(formatFloatingDate(parsed.date.value));
+    if (parsed.app) detected.push('@' + parsed.app.name);
+
     try {
         const response = await fetch('/api/tasks.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title })
+            body: JSON.stringify(payload)
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             titleInput.value = '';
             toggleFloatingTaskInput();
             showToast({
                 title: 'Tarea creada',
-                message: title,
+                message: detected.length ? `${title} · ${detected.join(' · ')}` : title,
                 icon: 'iconoir-check'
             }, 'toast-completed');
         } else {
