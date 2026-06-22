@@ -1580,3 +1580,27 @@ Archivos a subir (Fase 3): `index.php`, `assets/js/main.js`, `assets/js/tasks.js
 Verificación (Executor): `node --check` + `php -l` OK; end-to-end con main.js+parser reales y `apps` poblado vía `loadApps`: "...mañana @puri" → {due_date, app_id:1, title limpio}; "...30 junio #reservas" → {due_date 30/06, app_id:7, title limpio}. Pendiente verificación del usuario.
 
 Archivos a subir: `index.php`, `assets/js/main.js`, `sw.js`. (No subir harness `preview-*.html`.)
+
+## Current Status / Progress Tracking (19 Jun 2026 — Ajustes sidebar)
+**Ajustes de sidebar (cerrado y aprobado por el usuario):**
+- "Por aprobar" movido de la nav principal a la fila de iconos inferior (`nav-tools-row`, 1ª posición); conserva onclick/href y el contador `#pending-count` ahora como badge en esquina (`.nav-tools-row .nav-item .nav-count` absoluto).
+- "Gestionar apps" eliminado para superadmin (duplica Panel Admin → Apps) pero **role-aware**: se muestra a admin NO superadmin (que no tiene acceso a `admin.php`), preservando su única vía a `manage-apps.php`.
+- `includes/sidebar.php`, `assets/css/styles.css`. Versionado: `styles.css?v=3.6` en TODAS las páginas, caché PWA → v9.
+
+**Lección:** `manage-apps.php` requiere rol `admin`; `admin.php` (con pestaña Aplicaciones) requiere `superadmin`. No son equivalentes en acceso aunque sí en función → al "deduplicar" en UI, gating por rol para no dejar sin acceso a admins normales.
+
+## High-level Task Breakdown (contadores globales del sidebar)
+- [x] 1. Mantener los contadores de pendientes de todas las aplicaciones al navegar a una app o empresa, sin cambiar el filtro de solicitudes de la vista central. IMPLEMENTADO, pendiente de verificación manual del usuario.
+  - Éxito: los badges usan el conjunto global de solicitudes accesibles; la vista central conserva solo las solicitudes de la app/empresa activa; el JS supera validación sintáctica.
+
+## Project Status Board (contadores globales del sidebar)
+- [x] Corregir el origen de datos de `updateAppCounters()` y verificar sintaxis.
+- [ ] Verificación manual del usuario en el dashboard autenticado.
+
+## Executor's Feedback or Assistance Requests (contadores globales del sidebar)
+- Diagnóstico: `loadRequests()` reemplaza `requests` con la respuesta filtrada por `app_id`/`company_id`, y `updateAppCounters()` calcula todos los badges desde ese mismo array. Por eso desaparecen los contadores de las apps no activas.
+- Implementación: `appCounterRequests` se carga sin filtro de vista mediante el endpoint existente (que conserva el scope de permisos del usuario); `requests` sigue alimentando exclusivamente el panel central filtrado. Versionado `main.js?v=3.6` y caché PWA v10.
+- Verificación Executor: `node --check assets/js/main.js`, `php -l index.php`, `php -l api/requests.php` y `git diff --check`, todos correctos. Se solicita comprobar manualmente que al entrar en una app siguen visibles los badges de las demás apps.
+
+## Lessons (contadores globales del sidebar)
+- Los badges globales no deben derivarse del array `requests`, porque ese estado representa la consulta y los filtros de la vista central activa.

@@ -2,6 +2,7 @@
 
 let apps = [];
 let requests = [];
+let appCounterRequests = [];
 let currentView = 'global';
 let currentAppId = null;
 let currentCompanyId = null;
@@ -840,9 +841,9 @@ function renderAppsNav() {
 }
 
 function updateAppCounters() {
-    if (typeof requests === 'undefined' || !Array.isArray(requests)) return;
+    if (!Array.isArray(appCounterRequests)) return;
     const counts = {};
-    for (const r of requests) {
+    for (const r of appCounterRequests) {
         if (r.status === 'completed' || r.status === 'discarded') continue;
         counts[r.app_id] = (counts[r.app_id] || 0) + 1;
     }
@@ -852,6 +853,19 @@ function updateAppCounters() {
         if (n > 0) { el.textContent = n; el.hidden = false; }
         else { el.textContent = ''; el.hidden = true; }
     });
+}
+
+async function loadAppCounters() {
+    try {
+        const response = await fetch('/api/requests.php?sort_primary=date');
+        const data = await response.json();
+        if (data.success) {
+            appCounterRequests = data.data || [];
+            updateAppCounters();
+        }
+    } catch (error) {
+        console.error('Error loading global app counters:', error);
+    }
 }
 
 function toggleSidebarUserMenu(event) {
@@ -1066,7 +1080,7 @@ async function loadRequests() {
         if (data.success) {
             requests = data.data;
             renderRequests();
-            updateAppCounters();
+            loadAppCounters();
         }
     } catch (error) {
         console.error('Error loading requests:', error);
