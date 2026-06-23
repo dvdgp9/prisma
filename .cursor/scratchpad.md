@@ -1604,3 +1604,91 @@ Archivos a subir: `index.php`, `assets/js/main.js`, `sw.js`. (No subir harness `
 
 ## Lessons (contadores globales del sidebar)
 - Los badges globales no deben derivarse del array `requests`, porque ese estado representa la consulta y los filtros de la vista central activa.
+
+## Background and Motivation (crear tarea desde mejora)
+El usuario quiere poder crear una tarea directamente desde una mejora, pulsando un botón y eligiendo solo la fecha. La intención es reducir fricción entre el backlog de mejoras y la ejecución diaria en "Mis tareas".
+
+La tarea debe tener un nombre natural, aunque la mejora tenga títulos técnicos tipo `Add: xxx`, `Fix: xxx`, `feat: xxx` o similares. Recomendación Planner: empezar sin IA. Ya existe un parser local de tareas y el coste/latencia de IA no parece justificado para este flujo. La primera versión debe usar una normalización determinista, testeada y fácil de ajustar; si en uso real los títulos siguen saliendo raros, se podrá añadir una capa IA ligera después.
+
+Principios UX a aplicar con `design-taste-frontend`, adaptados al stack actual PHP/JS/CSS plano:
+- Botón integrado en las acciones de la mejora, con icono existente y etiqueta/tooltip claro.
+- Modal compacto: título propuesto editable, fecha obligatoria o destacada, contexto de la mejora visible sin ruido.
+- Estados completos: cargando, éxito, error inline, prevención de doble submit.
+- CSS siempre en `assets/css/styles.css`, sin inline nuevo.
+- Mantener densidad media, colores sobrios y coherencia con los patrones actuales; no introducir librerías nuevas salvo necesidad verificada.
+
+## Key Challenges and Analysis (crear tarea desde mejora)
+- La app ya tiene `api/tasks.php` con POST para `title`, `description`, `app_id`, `due_date` e `is_shared`. Esto permite crear la tarea sin backend nuevo si no se exige vínculo formal con la mejora.
+- Hay que revisar el esquema real de `tasks` antes de decidir si añadir `source_request_id` o similar. Por la regla de cuidado con base de datos, cualquier migración debe ser pequeña, reversible y documentada antes de ejecutarse.
+- Conviene crear una función pura para convertir título de mejora en título natural de tarea:
+  - Quitar prefijos convencionales: `add:`, `fix:`, `feat:`, `bug:`, `hotfix:`, `update:`, `mejora:`, `arreglar:`.
+  - Limpiar corchetes/tags iniciales si existen (`[App]`, `[BUG]`) solo cuando sean metadatos evidentes.
+  - Colapsar espacios, conservar mayúsculas significativas y no inventar contenido.
+  - Si el resultado queda vacío o ambiguo, usar el título original limpio.
+- Si se crea vínculo con la mejora, el Executor debe confirmar permisos: solo crear tareas para mejoras visibles/editables por el usuario y preservar `company_id`/`app_id` correctos.
+- El flujo debe funcionar tanto desde card/listado como desde modal de detalle si ambos muestran acciones de mejora.
+- Hay que versionar assets (`?v=`) y revisar `sw.js` si se toca JS/CSS cacheado por PWA.
+
+## High-level Task Breakdown (crear tarea desde mejora)
+
+### FASE CTM.1 — Reconocimiento técnico y decisión de vínculo
+- [ ] Revisar estructura de `requests`, `tasks`, render de acciones de mejora y endpoints actuales.
+  - Éxito: queda claro si la tarea puede crearse con `api/tasks.php` actual o si hace falta migración para enlazar `tasks.source_request_id`.
+- [ ] Si hace falta migración, documentar SQL mínimo y pedir confirmación antes de ejecutarla.
+  - Éxito: no se toca base de datos sin una decisión explícita y entendida.
+
+### FASE CTM.2 — Normalización determinista del título
+- [ ] Añadir una función pura de normalización de título de mejora a tarea, preferiblemente en un archivo JS existente o helper pequeño reutilizable.
+  - Éxito: casos como `Add: filtros por fecha`, `fix: error botón móvil`, `[BUG] Login no responde` producen títulos naturales y conservan el sentido.
+- [ ] Crear/verificar pruebas manuales o harness local para la función.
+  - Éxito: el Executor puede mostrar una tabla de entradas/salidas y validar que no destruye títulos normales.
+
+### FASE CTM.3 — UI de creación desde mejora
+- [ ] Añadir botón "Crear tarea" en las acciones de mejora siguiendo el patrón visual actual.
+  - Éxito: aparece en card/listado o modal donde tenga más sentido, no rompe responsive y no compite con acciones críticas.
+- [ ] Añadir modal compacto con título propuesto editable y selector de fecha.
+  - Éxito: el usuario solo necesita escoger fecha y confirmar; puede corregir el título si quiere.
+- [ ] Implementar estados de loading/error/success y bloqueo de doble envío.
+  - Éxito: errores de API se ven en el modal; éxito cierra modal y muestra toast claro.
+
+### FASE CTM.4 — Creación y verificación end-to-end
+- [ ] Conectar submit a `api/tasks.php` o endpoint específico si se decide enlazar formalmente.
+  - Éxito: la tarea se crea con `title`, `due_date`, `app_id` de la mejora y descripción/contexto mínimo si procede.
+- [ ] Verificar con lint/syntax checks y preview manual.
+  - Éxito: `node --check`/`php -l` pasan, no hay errores de consola, y la tarea aparece en `tasks.php` bajo la fecha elegida.
+- [ ] Versionar assets y documentar archivos tocados.
+  - Éxito: PWA/browser no sirve JS/CSS antiguo tras despliegue.
+
+## Project Status Board (crear tarea desde mejora)
+- [x] CTM.1 Reconocimiento técnico y decisión de vínculo.
+- [x] CTM.2 Normalización determinista del título.
+- [x] CTM.3 UI de creación desde mejora.
+- [x] CTM.4 Creación y verificación end-to-end.
+
+## Executor's Feedback or Assistance Requests (crear tarea desde mejora)
+- Planner recomienda empezar sin IA. La IA solo debería considerarse si, tras probar la normalización determinista, los títulos reales siguen siendo poco naturales.
+- Antes de cualquier cambio de base de datos, el Executor debe revisar el esquema y pedir confirmación si la implementación requiere migración o nuevo campo de relación.
+- Al trabajar UI, usar el skill `design-taste-frontend` con criterio conservador para esta app: microinteracciones y estados sí; dependencias nuevas o motion avanzado no, salvo justificación clara.
+
+Actualización Executor (2026-06-23, CTM.1):
+- Revisado `api/tasks.php`: el POST actual permite crear tareas con `title`, `description`, `app_id`, `due_date` e `is_shared`. No hace falta backend nuevo para una primera versión.
+- Revisado `api/requests.php`: el GET devuelve `id`, `title`, `description`, `app_id`, `app_name`, permisos por apps visibles y metadatos suficientes para alimentar el modal.
+- Revisado `assets/js/main.js`: las acciones de mejora se renderizan en `renderRequestsTable()` y `createRequestCard()`. El punto natural para el botón es el cluster de acciones de la card y, opcionalmente, el footer del modal de edición.
+- Revisado `index.php`: el modal de edición ya tiene footer con acciones; se puede añadir un modal compacto separado para "Crear tarea desde mejora".
+- Revisado `schema.sql` y migraciones: no hay tabla `tasks` documentada en `schema.sql` ni relación formal `tasks.source_request_id` / `tasks.request_id`. La API presupone tablas de tareas existentes en producción, pero el esquema versionado está incompleto.
+- Decisión técnica recomendada: implementar la primera versión sin migración, creando la tarea con `app_id` de la mejora y `description` contextual tipo "Creada desde mejora #ID: título". Esto evita tocar base de datos y cumple el flujo principal.
+- Si el usuario quiere trazabilidad fuerte bidireccional más adelante, planificar una migración separada para `tasks.source_request_id` con FK a `requests(id)`, índice y actualización de GET para exponer la relación. No ejecutar esa migración sin confirmación explícita.
+
+Actualización Executor (2026-06-23, CTM.2):
+- Añadida `normalizeRequestTitleForTask(title)` en `assets/js/task-parser.js`, expuesta en `window` junto al parser existente.
+- La función no usa IA ni dependencias: elimina tags iniciales (`[BUG]`, `[Puri]`), prefijos técnicos (`Add:`, `fix:`, `feat(auth):`, `Actualizar:`, `UI -`, `hotfix |`) y limpia espacios/separadores sin inventar contenido.
+- Verificación ejecutada: `node --check assets/js/task-parser.js`, tabla de 10 casos entrada/salida vía Node y `git diff --check`, todo correcto.
+
+Actualización Executor (2026-06-23, CTM.3 + CTM.4):
+- Añadido botón "Crear tarea" en acciones de mejora tanto en tabla como en cards (`assets/js/main.js`), usando `iconoir-task-list` y estilos específicos en `assets/css/styles.css`.
+- Añadido modal compacto en `index.php` con contexto de la mejora, título editable normalizado y fecha requerida. El foco entra directamente en la fecha para mantener el flujo rápido.
+- Conectado `submitTaskFromRequest()` a `api/tasks.php` sin migración: envía `title`, `due_date`, `app_id` y `description` con contexto "Creada desde mejora #ID".
+- Estados cubiertos: validación inline, loading/deshabilitado, error inline, toast de éxito y refresco del widget "Qué toca" si está disponible.
+- Versionado: `styles.css?v=3.7`, `task-parser.js?v=3`, `main.js?v=3.7`, PWA `sw.js` cache v11.
+- Verificación Executor: `node --check assets/js/main.js`, `node --check assets/js/task-parser.js`, `php -l index.php` y `git diff --check`, todo correcto.
+- Pendiente: verificación manual en dashboard autenticado para confirmar que la tarea aparece en `tasks.php` con la fecha elegida y la app de la mejora.

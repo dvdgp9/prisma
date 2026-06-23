@@ -196,6 +196,45 @@
         return out.replace(/\s{2,}/g, ' ').trim();
     }
 
+    function capitalizeFirstLetter(text) {
+        if (!text) return text;
+        return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    /**
+     * Convierte títulos técnicos de mejoras en títulos más naturales para tareas.
+     * No inventa contenido: solo retira metadatos habituales y limpia puntuación.
+     */
+    function normalizeRequestTitleForTask(title) {
+        const original = (title || '').trim();
+        if (!original) return '';
+
+        let cleaned = original
+            .replace(/\s+/g, ' ')
+            .replace(/^[\s:;,.|/\\-]+/, '')
+            .trim();
+
+        // Metadatos iniciales tipo "[BUG]", "[Puri]", "(fix)".
+        cleaned = cleaned
+            .replace(/^(\[[^\]]{1,32}\]|\([^)()]{1,32}\))\s*[:\-–—|]?\s*/i, '')
+            .trim();
+
+        // Prefijos técnicos o de commit al inicio del título.
+        cleaned = cleaned
+            .replace(/^(?:add|añadir|agregar|fix|arreglar|corregir|bug|hotfix|feat|feature|update|actualizar|improve|mejorar|mejora|change|cambiar|remove|eliminar|delete|borrar|refactor|style|ui|ux|task|tarea)\s*(?:\([^)]{1,32}\))?\s*[:\-–—|]\s*/i, '')
+            .trim();
+
+        // Limpieza final por si el prefijo deja separadores sueltos.
+        cleaned = cleaned
+            .replace(/^[\s:;,.|/\\-]+/, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (!cleaned) cleaned = original;
+        return capitalizeFirstLetter(cleaned);
+    }
+
     global.parseQuickTask = parseQuickTask;
     global.stripQuickMatch = stripMatch;
+    global.normalizeRequestTitleForTask = normalizeRequestTitleForTask;
 })(window);

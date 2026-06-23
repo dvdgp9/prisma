@@ -314,6 +314,9 @@ function renderRequestsTable(filteredRequests, tableBody) {
                             <button type="button" class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                                 <i class="iconoir-edit"></i>
                             </button>
+                            <button type="button" class="quick-action-btn quick-action-btn--task" onclick="openCreateTaskFromRequestModal(${request.id})" title="Crear tarea">
+                                <i class="iconoir-task-list"></i>
+                            </button>
                         ` : ''}
                         ${canDelete ? `
                             <button type="button" class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
@@ -1383,6 +1386,9 @@ function createRequestCard(request, isFinished = false) {
                         <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
                             <i class="iconoir-edit-pencil"></i>
                         </button>
+                        <button class="quick-action-btn quick-action-btn--task" onclick="openCreateTaskFromRequestModal(${request.id})" title="Crear tarea">
+                            <i class="iconoir-task-list"></i>
+                        </button>
                         ${canDelete ? `
                             <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
                                 <i class="iconoir-trash"></i>
@@ -1395,6 +1401,140 @@ function createRequestCard(request, isFinished = false) {
     `;
 
     return card;
+}
+
+function findRequestById(requestId) {
+    const id = parseInt(requestId, 10);
+    const counterRequests = typeof appCounterRequests !== 'undefined' ? appCounterRequests : [];
+    return (requests || []).find(request => parseInt(request.id, 10) === id)
+        || (counterRequests || []).find(request => parseInt(request.id, 10) === id)
+        || null;
+}
+
+function openCreateTaskFromRequestModal(requestId) {
+    const request = findRequestById(requestId);
+    if (!request) {
+        showToast({
+            title: 'No se pudo abrir',
+            message: 'Recarga la vista e inténtalo de nuevo.',
+            icon: 'iconoir-warning-circle'
+        }, 'toast-error');
+        return;
+    }
+
+    const modal = document.getElementById('create-task-from-request-modal');
+    const titleInput = document.getElementById('task-from-request-title');
+    const dateInput = document.getElementById('task-from-request-date');
+    const requestIdInput = document.getElementById('task-source-request-id');
+    const requestAppInput = document.getElementById('task-source-request-app-id');
+    const sourceLabel = document.getElementById('task-source-request-label');
+    const errorBox = document.getElementById('task-from-request-error');
+    const submitBtn = document.getElementById('task-from-request-submit');
+    if (!modal || !titleInput || !dateInput || !requestIdInput || !requestAppInput || !sourceLabel) return;
+
+    const normalizedTitle = typeof normalizeRequestTitleForTask === 'function'
+        ? normalizeRequestTitleForTask(request.title)
+        : request.title;
+
+    requestIdInput.value = request.id;
+    requestAppInput.value = request.app_id || '';
+    sourceLabel.textContent = `#${request.id}${request.app_name ? ' · ' + request.app_name : ''}`;
+    titleInput.value = normalizedTitle || request.title || '';
+    dateInput.value = '';
+
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.hidden = true;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
+    }
+
+    modal.classList.add('active');
+    setTimeout(() => dateInput.focus(), 50);
+}
+
+function submitTaskFromRequest(event) {
+    event.preventDefault();
+    createTaskFromRequest();
+}
+
+async function createTaskFromRequest() {
+    const requestId = document.getElementById('task-source-request-id')?.value;
+    const appId = document.getElementById('task-source-request-app-id')?.value;
+    const titleInput = document.getElementById('task-from-request-title');
+    const dateInput = document.getElementById('task-from-request-date');
+    const errorBox = document.getElementById('task-from-request-error');
+    const submitBtn = document.getElementById('task-from-request-submit');
+    const request = findRequestById(requestId);
+    const title = (titleInput?.value || '').trim();
+    const dueDate = dateInput?.value || '';
+
+    if (errorBox) errorBox.hidden = true;
+
+    if (!title || !dueDate) {
+        if (errorBox) {
+            errorBox.textContent = 'Revisa el nombre y la fecha antes de crear la tarea.';
+            errorBox.hidden = false;
+        }
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('is-loading');
+        submitBtn.innerHTML = '<i class="iconoir-hourglass"></i> Creando...';
+    }
+
+    try {
+        const descriptionParts = [];
+        if (request) {
+            descriptionParts.push(`Creada desde mejora #${request.id}: ${request.title}`);
+            if (request.description) descriptionParts.push('', request.description);
+        }
+
+        const payload = {
+            title,
+            due_date: dueDate,
+            description: descriptionParts.join('\n')
+        };
+        if (appId) payload.app_id = parseInt(appId, 10);
+
+        const response = await fetch('/api/tasks.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'No se pudo crear la tarea');
+        }
+
+        closeModal('create-task-from-request-modal');
+        showToast({
+            title: 'Tarea creada',
+            message: `${title} · ${formatFloatingDate(dueDate)}`,
+            icon: 'iconoir-check'
+        }, 'toast-completed');
+
+        if (typeof loadTasksWidget === 'function') {
+            loadTasksWidget();
+        }
+    } catch (error) {
+        console.error('Error creating task from request:', error);
+        if (errorBox) {
+            errorBox.textContent = error.message || 'No se pudo crear la tarea.';
+            errorBox.hidden = false;
+        }
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
+            submitBtn.innerHTML = '<i class="iconoir-plus"></i> Crear tarea';
+        }
+    }
 }
 
 // Create priority dropdown

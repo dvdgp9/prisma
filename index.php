@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.6">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.7">
 </head>
 
 <?php
@@ -734,6 +734,58 @@ $company_name = $user['company_name'] ?? '';
     </div>
     <?php endif; ?>
 
+    <!-- Create Task From Request Modal -->
+    <div class="modal" id="create-task-from-request-modal">
+        <div class="modal-content create-task-modal">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="iconoir-task-list modal-header-icon"></i>
+                    <h3 class="modal-title">Crear tarea</h3>
+                </div>
+                <button class="close-modal" onclick="closeModal('create-task-from-request-modal')">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </div>
+
+            <form id="create-task-from-request-form" onsubmit="submitTaskFromRequest(event)">
+                <input type="hidden" id="task-source-request-id">
+                <input type="hidden" id="task-source-request-app-id">
+
+                <div class="modal-body create-task-body">
+                    <div class="task-source-summary">
+                        <span class="task-source-kicker">Desde mejora</span>
+                        <strong id="task-source-request-label">#</strong>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-from-request-title">
+                            <i class="iconoir-text"></i> Nombre de la tarea
+                        </label>
+                        <input type="text" id="task-from-request-title" required>
+                        <small class="text-muted">Puedes ajustar el nombre antes de crearla.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-from-request-date">
+                            <i class="iconoir-calendar"></i> Fecha
+                        </label>
+                        <input type="date" id="task-from-request-date" required>
+                        <small class="text-muted">La tarea aparecerá en tu agenda de Mis tareas.</small>
+                    </div>
+
+                    <div class="task-from-request-error" id="task-from-request-error" hidden></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('create-task-from-request-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="task-from-request-submit">
+                        <i class="iconoir-plus"></i> Crear tarea
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Profile Modal -->
     <div class="modal" id="profile-modal">
         <div class="modal-content">
@@ -1022,8 +1074,8 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/task-parser.js?v=2"></script>
-    <script src="/assets/js/main.js?v=3.6"></script>
+    <script src="/assets/js/task-parser.js?v=3"></script>
+    <script src="/assets/js/main.js?v=3.7"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>
