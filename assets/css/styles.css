@@ -6835,3 +6835,132 @@ select.ai-pill-assignee.has-assignee {
         grid-template-columns: 1fr;
     }
 }
+
+/* ==========================================================================
+   In-app File Viewer (.fv-*)
+   Previews images and PDFs in an overlay so files no longer pop out of the
+   PWA into a loose browser window. Sits above .modal (z-index 1000) because
+   request attachments are listed inside the edit modal.
+   ========================================================================== */
+.fv-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 32, 0.72);
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.fv-overlay.active {
+    display: flex;
+}
+
+.fv-dialog {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 960px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.fv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.fv-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.fv-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.fv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.fv-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary-color);
+}
+
+.fv-btn.fv-close {
+    padding: 0.4rem;
+    color: var(--text-muted);
+}
+
+.fv-btn i {
+    font-size: 1.05rem;
+}
+
+.fv-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    overflow: auto;
+}
+
+.fv-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.fv-frame {
+    width: 100%;
+    height: 80vh;
+    border: 0;
+    background: #fff;
+}
+
+@media (max-width: 600px) {
+    .fv-overlay {
+        padding: 0;
+    }
+    .fv-dialog {
+        max-width: 100%;
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+    .fv-btn span {
+        display: none;
+    }
+    .fv-frame {
+        height: 100%;
+    }
+}

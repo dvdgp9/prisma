@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.7">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.8">
 </head>
 
 <?php
@@ -1075,7 +1075,8 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
-    <script src="/assets/js/main.js?v=3.7"></script>
+    <script src="/assets/js/file-viewer.js?v=1"></script>
+    <script src="/assets/js/main.js?v=3.8"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

@@ -574,9 +574,9 @@ async function loadTaskAttachments(taskId) {
             } else {
                 container.innerHTML = data.data.map(att => `
                     <div class="task-attachment-item">
-                        <a href="/${att.file_path}" target="_blank">
+                        <a href="#" class="fv-trigger" data-type="task" data-id="${att.id}" data-mime="${att.mime_type || ''}">
                             <i class="${getFileIcon(att.mime_type)}"></i>
-                            <span>${escapeHtml(att.original_filename)}</span>
+                            <span class="fv-name">${escapeHtml(att.original_filename)}</span>
                         </a>
                         <button type="button" class="task-action-btn delete" onclick="deleteTaskAttachment(${att.id})">
                             <i class="iconoir-trash"></i>

@@ -2143,9 +2143,9 @@ async function loadRequestAttachments(requestId) {
                 if (countEl) countEl.textContent = `${attachments.length} archivo${attachments.length > 1 ? 's' : ''}`;
                 container.innerHTML = attachments.map(att => `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-                        <a href="/${att.file_path}" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-primary); flex: 1; overflow: hidden;">
+                        <a href="#" class="fv-trigger" data-type="request" data-id="${att.id}" data-mime="${att.mime_type || ''}" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-primary); flex: 1; overflow: hidden; cursor: pointer;">
                             <i class="${getFileIcon(att.mime_type)}" style="color: var(--primary-color);"></i>
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(att.original_filename)}">
+                            <span class="fv-name" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(att.original_filename)}">
                                 ${escapeHtml(att.original_filename)}
                             </span>
                             <span class="text-muted text-small">(${formatFileSize(att.file_size)})</span>
@@ -2876,7 +2876,7 @@ async function loadAppFiles() {
                 list.innerHTML = files.map(file => `
                     <div class="app-file-chip" title="${escapeHtml(file.original_filename)} - ${formatFileSize(file.file_size)}">
                         <i class="${getFileIconClass(file.mime_type)}"></i>
-                        <a href="/${file.file_path}" target="_blank" class="app-file-chip-name">
+                        <a href="#" class="app-file-chip-name fv-trigger" data-type="appfile" data-id="${file.id}" data-mime="${file.mime_type || ''}">
                             ${escapeHtml(file.original_filename)}
                         </a>
                         ${currentView === 'company' && file.app_name ? `

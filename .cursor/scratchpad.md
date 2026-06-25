@@ -1692,3 +1692,34 @@ Actualización Executor (2026-06-23, CTM.3 + CTM.4):
 - Versionado: `styles.css?v=3.7`, `task-parser.js?v=3`, `main.js?v=3.7`, PWA `sw.js` cache v11.
 - Verificación Executor: `node --check assets/js/main.js`, `node --check assets/js/task-parser.js`, `php -l index.php` y `git diff --check`, todo correcto.
 - Pendiente: verificación manual en dashboard autenticado para confirmar que la tarea aparece en `tasks.php` con la fecha elegida y la app de la mejora.
+
+## High-level Task Breakdown (Visor de archivos in-app)
+
+Planner (2026-06-25): los adjuntos (mejoras, tareas, archivos de app) se enlazan directos a `/uploads/...` con `target="_blank"`. En la PWA `display: standalone` eso expulsa el archivo a una ventana suelta del navegador y lo descarga con el nombre físico aleatorio (`uniqid()_time.ext`). Objetivo: visor in-app + nombres correctos, sin salir de la PWA.
+
+- VF.1 Endpoint seguro `api/file.php?type=request|task|appfile&id=&download=0|1`. Verifica permiso por tipo (request: login; task: dueño/compartida/share; appfile: `can_access_app`). Sirve con `Content-Type`, `Content-Disposition: inline|attachment; filename*=UTF-8''<original>`, `Content-Length`, `X-Content-Type-Options: nosniff`. Criterio: PDF/imagen se ven inline; resto descarga con nombre real; sin permiso → 403/404.
+- VF.2 Visor compartido `assets/js/file-viewer.js` (global `openFileViewer(type,id,name,mime)`). Imagen/PDF → modal overlay in-app (header con nombre, botones Descargar/Abrir/Cerrar, body img/iframe). Resto → descarga directa con nombre correcto. Cargado en `index.php` y `tasks.php`.
+- VF.3 CSS `.fv-*` en `styles.css` (tokens existentes, sin inline, responsive + Escape para cerrar).
+- VF.4 Reescribir 3 puntos de render para usar `openFileViewer` en lugar de `<a target="_blank">`: `main.js:2146` (mejoras), `main.js:2879` (app-files), `tasks.js:577` (tareas).
+- VF.5 Versionar assets (`?v=`) y bump cache `sw.js`. Verificar `php -l`, `node --check`, y manual en preview.
+
+## Project Status Board (Visor de archivos in-app)
+- [x] VF.1 Endpoint `api/file.php`
+- [x] VF.2 Visor `file-viewer.js`
+- [x] VF.3 CSS `.fv-*`
+- [x] VF.4 Render points → openFileViewer
+- [x] VF.5 Versionado + verificación
+
+## Executor's Feedback or Assistance Requests (Visor de archivos in-app)
+Actualización Executor (2026-06-25):
+- Creado `api/file.php` (sirve con `Content-Disposition` + nombre real, confina ruta dentro de `/uploads/`, permisos por tipo: request=login, task=dueño/compartida/share, appfile=`can_access_app`).
+- Creado `assets/js/file-viewer.js`: overlay in-app para imagen/PDF, descarga directa para el resto. Delegación de eventos con `.fv-trigger` + `data-*` y lectura del nombre desde el DOM (sin problemas de escapado).
+- CSS `.fv-*` en `styles.css` (z-index 1100 para quedar sobre el modal de edición de mejoras; responsive full-screen en móvil).
+- Reescritos los 3 enlaces `target="_blank"`: mejoras (`main.js`), app-files (`main.js`), tareas (`tasks.js`).
+- Versionado: `styles.css?v=3.8`, `main.js?v=3.8`, `tasks.js?v=5`, `file-viewer.js?v=1`, cache SW `prisma-v12`.
+- Verificación: `php -l`, `node --check` y `git diff --check` OK. En preview: endpoint sin sesión redirige a login (permiso OK); overlay abre/cierra (Escape + backdrop), título con comillas/`&` correcto, z-index 1100, body se limpia al cerrar.
+- Pendiente verificación manual: David, en sesión autenticada, abrir un adjunto de imagen/PDF (se ve in-app) y uno de Word/Excel/ZIP (se descarga con nombre real, sin ventana en blanco).
+
+## Lessons (Visor de archivos in-app)
+- En PWA `display: standalone`, `target="_blank"` expulsa el recurso a una ventana suelta del navegador. Para previsualizar sin salir de la app, servir el archivo desde un endpoint propio y mostrarlo en un overlay (img/iframe).
+- El SW manda `/api/` a network-only, así que el endpoint de archivos no se cachea (correcto para permisos).

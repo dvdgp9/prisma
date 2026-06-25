@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.6">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.8">
     <link rel="stylesheet" href="/assets/css/tasks.css?v=2.6">
 </head>
 
@@ -285,7 +285,8 @@ $userApps = get_user_apps();
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
     <script src="/assets/js/task-parser.js?v=2"></script>
-    <script src="/assets/js/tasks.js?v=4"></script>
+    <script src="/assets/js/file-viewer.js?v=1"></script>
+    <script src="/assets/js/tasks.js?v=5"></script>
     <script src="/assets/js/pwa.js"></script>
 </body>
 
