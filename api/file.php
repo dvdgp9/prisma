@@ -58,14 +58,14 @@ switch ($type) {
             SELECT ta.original_filename, ta.file_path, ta.mime_type
             FROM task_attachments ta
             JOIN tasks t ON ta.task_id = t.id
-            WHERE ta.id = ?
+            WHERE ta.id = :aid
               AND (
                     t.user_id = :uid
                  OR (t.is_shared = 1 AND t.company_id = :cid)
                  OR EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = :uid2)
               )
         ");
-        $stmt->execute([$id, ':uid' => $user['id'], ':cid' => $user['company_id'], ':uid2' => $user['id']]);
+        $stmt->execute([':aid' => $id, ':uid' => $user['id'], ':cid' => $user['company_id'], ':uid2' => $user['id']]);
         $file = $stmt->fetch(PDO::FETCH_ASSOC);
         break;
 
