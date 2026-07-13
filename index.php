@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.9">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.0">
 </head>
 
 <?php
@@ -428,7 +428,7 @@ $company_name = $user['company_name'] ?? '';
                 <div class="modal-header-left">
                     <i class="iconoir-edit-pencil modal-header-icon" id="request-modal-icon"></i>
                     <h3 class="modal-title" id="request-modal-title">Editar Petición</h3>
-                    <span class="request-modal-mode" id="request-modal-mode" hidden>Solo lectura</span>
+                    <span class="request-modal-mode" id="request-modal-mode" hidden>Colaboración</span>
                     <span class="modal-request-id" id="edit-request-id-display"></span>
                 </div>
                 <button class="close-modal" onclick="closeModal('edit-request-modal')">
@@ -486,6 +486,8 @@ $company_name = $user['company_name'] ?? '';
                                 <span id="edit-checklist-count" class="badge-count-inline"></span>
                             </div>
 
+                            <p class="checklist-collaboration-help">Divide la mejora en pasos concretos y marca el avance con el equipo.</p>
+
                             <div class="checklist-progress-bar-wrapper">
                                 <div class="checklist-progress-bar">
                                     <div class="checklist-progress-fill" id="edit-checklist-progress-fill" style="width: 0%;"></div>
@@ -495,11 +497,13 @@ $company_name = $user['company_name'] ?? '';
 
                             <div class="checklist-add-row" id="edit-checklist-add-row">
                                 <input type="text" id="edit-checklist-input" placeholder="Añadir subtarea o paso de verificación..." onkeydown="handleChecklistKeydown(event)">
-                                <button type="button" class="btn btn-primary btn-sm" onclick="addChecklistItem()">
+                                <button type="button" class="btn btn-primary btn-sm" id="edit-checklist-submit" onclick="addChecklistItem()">
                                     <i class="iconoir-plus"></i>
-                                    Añadir
+                                    <span id="edit-checklist-submit-label">Añadir</span>
                                 </button>
                             </div>
+
+                            <div class="checklist-inline-error" id="edit-checklist-error" role="alert" hidden></div>
 
                             <div id="edit-checklist-list" class="checklist-list">
                                 <!-- Checklist items loaded dynamically -->
@@ -1077,7 +1081,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.0"></script>
+    <script src="/assets/js/main.js?v=4.1"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

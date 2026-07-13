@@ -1800,6 +1800,9 @@ Restricción de seguridad: la apertura del detalle no debe desplegarse sin verif
   - **Criterio verificable**: inspección visual y de teclado no muestra ni permite activar controles administrativos; llamadas manuales a API siguen bloqueadas por CUP.2.
 - [ ] **CUP.3.4** Mantener los adjuntos accesibles mediante el visor in-app ya existente. **IMPLEMENTADO, pendiente de prueba con archivos reales del usuario.**
   - **Criterio verificable**: imagen/PDF se abre dentro de Prisma y otros formatos se descargan con su nombre real; archivo ajeno devuelve 403/404.
+- [ ] **CUP.3.5** Permitir que `user` gestione subtareas dentro de una mejora visible mediante una capacidad `checklist` independiente de editar la petición. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
+  - **Criterio verificable**: `user` puede crear, completar, renombrar y eliminar subtareas compartidas; sigue sin poder editar título, descripción, solicitante, responsables, adjuntos ni otros metadatos de la mejora.
+  - **Requisito actualizado por el usuario**: las restricciones de checklist descritas en CUP.3.2 y CUP.3.3 quedan sustituidas por esta excepción colaborativa explícita.
 
 ### FASE CUP.4 — Comentarios para usuarios
 - [ ] **CUP.4.1** Habilitar lectura y publicación de comentarios en el modo colaborativo, con error inline, loading y prevención de doble envío.
@@ -1869,8 +1872,18 @@ Actualización Executor (2026-07-13 — CUP.3 implementado, pendiente de prueba 
 - Versionado: `styles.css?v=3.9`, `main.js?v=4.0`, caché PWA `prisma-v14`. No hay migraciones ni cambios sobre la base de datos.
 - Pendiente usuario: probar con rol `user` card/tabla, modo solo lectura, visor de documento y publicación de comentario; después probar con programador/admin que la edición sigue disponible. No marcar CUP.3 hasta recibir esa confirmación.
 
+Actualización Executor (2026-07-13 — CUP.3.5 subtareas colaborativas implementadas, pendiente de prueba visual):
+- Añadida la capacidad backend independiente `checklist`. Todo rol con acceso visible a la mejora puede gestionar su checklist sin recibir permiso para editar o eliminar la petición.
+- `api/request-checklist.php` valida el scope de la petición padre en GET/POST/PUT/DELETE, también cuando la operación parte del ID de una subtarea. Título obligatorio y máximo de 500 caracteres. No hay migración ni escritura de estructura sobre la base de datos.
+- El modal muestra la checklist como área colaborativa: `user` puede crear, completar, renombrar y eliminar subtareas compartidas, mientras los campos administrativos siguen en lectura. Se sustituyó la etiqueta confusa `Solo lectura` por `Colaboración`.
+- El alta de subtarea incluye error inline, estado `Añadiendo…`, bloqueo de doble envío y restauración del foco. Todos los estilos nuevos están en `assets/css/styles.css`.
+- TDD/validación Executor: matriz de capacidades 24/24, contratos de guardia 10/10 y contrato UI 12/12; `php -l`, `node --check` para JS y service worker, y `git diff --check` finalizan correctamente.
+- Versionado: `styles.css?v=4.0`, `main.js?v=4.1`, caché PWA `prisma-v15`. No se necesita SSH para la comprobación funcional desde la app.
+- Pendiente usuario: con rol `user`, abrir una mejora y probar alta, completar, renombrar y eliminar una subtarea; confirmar después que Guardar, subida de archivos y metadatos administrativos siguen sin aparecer. CUP.3 permanece sin marcar hasta esa validación.
+
 ## Lessons (colaboración de usuarios en peticiones)
 - Autenticación no equivale a autorización: todo endpoint que acepte `request_id` o un ID de recurso hijo debe resolver la petición padre y validar su `app_id`.
 - El acceso colaborativo debe modelarse como capacidad independiente de editar; reutilizar `can_edit_requests()` para decidir si se puede abrir un detalle bloquea usuarios legítimos y empuja a mezclar controles sensibles con contenido de lectura.
 - Ocultar PII en el DOM no basta. Si un campo no está autorizado, debe omitirse en la respuesta del backend.
 - El usuario autorizó explícitamente continuar esta mejora sin consulta `@web`; para este flujo interno de permisos no es necesario bloquear el Executor por documentación externa.
+- Una checklist de equipo no debe reutilizar la capacidad general `edit`: una capacidad propia permite colaborar en subtareas sin ampliar privilegios sobre la mejora ni sus adjuntos.

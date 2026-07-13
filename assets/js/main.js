@@ -11,7 +11,7 @@ let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
 let currentChecklistItems = [];
-let currentRequestCapabilities = { view: false, comment: false, edit: false, delete: false };
+let currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
 let currentTableSort = {
     field: null,
@@ -335,7 +335,7 @@ function renderRequestsTable(filteredRequests, tableBody) {
 function renderChecklistItems() {
     const container = document.getElementById('edit-checklist-list');
     if (!container) return;
-    const canEdit = currentRequestCapabilities.edit;
+    const canManageChecklist = currentRequestCapabilities.checklist;
 
     if (!currentChecklistItems.length) {
         container.innerHTML = '<p class="text-muted text-small">No hay subtareas todavía</p>';
@@ -344,11 +344,11 @@ function renderChecklistItems() {
 
     container.innerHTML = currentChecklistItems.map(item => `
         <div class="checklist-item ${parseInt(item.is_completed, 10) === 1 ? 'completed' : ''}" data-checklist-id="${item.id}">
-            <label class="checklist-item-main ${canEdit ? '' : 'is-readonly'}">
-                <input type="checkbox" ${parseInt(item.is_completed, 10) === 1 ? 'checked' : ''} ${canEdit ? `onchange="toggleChecklistItem(${item.id}, this.checked)"` : 'disabled'}>
+            <label class="checklist-item-main ${canManageChecklist ? '' : 'is-readonly'}">
+                <input type="checkbox" ${parseInt(item.is_completed, 10) === 1 ? 'checked' : ''} ${canManageChecklist ? `onchange="toggleChecklistItem(${item.id}, this.checked)"` : 'disabled'}>
                 <span class="checklist-item-title">${escapeHtml(item.title)}</span>
             </label>
-            ${canEdit ? `<div class="checklist-item-actions">
+            ${canManageChecklist ? `<div class="checklist-item-actions">
                 <button type="button" class="comment-action-btn" onclick="renameChecklistItem(${item.id})" title="Renombrar">
                     <i class="iconoir-edit-pencil"></i>
                 </button>
@@ -368,13 +368,36 @@ function handleChecklistKeydown(event) {
 }
 
 async function addChecklistItem() {
-    if (!currentRequestCapabilities.edit) return;
+    if (!currentRequestCapabilities.checklist) return;
 
     const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
     const input = document.getElementById('edit-checklist-input');
+    const submitButton = document.getElementById('edit-checklist-submit');
+    const submitLabel = document.getElementById('edit-checklist-submit-label');
+    const errorElement = document.getElementById('edit-checklist-error');
     const title = input?.value?.trim();
 
-    if (!requestId || !title) return;
+    if (errorElement) {
+        errorElement.hidden = true;
+        errorElement.textContent = '';
+    }
+
+    if (!requestId || !title) {
+        if (errorElement) {
+            errorElement.textContent = 'Escribe el nombre de la subtarea.';
+            errorElement.hidden = false;
+        }
+        input?.focus();
+        return;
+    }
+
+    if (submitButton?.disabled) return;
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('is-loading');
+        submitButton.setAttribute('aria-busy', 'true');
+    }
+    if (submitLabel) submitLabel.textContent = 'Añadiendo…';
 
     try {
         const response = await fetch('/api/request-checklist.php', {
@@ -388,16 +411,31 @@ async function addChecklistItem() {
             input.value = '';
             await loadChecklistItems(requestId);
             await loadRequests();
+            input.focus();
         } else {
-            alert(data.error || 'Error al añadir subtarea');
+            if (errorElement) {
+                errorElement.textContent = data.error || 'No se pudo añadir la subtarea.';
+                errorElement.hidden = false;
+            }
         }
     } catch (error) {
         console.error('Error adding checklist item:', error);
+        if (errorElement) {
+            errorElement.textContent = 'Error de conexión. La subtarea no se ha creado.';
+            errorElement.hidden = false;
+        }
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('is-loading');
+            submitButton.removeAttribute('aria-busy');
+        }
+        if (submitLabel) submitLabel.textContent = 'Añadir';
     }
 }
 
 async function toggleChecklistItem(itemId, isCompleted) {
-    if (!currentRequestCapabilities.edit) return;
+    if (!currentRequestCapabilities.checklist) return;
 
     const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
 
@@ -421,7 +459,7 @@ async function toggleChecklistItem(itemId, isCompleted) {
 }
 
 async function renameChecklistItem(itemId) {
-    if (!currentRequestCapabilities.edit) return;
+    if (!currentRequestCapabilities.checklist) return;
 
     const item = currentChecklistItems.find(entry => parseInt(entry.id, 10) === parseInt(itemId, 10));
     if (!item) return;
@@ -453,7 +491,7 @@ async function renameChecklistItem(itemId) {
 }
 
 async function deleteChecklistItem(itemId) {
-    if (!currentRequestCapabilities.edit) return;
+    if (!currentRequestCapabilities.checklist) return;
 
     if (!confirm('¿Eliminar esta subtarea?')) return;
 
@@ -1755,12 +1793,17 @@ function closeModal(modalId) {
         document.getElementById('file-list').innerHTML = '';
     }
     if (modalId === 'edit-request-modal') {
-        currentRequestCapabilities = { view: false, comment: false, edit: false, delete: false };
+        currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
         currentChecklistItems = [];
         const checklistInput = document.getElementById('edit-checklist-input');
         const checklistList = document.getElementById('edit-checklist-list');
+        const checklistError = document.getElementById('edit-checklist-error');
         if (checklistInput) checklistInput.value = '';
         if (checklistList) checklistList.innerHTML = '';
+        if (checklistError) {
+            checklistError.hidden = true;
+            checklistError.textContent = '';
+        }
     }
 }
 
@@ -2055,11 +2098,13 @@ function configureRequestModalMode(request) {
     currentRequestCapabilities = {
         view: request.capabilities?.view === true,
         comment: request.capabilities?.comment === true,
+        checklist: request.capabilities?.checklist === true,
         edit: request.capabilities?.edit === true,
         delete: request.capabilities?.delete === true
     };
 
     const canEdit = currentRequestCapabilities.edit;
+    const canManageChecklist = currentRequestCapabilities.checklist;
     const modalContent = document.getElementById('request-modal-content');
     const modalTitle = document.getElementById('request-modal-title');
     const modalIcon = document.getElementById('request-modal-icon');
@@ -2075,11 +2120,14 @@ function configureRequestModalMode(request) {
     modalContent?.classList.toggle('request-modal--readonly', !canEdit);
     if (modalTitle) modalTitle.textContent = canEdit ? 'Editar petición' : 'Detalle de petición';
     if (modalIcon) modalIcon.className = `${canEdit ? 'iconoir-edit-pencil' : 'iconoir-eye'} modal-header-icon`;
-    if (modeLabel) modeLabel.hidden = canEdit;
+    if (modeLabel) {
+        modeLabel.hidden = canEdit;
+        modeLabel.textContent = 'Colaboración';
+    }
     if (titleField) titleField.readOnly = !canEdit;
     if (descriptionField) descriptionField.readOnly = !canEdit;
     if (uploadArea) uploadArea.hidden = !canEdit;
-    if (checklistAddRow) checklistAddRow.hidden = !canEdit;
+    if (checklistAddRow) checklistAddRow.hidden = !canManageChecklist;
     if (requesterSection) requesterSection.hidden = !canEdit;
     if (submitButton) submitButton.hidden = !canEdit;
     if (closeButton) closeButton.textContent = canEdit ? 'Cancelar' : 'Cerrar';

@@ -8,18 +8,6 @@ $db = getDB();
 $user = get_logged_user();
 $method = $_SERVER['REQUEST_METHOD'];
 
-function get_request_for_checklist($requestId, $db)
-{
-    $stmt = $db->prepare('
-        SELECT r.id, r.app_id, a.company_id
-        FROM requests r
-        INNER JOIN apps a ON r.app_id = a.id
-        WHERE r.id = ?
-    ');
-    $stmt->execute([$requestId]);
-    return $stmt->fetch();
-}
-
 switch ($method) {
     case 'GET':
         if (empty($_GET['request_id'])) {
@@ -27,14 +15,7 @@ switch ($method) {
         }
 
         $requestId = (int) $_GET['request_id'];
-        $request = get_request_for_checklist($requestId, $db);
-        if (!$request) {
-            error_response('Request not found', 404);
-        }
-
-        if (!can_access_app((int) $request['app_id'])) {
-            error_response('Unauthorized', 403);
-        }
+        require_request_capability($requestId, 'view');
 
         $stmt = $db->prepare('
             SELECT rci.*, u.username as creator_username, u.full_name as creator_name
@@ -49,10 +30,6 @@ switch ($method) {
         break;
 
     case 'POST':
-        if (!can_edit_requests()) {
-            error_response('Unauthorized', 403);
-        }
-
         $input = get_json_input();
         if (empty($input['request_id']) || empty(trim($input['title'] ?? ''))) {
             error_response('Request ID and title are required');
@@ -60,13 +37,10 @@ switch ($method) {
 
         $requestId = (int) $input['request_id'];
         $title = trim($input['title']);
-        $request = get_request_for_checklist($requestId, $db);
-        if (!$request) {
-            error_response('Request not found', 404);
-        }
+        require_request_capability($requestId, 'checklist');
 
-        if (!can_access_app((int) $request['app_id'])) {
-            error_response('Unauthorized', 403);
+        if (mb_strlen($title) > 500) {
+            error_response('La subtarea no puede superar los 500 caracteres');
         }
 
         $stmt = $db->prepare('SELECT COALESCE(MAX(position), 0) + 1 FROM request_checklist_items WHERE request_id = ?');
@@ -83,19 +57,14 @@ switch ($method) {
         break;
 
     case 'PUT':
-        if (!can_edit_requests()) {
-            error_response('Unauthorized', 403);
-        }
-
         $input = get_json_input();
         if (empty($input['id'])) {
             error_response('Checklist item ID is required');
         }
 
         $stmt = $db->prepare('
-            SELECT rci.*, r.app_id
+            SELECT rci.*
             FROM request_checklist_items rci
-            INNER JOIN requests r ON rci.request_id = r.id
             WHERE rci.id = ?
         ');
         $stmt->execute([(int) $input['id']]);
@@ -104,16 +73,18 @@ switch ($method) {
             error_response('Checklist item not found', 404);
         }
 
-        if (!can_access_app((int) $item['app_id'])) {
-            error_response('Unauthorized', 403);
-        }
+        require_request_capability((int) $item['request_id'], 'checklist');
 
         $fields = [];
         $values = [];
 
         if (isset($input['title'])) {
+            $title = trim($input['title']);
+            if ($title === '' || mb_strlen($title) > 500) {
+                error_response('La subtarea debe tener entre 1 y 500 caracteres');
+            }
             $fields[] = 'title = ?';
-            $values[] = trim($input['title']);
+            $values[] = $title;
         }
 
         if (isset($input['is_completed'])) {
@@ -138,19 +109,14 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        if (!can_edit_requests()) {
-            error_response('Unauthorized', 403);
-        }
-
         $input = get_json_input();
         if (empty($input['id'])) {
             error_response('Checklist item ID is required');
         }
 
         $stmt = $db->prepare('
-            SELECT rci.id, r.app_id
+            SELECT rci.id, rci.request_id
             FROM request_checklist_items rci
-            INNER JOIN requests r ON rci.request_id = r.id
             WHERE rci.id = ?
         ');
         $stmt->execute([(int) $input['id']]);
@@ -159,9 +125,7 @@ switch ($method) {
             error_response('Checklist item not found', 404);
         }
 
-        if (!can_access_app((int) $item['app_id'])) {
-            error_response('Unauthorized', 403);
-        }
+        require_request_capability((int) $item['request_id'], 'checklist');
 
         $stmt = $db->prepare('DELETE FROM request_checklist_items WHERE id = ?');
         $stmt->execute([(int) $input['id']]);

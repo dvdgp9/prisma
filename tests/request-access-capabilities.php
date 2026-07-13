@@ -15,10 +15,10 @@ function assert_same($expected, $actual, $message)
 }
 
 $expectedByRole = [
-    'user' => ['view' => true, 'comment' => true, 'edit' => false, 'delete' => false],
-    'programador' => ['view' => true, 'comment' => true, 'edit' => true, 'delete' => false],
-    'admin' => ['view' => true, 'comment' => true, 'edit' => true, 'delete' => true],
-    'superadmin' => ['view' => true, 'comment' => true, 'edit' => true, 'delete' => true],
+    'user' => ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => false, 'delete' => false],
+    'programador' => ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => true, 'delete' => false],
+    'admin' => ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => true, 'delete' => true],
+    'superadmin' => ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => true, 'delete' => true],
 ];
 
 foreach ($expectedByRole as $role => $expected) {
@@ -29,14 +29,14 @@ foreach ($expectedByRole as $role => $expected) {
     );
 
     assert_same(
-        ['view' => false, 'comment' => false, 'edit' => false, 'delete' => false],
+        ['view' => false, 'comment' => false, 'checklist' => false, 'edit' => false, 'delete' => false],
         request_capabilities_for_role($role, false),
         "{$role} receives no capabilities outside the accessible app scope"
     );
 }
 
 assert_same(
-    ['view' => false, 'comment' => false, 'edit' => false, 'delete' => false],
+    ['view' => false, 'comment' => false, 'checklist' => false, 'edit' => false, 'delete' => false],
     request_capabilities_for_role('unknown', true),
     'unknown roles receive no capabilities'
 );
@@ -67,7 +67,7 @@ $externalRequest = [
 ];
 $userSafeRequest = sanitize_request_for_capabilities(
     $externalRequest,
-    ['view' => true, 'comment' => true, 'edit' => false, 'delete' => false]
+    ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => false, 'delete' => false]
 );
 assert_same(false, array_key_exists('requester_name', $userSafeRequest), 'viewer response omits requester name');
 assert_same(false, array_key_exists('requester_email', $userSafeRequest), 'viewer response omits requester email');
@@ -76,7 +76,7 @@ assert_same(
     $externalRequest,
     sanitize_request_for_capabilities(
         $externalRequest,
-        ['view' => true, 'comment' => true, 'edit' => true, 'delete' => false]
+        ['view' => true, 'comment' => true, 'checklist' => true, 'edit' => true, 'delete' => false]
     ),
     'editor response preserves requester fields required for management'
 );
@@ -115,7 +115,7 @@ assert_same(
 );
 
 assert_same(
-    ['view' => false, 'comment' => false, 'edit' => false, 'delete' => false],
+    ['view' => false, 'comment' => false, 'checklist' => false, 'edit' => false, 'delete' => false],
     get_request_capabilities(200, $db, $tenantAAccess)['capabilities'],
     'tenant A user receives no capabilities for a known request ID from tenant B'
 );
@@ -135,7 +135,7 @@ assert_same(
 );
 
 assert_same(
-    ['view' => false, 'comment' => false, 'edit' => false, 'delete' => false],
+    ['view' => false, 'comment' => false, 'checklist' => false, 'edit' => false, 'delete' => false],
     get_request_capabilities(200, $db, $tenantAAccess)['capabilities'],
     'admin role does not bypass the tenant scope'
 );

@@ -16,6 +16,7 @@ assert_contains('assets/js/main.js', 'configureRequestModalMode(request)', 'moda
 assert_contains('assets/js/main.js', "request.capabilities?.edit === true", 'edit mode uses backend capability');
 assert_contains('assets/js/main.js', "openRequestDetailModal(\${request.id})", 'request cards and table expose detail action');
 assert_contains('assets/js/main.js', 'currentRequestCapabilities.edit', 'mutable child controls use current request capability');
+assert_contains('assets/js/main.js', 'currentRequestCapabilities.checklist', 'subtask controls use their independent capability');
 assert_contains('index.php', 'id="request-modal-mode"', 'modal exposes a mode label');
 assert_contains('index.php', 'id="edit-checklist-add-row"', 'checklist creation row can be hidden');
 assert_contains('index.php', 'id="edit-request-submit"', 'request submit can be hidden');
