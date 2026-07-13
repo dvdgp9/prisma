@@ -85,3 +85,66 @@ function create_request_completion_notifications($db, $request_id, $actor_id, $a
 
     return count($recipient_ids);
 }
+
+/**
+ * Short single-line excerpt of user text for notification messages.
+ */
+function get_notification_snippet($text, $max_length = 80)
+{
+    $text = trim(preg_replace('/\s+/u', ' ', (string) $text));
+    if ($text === '') {
+        return '';
+    }
+    if (mb_strlen($text) > $max_length) {
+        $text = rtrim(mb_substr($text, 0, $max_length - 1)) . '…';
+    }
+    return $text;
+}
+
+/**
+ * Notify the creator and the assigners of a request when its status changes.
+ * Completions keep the existing 'completion' type; other transitions use
+ * 'status_change'.
+ */
+function create_request_status_change_notifications($db, $request_id, $actor_id, $actor_name, $new_status)
+{
+    if ($new_status === 'completed') {
+        return create_request_completion_notifications($db, $request_id, $actor_id, $actor_name);
+    }
+
+    $status_messages = [
+        'pending' => 'ha movido la mejora a pendiente',
+        'in_progress' => 'ha puesto la mejora en curso',
+        'discarded' => 'ha descartado la mejora'
+    ];
+    if (!isset($status_messages[$new_status])) {
+        return 0;
+    }
+
+    $recipient_ids = get_request_completion_recipient_ids($db, $request_id, $actor_id);
+    if (empty($recipient_ids)) {
+        return 0;
+    }
+
+    $actor_name = trim((string) $actor_name);
+    if ($actor_name === '') {
+        $actor_name = 'Alguien';
+    }
+
+    $stmt = $db->prepare("
+        INSERT INTO notifications (user_id, type, request_id, triggered_by, message)
+        VALUES (?, 'status_change', ?, ?, ?)
+    ");
+    $message = $actor_name . ' ' . $status_messages[$new_status];
+
+    foreach ($recipient_ids as $recipient_id) {
+        $stmt->execute([
+            $recipient_id,
+            (int) $request_id,
+            (int) $actor_id,
+            $message
+        ]);
+    }
+
+    return count($recipient_ids);
+}

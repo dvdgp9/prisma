@@ -41,7 +41,7 @@ assert_file_contains('api/requests.php', [
     "require_request_capability(\$input['id'], 'edit')",
     "require_request_capability(\$input['id'], 'delete')",
     'sanitize_request_for_capabilities',
-    'create_request_completion_notifications',
+    'create_request_status_change_notifications',
 ]);
 assert_file_contains('api/notifications.php', ['get_user_apps()', '$scopeSql']);
 assert_file_contains('api/request-checklist.php', [
@@ -50,10 +50,11 @@ assert_file_contains('api/request-checklist.php', [
     "require_request_capability((int) \$item['request_id'], 'checklist')",
 ]);
 assert_file_contains('includes/sidebar.php', [
-    'data-filter="completion"',
+    'data-filter="status"',
 ]);
 assert_file_contains('assets/js/sidebar.js', [
-    "completion: { iconClass: 'comment'",
+    "completion: { iconClass: 'completion'",
+    "status_change: { iconClass: 'status'",
     "iconoir-check-circle",
 ]);
 

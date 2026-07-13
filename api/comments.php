@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request-notifications.php';
 
 header('Content-Type: application/json');
 
@@ -149,6 +150,8 @@ switch ($method) {
             ]);
 
             $comment_id = $db->lastInsertId();
+            $comment_snippet = get_notification_snippet($input['content']);
+            $snippet_suffix = $comment_snippet !== '' ? ': «' . $comment_snippet . '»' : '';
 
             // Parse mentions (@username) from content
             preg_match_all('/@(\w+)/', $input['content'], $matches);
@@ -177,7 +180,7 @@ switch ($method) {
                             $mentioned_user['id'],
                             $request_id,
                             $user['id'],
-                            $user['full_name'] . ' te ha mencionado en un comentario'
+                            $user['full_name'] . ' te ha mencionado' . $snippet_suffix
                         ]);
                     }
                 }
@@ -207,9 +210,35 @@ switch ($method) {
                         $assignedUserId,
                         $request_id,
                         $user['id'],
-                        $user['full_name'] . ' ha comentado en una tarea asignada a ti'
+                        $user['full_name'] . ' ha comentado' . $snippet_suffix
                     ]);
                 }
+            }
+
+            // Notify the request creator (unless they commented, were mentioned,
+            // or were already notified as an assigned user)
+            $stmtCreator = $db->prepare("SELECT created_by FROM requests WHERE id = ?");
+            $stmtCreator->execute([$request_id]);
+            $creator_id = (int) $stmtCreator->fetchColumn();
+            $notifiedAssignedIds = array_map('intval', $assignedUsers);
+
+            if (
+                $creator_id > 0 &&
+                $creator_id !== (int) $user['id'] &&
+                in_array($creator_id, $mentionableIds, true) &&
+                !in_array($creator_id, array_map('intval', $mentionedIds), true) &&
+                !in_array($creator_id, $notifiedAssignedIds, true)
+            ) {
+                $stmtNotif = $db->prepare("
+                    INSERT INTO notifications (user_id, type, request_id, triggered_by, message)
+                    VALUES (?, 'comment', ?, ?, ?)
+                ");
+                $stmtNotif->execute([
+                    $creator_id,
+                    $request_id,
+                    $user['id'],
+                    $user['full_name'] . ' ha comentado' . $snippet_suffix
+                ]);
             }
 
             $db->commit();

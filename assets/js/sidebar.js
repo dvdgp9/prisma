@@ -162,11 +162,32 @@ function escapeHtml(text) {
 let inboxNotifications = [];
 let currentInboxFilter = 'all';
 
+const INBOX_PRESENTATION = {
+    mention: { iconClass: 'mention', iconName: 'iconoir-at-sign' },
+    assignment: { iconClass: 'assignment', iconName: 'iconoir-user-badge-check' },
+    completion: { iconClass: 'completion', iconName: 'iconoir-check-circle' },
+    status_change: { iconClass: 'status', iconName: 'iconoir-refresh-double' },
+    comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' }
+};
+
+const INBOX_EMPTY_MESSAGES = {
+    all: 'No hay notificaciones',
+    unread: 'Estás al día',
+    mention: 'Nadie te ha mencionado todavía',
+    assignment: 'No tienes asignaciones nuevas',
+    comment: 'No hay comentarios nuevos',
+    status: 'Sin cambios de estado recientes'
+};
+
+function isUnreadNotification(n) {
+    return parseInt(n.is_read, 10) === 0;
+}
+
 async function loadNotifications() {
     try {
         const response = await fetch('/api/notifications.php');
         const data = await response.json();
-        
+
         if (data.success) {
             const { notifications, unread_count } = data.data;
             inboxNotifications = notifications || [];
@@ -174,21 +195,48 @@ async function loadNotifications() {
             window.dispatchEvent(new CustomEvent('prisma:notifications-updated', {
                 detail: { notifications: inboxNotifications }
             }));
-            
-            const badge = document.getElementById('inbox-count');
-            if (badge) {
-                if (unread_count > 0) {
-                    badge.textContent = unread_count;
-                    badge.style.display = 'flex';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
 
-            renderNotifications();
+            updateInboxBadge(unread_count);
+            updateInboxHeaderState(unread_count);
+            updateInboxFilterCounts();
+
+            // Avoid resetting the reading position: skip the re-render when the
+            // panel is open and the user has scrolled into the list.
+            const panel = document.getElementById('inbox-panel');
+            const body = document.getElementById('inbox-body');
+            const isReading = panel?.classList.contains('open') && body && body.scrollTop > 0;
+            if (!isReading) {
+                renderNotifications();
+            }
         }
     } catch (error) {
         console.error('Error loading notifications:', error);
+    }
+}
+
+function updateInboxBadge(unreadCount) {
+    const badge = document.getElementById('inbox-count');
+    if (!badge) return;
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function updateInboxHeaderState(unreadCount) {
+    const markAllBtn = document.getElementById('inbox-mark-all-btn');
+    if (markAllBtn) {
+        markAllBtn.hidden = unreadCount === 0;
+    }
+}
+
+function updateInboxFilterCounts() {
+    const unread = inboxNotifications.filter(isUnreadNotification).length;
+    const chip = document.querySelector('.inbox-filter-chip[data-filter="unread"]');
+    if (chip) {
+        chip.textContent = unread > 0 ? `No leídas (${unread})` : 'No leídas';
     }
 }
 
@@ -205,9 +253,22 @@ function setInboxFilter(filter, event) {
 function getFilteredNotifications() {
     if (currentInboxFilter === 'all') return inboxNotifications;
     if (currentInboxFilter === 'unread') {
-        return inboxNotifications.filter(n => parseInt(n.is_read, 10) === 0);
+        return inboxNotifications.filter(isUnreadNotification);
+    }
+    if (currentInboxFilter === 'status') {
+        return inboxNotifications.filter(n => n.type === 'completion' || n.type === 'status_change');
     }
     return inboxNotifications.filter(n => n.type === currentInboxFilter);
+}
+
+function getInboxGroupLabel(date) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (date >= startOfToday) return 'Hoy';
+    if (date >= new Date(startOfToday - dayMs)) return 'Ayer';
+    if (date >= new Date(startOfToday - 7 * dayMs)) return 'Últimos 7 días';
+    return 'Anteriores';
 }
 
 function renderNotifications() {
@@ -217,43 +278,58 @@ function renderNotifications() {
     const notifications = getFilteredNotifications();
 
     if (notifications.length === 0) {
+        const message = INBOX_EMPTY_MESSAGES[currentInboxFilter] || INBOX_EMPTY_MESSAGES.all;
         body.innerHTML = `
             <div class="inbox-empty">
-                <i class="iconoir-bell"></i>
-                <p>No hay notificaciones</p>
+                <i class="${currentInboxFilter === 'unread' ? 'iconoir-check-circle' : 'iconoir-bell'}"></i>
+                <p>${message}</p>
             </div>
         `;
         return;
     }
 
-    body.innerHTML = notifications.map(n => {
-        const notificationPresentation = {
-            mention: { iconClass: 'mention', iconName: 'iconoir-at-sign' },
-            assignment: { iconClass: 'assignment', iconName: 'iconoir-user-badge-check' },
-            completion: { iconClass: 'comment', iconName: 'iconoir-check-circle' },
-            comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' }
-        };
-        const presentation = notificationPresentation[n.type] || notificationPresentation.comment;
-        const timeAgo = getTimeAgo(new Date(n.created_at));
+    let html = '';
+    let currentGroup = null;
 
-        return `
-            <div class="inbox-item ${n.is_read == 0 ? 'unread' : ''}" 
-                 onclick="handleNotificationClick(${n.id}, ${n.request_id})">
+    notifications.forEach(n => {
+        const presentation = INBOX_PRESENTATION[n.type] || INBOX_PRESENTATION.comment;
+        const createdAt = new Date(n.created_at.replace(' ', 'T'));
+        const group = getInboxGroupLabel(createdAt);
+        const unread = isUnreadNotification(n);
+
+        if (group !== currentGroup) {
+            html += `<div class="inbox-group-label">${group}</div>`;
+            currentGroup = group;
+        }
+
+        html += `
+            <div class="inbox-item ${unread ? 'unread' : ''}" role="button" tabindex="0"
+                 onclick="handleNotificationClick(${n.id}, ${n.request_id})"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleNotificationClick(${n.id}, ${n.request_id});}">
                 <div class="inbox-item-icon ${presentation.iconClass}">
                     <i class="${presentation.iconName}"></i>
                 </div>
                 <div class="inbox-item-content">
                     <div class="inbox-item-text">${escapeHtml(n.message)}</div>
                     <div class="inbox-item-meta">
-                        ${escapeHtml(n.request_title)} · ${timeAgo}
+                        <span class="inbox-item-request">${escapeHtml(n.request_title)}</span>
+                        <time title="${escapeHtml(formatInboxFullDate(createdAt))}">${formatInboxTime(createdAt)}</time>
                     </div>
                 </div>
+                ${unread ? `
+                    <button type="button" class="inbox-item-read-btn" aria-label="Marcar como leída"
+                            onclick="event.stopPropagation(); markNotificationRead(${n.id});">
+                        <span class="inbox-unread-dot" aria-hidden="true"></span>
+                    </button>
+                ` : ''}
             </div>
         `;
-    }).join('');
+    });
+
+    body.innerHTML = html;
 }
 
-function getTimeAgo(date) {
+function formatInboxTime(date) {
     const seconds = Math.floor((new Date() - date) / 1000);
     if (seconds < 60) return 'ahora';
     const minutes = Math.floor(seconds / 60);
@@ -261,20 +337,60 @@ function getTimeAgo(date) {
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `hace ${hours}h`;
     const days = Math.floor(hours / 24);
-    return `hace ${days}d`;
+    if (days < 7) return `hace ${days}d`;
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function formatInboxFullDate(date) {
+    return date.toLocaleDateString('es-ES', {
+        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
 }
 
 function toggleInbox() {
     const panel = document.getElementById('inbox-panel');
     const overlay = document.getElementById('inbox-overlay');
-    
+
     if (panel.classList.contains('open')) {
         panel.classList.remove('open');
         overlay.classList.remove('open');
+        const trigger = document.getElementById('inbox-nav-btn');
+        if (trigger) trigger.focus();
     } else {
         loadNotifications();
         panel.classList.add('open');
         overlay.classList.add('open');
+        panel.focus();
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const panel = document.getElementById('inbox-panel');
+        if (panel?.classList.contains('open')) {
+            toggleInbox();
+        }
+    }
+});
+
+async function markNotificationRead(notificationId) {
+    try {
+        // Optimistic local update, then sync with the server
+        const notification = inboxNotifications.find(n => parseInt(n.id, 10) === notificationId);
+        if (notification) notification.is_read = 1;
+        const unread = inboxNotifications.filter(isUnreadNotification).length;
+        updateInboxBadge(unread);
+        updateInboxHeaderState(unread);
+        updateInboxFilterCounts();
+        renderNotifications();
+
+        await fetch('/api/notifications.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: notificationId })
+        });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
     }
 }
 
@@ -284,19 +400,19 @@ async function handleNotificationClick(notificationId, requestId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: notificationId })
     });
-    
+
     toggleInbox();
-    
+
     // Navigate to index with the request if not already on index
-    const isIndexPage = window.location.pathname === '/' || 
+    const isIndexPage = window.location.pathname === '/' ||
                         window.location.pathname.includes('index.php');
-    
+
     if (isIndexPage && typeof openEditRequestModal === 'function') {
         openEditRequestModal(requestId);
     } else {
         window.location.href = `/index.php?open_request=${requestId}`;
     }
-    
+
     loadNotifications();
 }
 
@@ -307,8 +423,16 @@ async function markAllNotificationsRead() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mark_all_read: true })
         });
-        
-        loadNotifications();
+
+        await loadNotifications();
+
+        if (typeof showToast === 'function' && document.getElementById('toast-container')) {
+            showToast({
+                icon: 'iconoir-check-circle',
+                title: 'Notificaciones',
+                message: 'Todo marcado como leído'
+            }, 'success');
+        }
     } catch (error) {
         console.error('Error marking notifications as read:', error);
     }

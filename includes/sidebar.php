@@ -143,14 +143,14 @@ $company_name = $user['company_name'] ?? '';
 
 <!-- Inbox Panel -->
 <div class="inbox-overlay" id="inbox-overlay" onclick="toggleInbox()"></div>
-<div class="inbox-panel" id="inbox-panel">
+<div class="inbox-panel" id="inbox-panel" role="dialog" aria-modal="true" aria-label="Notificaciones" tabindex="-1">
     <div class="inbox-header">
-        <h3><i class="iconoir-bell"></i> Notificaciones</h3>
-        <div style="display: flex; gap: var(--spacing-sm);">
-            <button class="comment-action-btn" onclick="markAllNotificationsRead()" title="Marcar todo como leído">
-                <i class="iconoir-check-circle"></i>
+        <h3>Notificaciones</h3>
+        <div class="inbox-header-actions">
+            <button type="button" class="inbox-mark-all-btn" id="inbox-mark-all-btn" onclick="markAllNotificationsRead()" hidden>
+                Marcar todo
             </button>
-            <button class="comment-action-btn" onclick="toggleInbox()" title="Cerrar">
+            <button type="button" class="inbox-close-btn" onclick="toggleInbox()" aria-label="Cerrar notificaciones">
                 <i class="iconoir-xmark"></i>
             </button>
         </div>
@@ -161,11 +161,11 @@ $company_name = $user['company_name'] ?? '';
         <button type="button" class="inbox-filter-chip" data-filter="mention" onclick="setInboxFilter('mention', event)">Menciones</button>
         <button type="button" class="inbox-filter-chip" data-filter="assignment" onclick="setInboxFilter('assignment', event)">Asignaciones</button>
         <button type="button" class="inbox-filter-chip" data-filter="comment" onclick="setInboxFilter('comment', event)">Comentarios</button>
-        <button type="button" class="inbox-filter-chip" data-filter="completion" onclick="setInboxFilter('completion', event)">Completadas</button>
+        <button type="button" class="inbox-filter-chip" data-filter="status" onclick="setInboxFilter('status', event)">Estado</button>
     </div>
     <div class="inbox-body" id="inbox-body">
         <!-- Notifications loaded dynamically -->
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.2"></script>
+<script src="/assets/js/sidebar.js?v=1.3"></script>

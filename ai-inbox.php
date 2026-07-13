@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.6">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.3">
 </head>
 
 <?php

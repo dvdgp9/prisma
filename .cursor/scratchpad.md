@@ -1912,3 +1912,23 @@ Actualización Executor (2026-07-13 — CUP.3.6 optimización UX de Vista Global
 - Una checklist de equipo no debe reutilizar la capacidad general `edit`: una capacidad propia permite colaborar en subtareas sin ampliar privilegios sobre la mejora ni sus adjuntos.
 - Mientras `request_assignments` no almacene `assigned_by`, el último evento de asignación de cada usuario aún asignado es la fuente más precisa para avisar al asignador sin introducir una migración.
 - En una vista colaborativa, las métricas deben responder al trabajo del usuario (asignación y actividad no leída) y no a necesidades de gestión como `Sin asignar`; mantener variantes por rol evita empobrecer la vista administrativa.
+
+---
+
+## Análisis UX Notificaciones (Planner, 13 Julio 2026)
+
+Revisión completa de la funcionalidad de notificaciones (panel inbox, badge, API, generación). Hallazgos documentados en conversación con el usuario. Puntos clave: panel sin ancho móvil (400px fijos), sin accesibilidad (divs clicables, sin Escape/focus), mensajes sin contexto (no incluyen snippet de comentario), el creador de una petición no recibe notificación de comentarios, sin agrupación temporal, badge sin tope 99+, filtro "Completadas" reutiliza color de comentarios, sin push/email interno. Pendiente de que el usuario priorice qué implementar.
+
+### Executor: Rediseño notificaciones (13 Julio 2026) — COMPLETADO
+- Backend: notificaciones de cambio de estado (tipo `status_change`, avisa a creador + asignadores), comentarios notifican también al creador, mensajes con snippet del comentario («…», 80 chars).
+- Frontend: panel responsive (min(400px,100vw)), role=dialog + Escape + foco, agrupación Hoy/Ayer/Últimos 7 días/Anteriores, dot de no leída clicable (marcar leída individual), botón "Marcar todo" con toast, contador en chip No leídas, badge 99+, fechas absolutas >7d con tooltip, empty states por filtro, sin re-render si el usuario está leyendo (scroll), iconos con paleta de marca (completada verde, estado gris), reduced-motion.
+- Filtro "Completadas" renombrado a "Estado" (completion + status_change).
+- Versiones: styles.css?v=4.3 en todas las páginas, sidebar.js?v=1.3, sw.js prisma-v19.
+- Tests: suite completa OK (nuevos asserts para status_change y snippet; contratos de guards actualizados).
+- Verificado en navegador (desktop + móvil 375px) con datos seed en BD local.
+
+#### Lessons
+- El CLI mysql local necesita --default-character-set=utf8mb4 para insertar seeds con tildes/«» correctamente.
+- Los tokens --text-muted y --bg-hover no existen en styles.css; usar --text-secondary/--text-light/--bg-secondary.
+- tests/request-endpoint-guards.php contiene contratos de strings literales sobre sidebar.php/sidebar.js: actualizar al renombrar.
+- Password local de admin (solo BD dev) establecida a devtest123 para poder verificar en navegador.

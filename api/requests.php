@@ -320,20 +320,20 @@ switch ($method) {
 
             $stmt->execute($values);
 
-            $status_changed_to_completed = isset($input['status'])
-                && $old_status !== $input['status']
-                && $input['status'] === 'completed';
+            $status_changed = isset($input['status']) && $old_status !== $input['status'];
+            $status_changed_to_completed = $status_changed && $input['status'] === 'completed';
 
-            if ($status_changed_to_completed) {
+            if ($status_changed) {
                 try {
-                    create_request_completion_notifications(
+                    create_request_status_change_notifications(
                         $db,
                         $input['id'],
                         $user['id'],
-                        ($user['full_name'] ?? '') ?: ($user['username'] ?? 'Alguien')
+                        ($user['full_name'] ?? '') ?: ($user['username'] ?? 'Alguien'),
+                        $input['status']
                     );
                 } catch (Exception $e) {
-                    error_log('Failed to create completion notifications: ' . $e->getMessage());
+                    error_log('Failed to create status change notifications: ' . $e->getMessage());
                 }
             }
 

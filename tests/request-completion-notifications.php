@@ -67,4 +67,30 @@ assert_same([
     ]
 ], $rows, 'completion notification payload is correct');
 
+$created = create_request_status_change_notifications($db, 100, 40, 'Ada Lovelace', 'in_progress');
+assert_same(2, $created, 'status change notifies the creator and latest assigner');
+
+$rows = $db->query("SELECT user_id, type, message FROM notifications WHERE type = 'status_change' ORDER BY user_id")->fetchAll(PDO::FETCH_ASSOC);
+assert_same([
+    [
+        'user_id' => 10,
+        'type' => 'status_change',
+        'message' => 'Ada Lovelace ha puesto la mejora en curso'
+    ],
+    [
+        'user_id' => 31,
+        'type' => 'status_change',
+        'message' => 'Ada Lovelace ha puesto la mejora en curso'
+    ]
+], $rows, 'status change notification payload is correct');
+
+$created = create_request_status_change_notifications($db, 100, 40, 'Ada Lovelace', 'completed');
+assert_same(2, $created, 'completed status routes through completion notifications');
+
+assert_same(
+    'primer comentario con un texto largo que supera el límite y…',
+    get_notification_snippet("  primer   comentario\ncon un texto largo que supera el límite y debería truncarse en algún punto razonable", 60),
+    'snippet collapses whitespace and truncates with ellipsis'
+);
+
 fwrite(STDOUT, "Request completion notification matrix completed successfully.\n");
