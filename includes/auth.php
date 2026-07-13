@@ -223,6 +223,7 @@ function request_capabilities_for_role($role, $has_app_access)
         'view' => false,
         'comment' => false,
         'checklist' => false,
+        'update_status' => false,
         'edit' => false,
         'delete' => false
     ];
@@ -234,6 +235,7 @@ function request_capabilities_for_role($role, $has_app_access)
     $capabilities['view'] = true;
     $capabilities['comment'] = true;
     $capabilities['checklist'] = true;
+    $capabilities['update_status'] = true;
     $capabilities['edit'] = in_array($role, ['programador', 'admin', 'superadmin'], true);
     $capabilities['delete'] = in_array($role, ['admin', 'superadmin'], true);
 
@@ -634,7 +636,7 @@ function can_delete_request($request_id)
  */
 function require_request_capability($request_id, $capability)
 {
-    if (!in_array($capability, ['view', 'comment', 'checklist', 'edit', 'delete'], true)) {
+    if (!in_array($capability, ['view', 'comment', 'checklist', 'update_status', 'edit', 'delete'], true)) {
         error_response('Invalid request capability', 500);
     }
 

@@ -311,7 +311,7 @@ function renderRequestsTable(filteredRequests, tableBody) {
                     ${getTablePriorityBadgeMarkup(request, canEdit)}
                 </td>
                 <td>
-                    ${getTableStatusBadgeMarkup(request, canEdit)}
+                    ${getTableStatusBadgeMarkup(request, request.capabilities?.update_status === true)}
                 </td>
                 <td class="requests-table-title-cell">
                     <strong>${escapeHtml(request.title)}</strong>
@@ -1321,6 +1321,7 @@ function createRequestCard(request, isFinished = false) {
     const userRole = document.body.dataset.userRole;
     const canAdmin = ['admin', 'superadmin'].includes(userRole);
     const canManageRequest = request.capabilities?.edit === true;
+    const canUpdateStatus = request.capabilities?.update_status === true;
     const canEdit = request.capabilities?.edit === true;
     const canDelete = request.capabilities?.delete === true;
     const requestCreatedLabel = getRequestCreatedLabel(request.created_at);
@@ -1355,6 +1356,16 @@ function createRequestCard(request, isFinished = false) {
                         <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"
                                 onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
                     </div>
+                ` : `
+                    ${request.difficulty ? `
+                        <div class="difficulty-display" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
+                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
+                        </div>
+                    ` : ''}
+                `}
+                ${canUpdateStatus ? `
                     <div class="status-actions" role="group" aria-label="Cambiar estado">
                         <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}"
                                 onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)" title="Pausar">
@@ -1374,13 +1385,6 @@ function createRequestCard(request, isFinished = false) {
                         </button>
                     </div>
                 ` : `
-                    ${request.difficulty ? `
-                        <div class="difficulty-display" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
-                        </div>
-                    ` : ''}
                     <div class="status-badge-display status-${request.status}">
                         ${statusLabels[request.status] || request.status}
                     </div>
@@ -2147,6 +2151,7 @@ function configureRequestModalMode(request) {
         view: request.capabilities?.view === true,
         comment: request.capabilities?.comment === true,
         checklist: request.capabilities?.checklist === true,
+        update_status: request.capabilities?.update_status === true,
         edit: request.capabilities?.edit === true,
         delete: request.capabilities?.delete === true
     };

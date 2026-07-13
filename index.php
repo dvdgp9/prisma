@@ -1097,7 +1097,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.2"></script>
+    <script src="/assets/js/main.js?v=4.3"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

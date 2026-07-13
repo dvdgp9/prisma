@@ -245,7 +245,10 @@ switch ($method) {
             error_response('Request ID is required');
         }
 
-        require_request_capability($input['id'], 'edit');
+        // A status-only change is allowed to every role with app access;
+        // touching any other field still requires full edit capability.
+        $isStatusOnlyChange = empty(array_diff(array_keys($input), ['id', 'status']));
+        require_request_capability($input['id'], $isStatusOnlyChange ? 'update_status' : 'edit');
 
         try {
             $fields = [];

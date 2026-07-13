@@ -1942,3 +1942,10 @@ Revisión completa de la funcionalidad de notificaciones (panel inbox, badge, AP
 - Al abrir una mejora desde una notificación, el panel se reabre automáticamente cuando se cierra el modal (MutationObserver sobre la clase 'active' de #edit-request-modal, con timeout de seguridad de 5s si el modal nunca llega a abrirse). Permite revisar notificaciones en cadena sin reabrir el panel a mano.
 - Select de tipos con afordance: pill con borde + chevron (appearance:none + icono iconoir-nav-arrow-down en wrapper).
 - Versiones: styles.css?v=4.5, sidebar.js?v=1.5, sw prisma-v21. Tests OK.
+
+### Executor: Capability update_status para rol user (13 Julio 2026) — COMPLETADO
+- Nueva capability `update_status` en auth.php: true para todos los roles con acceso a la app (incluido user). `edit` sigue reservado a programador/admin/superadmin.
+- api/requests.php PUT: si el payload solo trae id+status exige `update_status`; cualquier otro campo exige `edit` (verificado: user puede cambiar estado, 403 en prioridad y en mixto estado+prioridad).
+- main.js: botones rápidos de estado en tarjeta y dropdown de estado en tabla gateados por update_status; dificultad/prioridad siguen con edit. Modal sin cambios (la sección estado está gateada por has_role('programador') en PHP).
+- Tests actualizados (matriz de capacidades + contrato de guards). Versiones: main.js?v=4.3, sw prisma-v22.
+- Usuario local de prueba: testuser / devtest123 (rol user).

@@ -38,7 +38,7 @@ assert_file_contains('api/users-list.php', [
 ]);
 assert_file_contains('api/requests.php', [
     "require_request_capability(\$_GET['id'], 'view')",
-    "require_request_capability(\$input['id'], 'edit')",
+    "require_request_capability(\$input['id'], \$isStatusOnlyChange ? 'update_status' : 'edit')",
     "require_request_capability(\$input['id'], 'delete')",
     'sanitize_request_for_capabilities',
     'create_request_status_change_notifications',
