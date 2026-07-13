@@ -1723,3 +1723,134 @@ Actualización Executor (2026-06-25):
 ## Lessons (Visor de archivos in-app)
 - En PWA `display: standalone`, `target="_blank"` expulsa el recurso a una ventana suelta del navegador. Para previsualizar sin salir de la app, servir el archivo desde un endpoint propio y mostrarlo en un overlay (img/iframe).
 - El SW manda `/api/` a network-only, así que el endpoint de archivos no se cachea (correcto para permisos).
+
+## Background and Motivation (colaboración de usuarios en peticiones)
+
+El usuario informa de que el rol `user` puede votar peticiones, pero en la vista habitual no puede entrar en su detalle, abrir documentos ni comentar. Solicita revisar el funcionamiento, definir una mejora y proceder en modo Executor.
+
+Objetivo funcional: separar claramente **ver y colaborar** de **administrar/editar**. Un usuario con acceso a la app debe poder abrir una petición, leer su información y comentarios, descargar/ver sus adjuntos y publicar comentarios, sin obtener permisos para cambiar título, descripción, estado, prioridad, asignaciones, checklist ni datos del solicitante.
+
+Restricción de seguridad: la apertura del detalle no debe desplegarse sin verificar primero que todos los endpoints asociados validan el acceso a la petición/app; la auditoría inicial ha detectado rutas autenticadas que actualmente operan por ID sin comprobar el scope multiempresa.
+
+## Key Challenges and Analysis (colaboración de usuarios en peticiones)
+
+### Diagnóstico funcional
+- La card y la tabla solo ofrecen `openEditRequestModal()` dentro del bloque `canEdit`. Para el rol `user`, votar es prácticamente la única acción disponible aunque la petición pertenezca a una app que puede ver.
+- El detalle actual mezcla en un mismo modal tres capacidades distintas: **consultar**, **colaborar** y **administrar**. El nombre, estructura y handlers están diseñados como edición; no existe un modo explícito de solo lectura.
+- Comentarios y adjuntos ya están renderizados dentro de ese modal. Por tanto, el camino más simple es introducir una apertura de detalle para todos los usuarios con acceso y hacer que cada bloque respete capacidades, sin duplicar toda la experiencia en un segundo modal.
+
+### Modelo de permisos recomendado
+- **Puede ver la petición**: usuario autenticado con `can_access_app(request.app_id)`.
+- **Puede colaborar**: quien puede ver la petición puede leer comentarios, publicar comentarios y abrir/descargar adjuntos. Puede editar/eliminar únicamente sus propios comentarios. En esta primera versión no puede subir ni eliminar adjuntos, modificar checklist ni crear tareas desde la petición salvo que ya tenga permiso de edición.
+- **Puede administrar la petición**: se mantiene `can_edit_requests()` y, además, debe verificarse el acceso concreto a la app de la petición. Permite cambiar título, descripción, prioridad, dificultad, estado, asignaciones, checklist y adjuntos.
+- **Puede eliminar**: se mantiene `can_delete_requests()`, siempre combinado con acceso a la app concreta.
+- Los permisos deben decidirse en backend. Ocultar controles en JS es una mejora de UX, no una barrera de seguridad.
+
+### Hallazgos de seguridad que bloquean la UI colaborativa
+- `api/requests.php` sí limita el GET a apps accesibles para no-superadmin, incluso al filtrar por ID. Sin embargo, devuelve `r.*`, lo que incluye `requester_name` y `requester_email`; esos datos no deben llegar al rol `user` en el detalle colaborativo.
+- `api/comments.php` valida login, pero GET y POST aceptan `request_id` sin comprobar que la petición pertenece a una app accesible. PUT y DELETE comprueban autoría/rol, pero tampoco el scope de la petición. Además, las menciones buscan usuarios globalmente; se debe limitar a usuarios que compartan acceso relevante para no filtrar identidades entre empresas ni crear notificaciones cruzadas.
+- `api/attachments.php` lista adjuntos solo por `request_id`; DELETE valida rol/subidor, pero no acceso a la app de la petición.
+- `api/file.php?type=request` sirve cualquier adjunto por ID a cualquier usuario autenticado. El comentario del código confirma que replica el comportamiento inseguro de `attachments.php`.
+- `api/upload.php` solo comprueba que la petición existe. Un usuario autenticado puede intentar subir un archivo a una petición de otra empresa mediante un ID conocido y tampoco se exige actualmente permiso de edición.
+- `api/assignments.php` GET opera por `request_id` sin scope. Aunque la UI de solo lectura no necesita consultar este endpoint porque `requests.php` ya aporta asignaciones, debe cerrarse para evitar enumeración directa.
+- Antes de ampliar la colaboración conviene revisar también `api/votes.php`, notificaciones con `request_id` y cualquier deep-link `?request=` para que todos reutilicen la misma regla de acceso.
+
+### Decisiones de alcance para la primera entrega
+- No crear roles nuevos ni migraciones de base de datos: la capacidad se deriva de acceso a app + rol actual.
+- No permitir que `user` cambie campos, asignaciones, checklist o adjuntos en esta primera versión.
+- Sí permitir lectura del detalle, comentarios propios y visualización/descarga segura de documentos.
+- Presentar un encabezado neutral como **Detalle de petición**. Para usuarios con edición, el mismo componente habilita controles de administración; para `user`, muestra valores de solo lectura y oculta datos del solicitante y acciones mutables.
+- Mantener comentarios internos en esta fase. Si en el futuro participa un solicitante externo, habrá que separar comentarios públicos de notas internas antes de abrir ese portal.
+
+### Riesgos y verificaciones esenciales
+- **IDOR multiempresa**: probar con dos empresas y IDs conocidos que ningún endpoint devuelve, modifica o sirve información cruzada.
+- **PII**: comprobar en la respuesta HTTP, no solo en el DOM, que `requester_email`/`requester_name` no llegan a roles sin permiso.
+- **Menciones**: evitar que autocomplete o parsing permita descubrir/notificar usuarios ajenos al scope de la petición.
+- **Regresión de administradores/programadores**: el nuevo modo no debe romper edición, checklist, subida de adjuntos, asignación ni acciones existentes.
+- **PWA**: al modificar JS/CSS, actualizar versiones `?v=` y la caché de `sw.js`.
+
+## High-level Task Breakdown (colaboración de usuarios en peticiones)
+
+### FASE CUP.1 — Guardia de acceso reutilizable y contrato de capacidades
+- [ ] **CUP.1.1** Crear un helper backend que resuelva una petición por ID y compruebe `can_access_app(app_id)` antes de devolverla o actuar sobre ella. **IMPLEMENTADO, pendiente de verificación del usuario.**
+  - **Criterio verificable**: petición inexistente o de app ajena produce 404/403 de forma consistente; petición accesible continúa.
+- [ ] **CUP.1.2** Definir helpers/capacidades separadas para `view`, `comment`, `edit` y `delete`, sin depender del estado visual del frontend. **IMPLEMENTADO, pendiente de verificación del usuario.**
+  - **Criterio verificable**: una matriz de roles demuestra que `user` puede ver/comentar, pero no editar; `programador` conserva CRU; admin/superadmin conservan sus permisos.
+- [ ] **CUP.1.3** Añadir pruebas o harness HTTP con dos empresas, al menos una app por empresa y usuarios con scopes distintos. **IMPLEMENTADO con harness aislado, pendiente de verificación del usuario.**
+  - **Criterio verificable**: los casos permitidos devuelven 2xx y todos los accesos cruzados por ID devuelven 403/404.
+
+### FASE CUP.2 — Cierre de endpoints del detalle (bloqueante antes de UI)
+- [ ] **CUP.2.1** Aplicar la guardia a GET/POST/PUT/DELETE de `api/comments.php`.
+  - **Criterio verificable**: no se pueden leer ni escribir comentarios de una petición fuera del scope; un usuario puede modificar/eliminar solo su comentario dentro del scope.
+- [ ] **CUP.2.2** Limitar menciones y autocomplete a usuarios compatibles con la empresa/app de la petición.
+  - **Criterio verificable**: un usuario de Empresa A no aparece ni recibe una mención originada en una petición exclusiva de Empresa B.
+- [ ] **CUP.2.3** Aplicar la guardia a `api/attachments.php`, `api/file.php?type=request` y `api/upload.php`; exigir permiso de edición para subir/eliminar en esta primera versión.
+  - **Criterio verificable**: un archivo de otra empresa no se lista ni se sirve conociendo su ID; `user` puede abrir/descargar un archivo accesible pero no subirlo ni eliminarlo.
+- [ ] **CUP.2.4** Aplicar la guardia al GET/POST de asignaciones y auditar votos, notificaciones y deep-links relacionados con peticiones.
+  - **Criterio verificable**: ningún endpoint asociado al detalle acepta un `request_id` ajeno; votar sigue funcionando solo en peticiones visibles.
+- [ ] **CUP.2.5** Dejar de exponer `r.*` indiscriminadamente y construir una respuesta segura según capacidades, excluyendo datos del solicitante para `user`.
+  - **Criterio verificable**: la respuesta JSON del detalle para `user` no contiene email/nombre privado del solicitante; perfiles autorizados conservan los campos necesarios.
+
+### FASE CUP.3 — Detalle de petición en modo lectura/colaboración
+- [ ] **CUP.3.1** Sustituir la acción exclusiva “Editar” por una acción neutral “Ver detalle” disponible en card y tabla para todo usuario con acceso.
+  - **Criterio verificable**: un `user` abre una petición desde ambas vistas en un clic; el voto sigue funcionando sin abrir el detalle accidentalmente.
+- [ ] **CUP.3.2** Adaptar el modal existente a dos modos explícitos: lectura/colaboración y edición, usando capacidades recibidas o derivadas de forma fiable.
+  - **Criterio verificable**: `user` ve título, descripción, app, estado, prioridad, dificultad, responsables, actividad y checklist sin controles mutables; programador/admin conservan edición.
+- [ ] **CUP.3.3** Ocultar para `user` solicitante, subida/eliminación de adjuntos, edición de checklist, asignaciones, crear tarea y submit de edición.
+  - **Criterio verificable**: inspección visual y de teclado no muestra ni permite activar controles administrativos; llamadas manuales a API siguen bloqueadas por CUP.2.
+- [ ] **CUP.3.4** Mantener los adjuntos accesibles mediante el visor in-app ya existente.
+  - **Criterio verificable**: imagen/PDF se abre dentro de Prisma y otros formatos se descargan con su nombre real; archivo ajeno devuelve 403/404.
+
+### FASE CUP.4 — Comentarios para usuarios
+- [ ] **CUP.4.1** Habilitar lectura y publicación de comentarios en el modo colaborativo, con error inline, loading y prevención de doble envío.
+  - **Criterio verificable**: `user` publica un comentario y aparece sin recargar; un fallo de red no duplica ni pierde silenciosamente el texto.
+- [ ] **CUP.4.2** Mantener edición/eliminación solo de comentarios propios y privilegio admin donde ya aplique.
+  - **Criterio verificable**: `user A` no ve ni ejecuta acciones sobre el comentario de `user B`; sí puede operar sobre el suyo.
+- [ ] **CUP.4.3** Verificar notificaciones de comentario/mención dentro del scope permitido.
+  - **Criterio verificable**: asignados y mencionados válidos reciben una sola notificación; usuarios ajenos no reciben ninguna.
+
+### FASE CUP.5 — QA, regresión y entrega
+- [ ] **CUP.5.1** Ejecutar lint/syntax checks de todos los PHP/JS tocados y `git diff --check`.
+  - **Criterio verificable**: todos los comandos terminan sin error.
+- [ ] **CUP.5.2** Ejecutar la matriz manual con `user`, `programador`, `admin` y, si existe el caso, usuario con permiso específico de una sola app.
+  - **Criterio verificable**: cada rol obtiene exactamente las capacidades documentadas y no hay acceso entre empresas.
+- [ ] **CUP.5.3** Versionar assets y caché PWA, y documentar archivos/endpoints modificados.
+  - **Criterio verificable**: un refresh/despliegue carga la nueva UI sin necesitar limpiar caché manualmente.
+
+## Project Status Board (colaboración de usuarios en peticiones)
+- [ ] **CUP.1** Guardia reutilizable + matriz multiempresa
+- [ ] **CUP.2** Endpoints del detalle asegurados (bloqueante)
+- [ ] **CUP.3** Detalle accesible en modo lectura/colaboración
+- [ ] **CUP.4** Comentarios habilitados para `user`
+- [ ] **CUP.5** QA de roles, regresión y PWA
+
+## Executor's Feedback or Assistance Requests (colaboración de usuarios en peticiones)
+- El usuario ha solicitado modo Executor, pero según la convención del proyecto se debe ejecutar **un solo bloque del Project Status Board cada vez**. El siguiente y único bloque autorizado recomendado es **CUP.1**. Tras completarlo, registrar pruebas y pedir validación antes de marcarlo como verificado o empezar CUP.2.
+- **No implementar todavía la apertura del detalle para `user`**. Primero deben completarse CUP.1 y CUP.2; de lo contrario la UI haría explotables accesos por ID ya observados.
+- No hace falta migración de base de datos para la primera versión. Si durante la implementación aparece una necesidad de schema, documentarla y pedir confirmación antes de ejecutarla.
+- Empezar TDD con casos de autorización multiempresa. La prueba crítica no es solo que el rol correcto pueda entrar, sino que un usuario autenticado no pueda cambiar el ID para leer/comentar/descargar sobre otra empresa.
+- Mantener CSS en `assets/css/styles.css`, sin inline nuevo. Reutilizar el visor `file-viewer.js` y el modal existente para minimizar superficie y regresiones.
+- Añadir salida de diagnóstico útil en el entorno de prueba, pero no devolver trazas SQL, rutas físicas ni datos sensibles en errores de producción.
+- Si el servidor muestra vulnerabilidades de dependencias en terminal, ejecutar `npm audit` antes de continuar y registrar el resultado en Lessons.
+- Al terminar cada bloque, actualizar esta sección y el Project Status Board; el Executor no debe anunciar la finalización total, sino solicitar revisión del Planner/usuario.
+
+Actualización Executor (2026-07-13 — reconocimiento previo a CUP.1):
+- Auditoría frontend y backend completada sin modificar código de producto. La causa visible está confirmada: en cards, el voto se renderiza para todos, pero el único acceso a `openEditRequestModal()` está dentro del bloque `canEdit`; en tabla la fila sí abre el modal, creando una inconsistencia.
+- El backend ya permite técnicamente leer/escribir comentarios y listar/servir adjuntos con sesión, pero varias rutas no validan que el `request_id` pertenezca a una app accesible. Abrir la UI ahora ampliaría un riesgo IDOR multiempresa.
+- Detectada también una inconsistencia entre `get_user_apps()` y `can_access_app()`: si existen permisos explícitos pero todos tienen `can_view=0`, el primero puede aplicar el fallback de empresa y devolver todas sus apps.
+- Siguiente bloque recomendado y no iniciado: **CUP.1**, con TDD/harness de dos empresas antes de cambiar helpers.
+- Bloqueo de proceso: las instrucciones del proyecto exigen solicitar `@web` antes de desarrollar. No hay una API externa nueva en esta fase; la consulta se limitaría a documentación vigente de seguridad/autorización aplicable a PHP y se documentaría la referencia pertinente antes de tocar código.
+
+Actualización Executor (2026-07-13 — CUP.1 implementado, pendiente de verificación):
+- Añadido en `includes/auth.php` el contrato puro `request_capabilities_for_role()` y capacidades separadas `view`, `comment`, `edit`, `delete`. Todas quedan anuladas fuera del scope de la app, incluso para `admin`; `superadmin` conserva acceso porque `can_access_app()` ya lo resuelve para apps existentes.
+- Añadidos `get_request_access_context()`, `get_request_capabilities()`, `can_view_request()`, `can_comment_request()`, `can_edit_request()`, `can_delete_request()` y `require_request_capability()`. La guardia resuelve primero la petición padre y su `app_id`/`company_id`.
+- Creado `tests/request-access-capabilities.php`. Usa SQLite en memoria; no lee ni modifica la base real. Simula dos empresas/apps y comprueba que conocer el ID de la otra empresa no concede ninguna capacidad.
+- Verificación Executor: 17 casos `PASS`, `php -l` correcto en helper y test, y `git diff --check` sin errores.
+- No se ha aplicado todavía la guardia a endpoints ni se ha cambiado la UI. Eso corresponde a CUP.2 y CUP.3 respectivamente.
+- Pendiente de confirmación del usuario: ejecutar `php tests/request-access-capabilities.php` y confirmar que finaliza con `Authorization matrix completed successfully.` antes de marcar CUP.1 como completado y comenzar CUP.2.
+
+## Lessons (colaboración de usuarios en peticiones)
+- Autenticación no equivale a autorización: todo endpoint que acepte `request_id` o un ID de recurso hijo debe resolver la petición padre y validar su `app_id`.
+- El acceso colaborativo debe modelarse como capacidad independiente de editar; reutilizar `can_edit_requests()` para decidir si se puede abrir un detalle bloquea usuarios legítimos y empuja a mezclar controles sensibles con contenido de lectura.
+- Ocultar PII en el DOM no basta. Si un campo no está autorizado, debe omitirse en la respuesta del backend.
+- El usuario autorizó explícitamente continuar esta mejora sin consulta `@web`; para este flujo interno de permisos no es necesario bloquear el Executor por documentación externa.

@@ -212,6 +212,33 @@ function can_delete_requests()
 }
 
 /**
+ * Build the request capability contract for a role inside a concrete app scope.
+ *
+ * This function is intentionally pure so the role matrix can be tested without
+ * connecting to the production database. App access always gates every action.
+ */
+function request_capabilities_for_role($role, $has_app_access)
+{
+    $capabilities = [
+        'view' => false,
+        'comment' => false,
+        'edit' => false,
+        'delete' => false
+    ];
+
+    if (!$has_app_access || !in_array($role, ['user', 'programador', 'admin', 'superadmin'], true)) {
+        return $capabilities;
+    }
+
+    $capabilities['view'] = true;
+    $capabilities['comment'] = true;
+    $capabilities['edit'] = in_array($role, ['programador', 'admin', 'superadmin'], true);
+    $capabilities['delete'] = in_array($role, ['admin', 'superadmin'], true);
+
+    return $capabilities;
+}
+
+/**
  * Require specific role - redirect if not authorized
  */
 function require_role($role)
@@ -466,6 +493,113 @@ function can_access_app($app_id)
     $user_company_ids = array_column($user_companies, 'id');
     
     return in_array($app['company_id'], $user_company_ids);
+}
+
+/**
+ * Resolve the parent app/company for a request before authorizing child data.
+ *
+ * An optional PDO connection keeps authorization tests isolated from the real
+ * database. Production callers should omit it.
+ */
+function get_request_access_context($request_id, $db = null)
+{
+    $request_id = filter_var($request_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($request_id === false) {
+        return false;
+    }
+
+    $db = $db ?: getDB();
+    $stmt = $db->prepare("
+        SELECT r.id, r.app_id, a.company_id, r.created_by
+        FROM requests r
+        INNER JOIN apps a ON r.app_id = a.id
+        WHERE r.id = ?
+    ");
+    $stmt->execute([$request_id]);
+    $request = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$request) {
+        return false;
+    }
+
+    return [
+        'id' => (int) $request['id'],
+        'app_id' => (int) $request['app_id'],
+        'company_id' => (int) $request['company_id'],
+        'created_by' => $request['created_by'] === null ? null : (int) $request['created_by']
+    ];
+}
+
+/**
+ * Return both the request scope and the current user's capabilities for it.
+ */
+function get_request_capabilities($request_id, $db = null, $app_access_checker = null)
+{
+    $request = get_request_access_context($request_id, $db);
+    if (!$request) {
+        return false;
+    }
+
+    $user = get_logged_user();
+    if (!$user) {
+        return [
+            'request' => $request,
+            'capabilities' => request_capabilities_for_role('', false)
+        ];
+    }
+
+    $app_access_checker = $app_access_checker ?: 'can_access_app';
+    $has_app_access = (bool) call_user_func($app_access_checker, $request['app_id']);
+
+    return [
+        'request' => $request,
+        'capabilities' => request_capabilities_for_role($user['role'], $has_app_access)
+    ];
+}
+
+function can_view_request($request_id)
+{
+    $access = get_request_capabilities($request_id);
+    return $access !== false && $access['capabilities']['view'];
+}
+
+function can_comment_request($request_id)
+{
+    $access = get_request_capabilities($request_id);
+    return $access !== false && $access['capabilities']['comment'];
+}
+
+function can_edit_request($request_id)
+{
+    $access = get_request_capabilities($request_id);
+    return $access !== false && $access['capabilities']['edit'];
+}
+
+function can_delete_request($request_id)
+{
+    $access = get_request_capabilities($request_id);
+    return $access !== false && $access['capabilities']['delete'];
+}
+
+/**
+ * Require one request capability and return the already-resolved request scope.
+ */
+function require_request_capability($request_id, $capability)
+{
+    if (!in_array($capability, ['view', 'comment', 'edit', 'delete'], true)) {
+        error_response('Invalid request capability', 500);
+    }
+
+    $access = get_request_capabilities($request_id);
+    if ($access === false) {
+        error_response('Request not found', 404);
+    }
+
+    if (!$access['capabilities'][$capability]) {
+        error_response('Unauthorized', 403);
+    }
+
+    return $access['request'];
 }
 
 /**
