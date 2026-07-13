@@ -1898,9 +1898,10 @@ Actualización Executor (2026-07-13 — CUP.3.6 optimización UX de Vista Global
 - El bloque `Qué toca` se contrae a un mensaje `Todo al día` cuando sus tres contadores están a cero. Cuando hay tareas conserva el desglose por vencidas, hoy y próximos siete días.
 - Para `user`, la búsqueda deja de prometer datos del solicitante y el resumen muestra `Asignadas a mí`, `Con actividad nueva`, `En curso` y `Completadas recientes` (últimos 30 días). La actividad nueva deriva de notificaciones no leídas ya autorizadas.
 - Las cards no reinterpretan la descripción: textos como `Adjunto PDF` siguen siendo descripción. Se aclaran `Creada hace…`, `Creada por…`, `Responsable/Equipo` y se muestra un botón textual `Ver detalle` para perfiles sin edición.
+- El CTA `Ver detalle` gana altura táctil de 34px, padding horizontal, separación respecto al voto, hover sobrio y foco visible de teclado.
 - La terminología visible se unifica en `En curso` y `Completadas`. La tarea rápida flotante se oculta solo para `user`; programador/admin/superadmin la conservan. La instalación PWA de `user` se mueve al menú de perfil, mientras los demás roles conservan el botón flotante.
-- TDD/validación Executor: contrato UX 23/23, contratos previos de detalle/endpoints, matriz de capacidades y notificaciones, `php -l`, `node --check` y `git diff --check` correctos.
-- Versionado: `styles.css?v=4.1`, `main.js?v=4.2`, `sidebar.js?v=1.2`, `pwa.js?v=1.1`, caché PWA `prisma-v17`. Sin migraciones ni cambios de permisos.
+- TDD/validación Executor: contrato UX 26/26, contratos previos de detalle/endpoints, matriz de capacidades y notificaciones, `php -l`, `node --check` y `git diff --check` correctos.
+- Versionado: `styles.css?v=4.2`, `main.js?v=4.2`, `sidebar.js?v=1.2`, `pwa.js?v=1.1`, caché PWA `prisma-v18`. Sin migraciones ni cambios de permisos.
 - Pendiente usuario: recargar con rol `user` y validar densidad, filtros, `Mis asignadas`, apertura de detalle y ausencia de overlays; después comprobar con admin/superadmin que la tarea rápida y el instalador flotante continúan visibles. CUP.3 permanece sin marcar hasta esa validación.
 
 ## Lessons (colaboración de usuarios en peticiones)

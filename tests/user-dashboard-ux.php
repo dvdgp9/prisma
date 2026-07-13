@@ -55,6 +55,9 @@ assert_contains_ux($main, 'prisma:notifications-updated', 'user activity summary
 assert_contains_ux($sidebarJs, 'prisma:notifications-updated', 'notification updates are shared with the dashboard');
 assert_contains_ux($styles, '.tasks-widget.is-clear', 'compact empty-task state has dedicated styles');
 assert_contains_ux($styles, '.request-card-detail-cta', 'text detail action has dedicated styles');
+assert_contains_ux($styles, 'min-height: 34px;', 'detail action has a comfortable hit area');
+assert_contains_ux($styles, 'margin-left: var(--sp-8);', 'detail action is visually separated from voting controls');
+assert_contains_ux($styles, '.request-card-detail-cta:focus-visible', 'detail action has a keyboard focus state');
 
 assert_contains_ux($index, '<span>En curso</span>', 'status quick filter uses En curso');
 assert_contains_ux($index, '<span>Completadas</span>', 'completed quick filter uses consistent terminology');
