@@ -2,7 +2,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(registration => {
-        console.log('✅ Service Worker registrado:', registration.scope);
+        console.log('Service Worker registrado:', registration.scope);
         
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
@@ -15,7 +15,7 @@ if ('serviceWorker' in navigator) {
         });
       })
       .catch(error => {
-        console.log('❌ Error al registrar Service Worker:', error);
+        console.log('Error al registrar Service Worker:', error);
       });
   });
 
@@ -72,6 +72,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 function showInstallButton() {
+  const userRole = document.body.dataset.userRole;
+  if (userRole === 'user') {
+    const menuItem = document.getElementById('pwa-install-menu-item');
+    if (menuItem) menuItem.hidden = false;
+    return;
+  }
+
+  if (document.querySelector('.pwa-install-button')) return;
+
   const installBtn = document.createElement('button');
   installBtn.className = 'pwa-install-button';
   installBtn.innerHTML = '<i class="iconoir-download"></i> Instalar App';
@@ -95,9 +104,14 @@ async function promptInstall() {
   if (installBtn) {
     installBtn.remove();
   }
+
+  const menuItem = document.getElementById('pwa-install-menu-item');
+  if (menuItem) menuItem.hidden = true;
 }
 
 window.addEventListener('appinstalled', () => {
-  console.log('✅ PWA instalada con éxito');
+  console.log('PWA instalada con éxito');
   deferredPrompt = null;
+  const menuItem = document.getElementById('pwa-install-menu-item');
+  if (menuItem) menuItem.hidden = true;
 });

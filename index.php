@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.0">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.1">
 </head>
 
 <?php
@@ -114,14 +114,14 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <div class="requests-toolbar-shell" id="requests-toolbar-shell">
+            <div class="requests-toolbar-shell is-advanced" id="requests-toolbar-shell">
                 <div class="sorting-bar" id="sorting-bar">
                     <div class="sorting-controls">
                         <div class="sort-group sort-group-search">
                             <label class="sort-label" for="request-search">Buscar</label>
                             <div class="toolbar-search-input">
                                 <i class="iconoir-search"></i>
-                                <input type="text" id="request-search" placeholder="Buscar por título, descripción, app o solicitante" oninput="handleSearchInput()">
+                                <input type="text" id="request-search" placeholder="<?php echo $user['role'] === 'user' ? 'Buscar por título, descripción o aplicación' : 'Buscar por título, descripción, app o solicitante'; ?>" oninput="handleSearchInput()">
                             </div>
                         </div>
 
@@ -163,11 +163,6 @@ $company_name = $user['company_name'] ?? '';
                             </select>
                         </div>
 
-                        <button type="button" class="toolbar-more-btn" id="toolbar-more-btn" onclick="toggleToolbarAdvanced()" aria-expanded="false">
-                            <i class="iconoir-filter"></i>
-                            <span>Más filtros</span>
-                            <i class="iconoir-nav-arrow-down"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -187,7 +182,7 @@ $company_name = $user['company_name'] ?? '';
                         </button>
                         <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
                             <i class="iconoir-check-circle"></i>
-                            <span>Hechas</span>
+                            <span>Completadas</span>
                         </button>
                     </div>
 
@@ -220,12 +215,30 @@ $company_name = $user['company_name'] ?? '';
             </div>
 
             <div class="requests-summary-bar" id="requests-summary-bar">
+                <?php if ($user['role'] === 'user'): ?>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Asignadas a mí</span>
+                    <strong class="summary-stat-value" id="summary-assigned-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Con actividad nueva</span>
+                    <strong class="summary-stat-value" id="summary-activity-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">En curso</span>
+                    <strong class="summary-stat-value" id="summary-in-progress-count">0</strong>
+                </div>
+                <div class="summary-stat-card">
+                    <span class="summary-stat-label">Completadas recientes</span>
+                    <strong class="summary-stat-value" id="summary-recent-completed-count">0</strong>
+                </div>
+                <?php else: ?>
                 <div class="summary-stat-card">
                     <span class="summary-stat-label">Visibles</span>
                     <strong class="summary-stat-value" id="summary-visible-count">0</strong>
                 </div>
                 <div class="summary-stat-card">
-                    <span class="summary-stat-label">En progreso</span>
+                    <span class="summary-stat-label">En curso</span>
                     <strong class="summary-stat-value" id="summary-in-progress-count">0</strong>
                 </div>
                 <div class="summary-stat-card">
@@ -236,6 +249,7 @@ $company_name = $user['company_name'] ?? '';
                     <span class="summary-stat-label">Sin asignar</span>
                     <strong class="summary-stat-value" id="summary-unassigned-count">0</strong>
                 </div>
+                <?php endif; ?>
             </div>
 
             <!-- Cards Grid -->
@@ -559,9 +573,9 @@ $company_name = $user['company_name'] ?? '';
                                     <label for="edit-request-status">Estado</label>
                                     <select id="edit-request-status">
                                         <option value="pending">Pendiente</option>
-                                        <option value="in_progress">En Progreso</option>
-                                        <option value="completed">Completado</option>
-                                        <option value="discarded">Descartado</option>
+                                        <option value="in_progress">En curso</option>
+                                        <option value="completed">Completada</option>
+                                        <option value="discarded">Descartada</option>
                                     </select>
                                 </div>
 
@@ -1062,7 +1076,8 @@ $company_name = $user['company_name'] ?? '';
         </div>
     </div>
 
-    <!-- Floating Task Button -->
+    <?php if ($user['role'] !== 'user'): ?>
+    <!-- Floating Task Button: retained for management roles -->
     <div class="floating-task-btn" id="floating-task-btn" onclick="toggleFloatingTaskInput()">
         <i class="iconoir-plus"></i>
     </div>
@@ -1072,6 +1087,7 @@ $company_name = $user['company_name'] ?? '';
             <i class="iconoir-send"></i>
         </button>
     </div>
+    <?php endif; ?>
 
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
@@ -1081,11 +1097,11 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.1"></script>
+    <script src="/assets/js/main.js?v=4.2"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>
-    <script src="/assets/js/pwa.js"></script>
+    <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
 </html>

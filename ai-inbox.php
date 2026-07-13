@@ -120,7 +120,7 @@ $userApps = get_user_apps();
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
     <script src="/assets/js/ai-inbox.js?v=ai5"></script>
-    <script src="/assets/js/pwa.js"></script>
+    <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
 </html>

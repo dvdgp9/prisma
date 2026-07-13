@@ -170,6 +170,10 @@ async function loadNotifications() {
         if (data.success) {
             const { notifications, unread_count } = data.data;
             inboxNotifications = notifications || [];
+
+            window.dispatchEvent(new CustomEvent('prisma:notifications-updated', {
+                detail: { notifications: inboxNotifications }
+            }));
             
             const badge = document.getElementById('inbox-count');
             if (badge) {

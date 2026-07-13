@@ -1125,7 +1125,7 @@ $userApps = get_user_apps();
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
     </style>
-    <script src="/assets/js/pwa.js"></script>
+    <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
 </html>

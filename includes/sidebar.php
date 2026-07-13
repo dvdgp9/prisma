@@ -129,6 +129,11 @@ $company_name = $user['company_name'] ?? '';
             <button type="button" class="sidebar-user-menu-item" onclick="openProfileModal(); toggleSidebarUserMenu()">
                 <i class="iconoir-user"></i><span>Mi perfil</span>
             </button>
+            <?php if ($user['role'] === 'user'): ?>
+            <button type="button" class="sidebar-user-menu-item" id="pwa-install-menu-item" onclick="promptInstall(); toggleSidebarUserMenu()" hidden>
+                <i class="iconoir-download"></i><span>Instalar aplicación</span>
+            </button>
+            <?php endif; ?>
             <a href="/logout.php" class="sidebar-user-menu-item sidebar-user-menu-item--danger">
                 <i class="iconoir-log-out"></i><span>Cerrar sesión</span>
             </a>
@@ -163,4 +168,4 @@ $company_name = $user['company_name'] ?? '';
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.1"></script>
+<script src="/assets/js/sidebar.js?v=1.2"></script>

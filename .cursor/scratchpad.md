@@ -1803,6 +1803,8 @@ Restricción de seguridad: la apertura del detalle no debe desplegarse sin verif
 - [ ] **CUP.3.5** Permitir que `user` gestione subtareas dentro de una mejora visible mediante una capacidad `checklist` independiente de editar la petición. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
   - **Criterio verificable**: `user` puede crear, completar, renombrar y eliminar subtareas compartidas; sigue sin poder editar título, descripción, solicitante, responsables, adjuntos ni otros metadatos de la mejora.
   - **Requisito actualizado por el usuario**: las restricciones de checklist descritas en CUP.3.2 y CUP.3.3 quedan sustituidas por esta excepción colaborativa explícita.
+- [ ] **CUP.3.6** Simplificar la Vista Global de `user` y priorizar sus mejoras asignadas y actividad. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
+  - **Criterio verificable**: filtros visibles por defecto, acceso textual a `Ver detalle`, métricas personales y estado vacío compacto; los controles flotantes de gestión se conservan para roles distintos de `user`.
 
 ### FASE CUP.4 — Comentarios para usuarios
 - [ ] **CUP.4.1** Habilitar lectura y publicación de comentarios en el modo colaborativo, con error inline, loading y prevención de doble envío.
@@ -1891,6 +1893,16 @@ Actualización Executor (2026-07-13 — CUP.4.4 notificación de mejora completa
 - TDD/validación Executor: nueva matriz aislada de destinatarios y payload 4/4, contratos de endpoints/UI, matriz de capacidades, `php -l`, `node --check` y `git diff --check` correctos.
 - Pendiente usuario: asignar una mejora desde la cuenta A, completarla desde otra cuenta con permiso de edición y comprobar que A recibe un único aviso que abre el detalle. CUP.4 no se marca completo hasta esa validación.
 
+Actualización Executor (2026-07-13 — CUP.3.6 optimización UX de Vista Global para `user`, pendiente de prueba visual):
+- Los filtros quedan abiertos permanentemente y se elimina el toggle `Más filtros`; `Mis asignadas` permanece visible. El filtro `Completadas` revela directamente las tarjetas completadas.
+- El bloque `Qué toca` se contrae a un mensaje `Todo al día` cuando sus tres contadores están a cero. Cuando hay tareas conserva el desglose por vencidas, hoy y próximos siete días.
+- Para `user`, la búsqueda deja de prometer datos del solicitante y el resumen muestra `Asignadas a mí`, `Con actividad nueva`, `En curso` y `Completadas recientes` (últimos 30 días). La actividad nueva deriva de notificaciones no leídas ya autorizadas.
+- Las cards no reinterpretan la descripción: textos como `Adjunto PDF` siguen siendo descripción. Se aclaran `Creada hace…`, `Creada por…`, `Responsable/Equipo` y se muestra un botón textual `Ver detalle` para perfiles sin edición.
+- La terminología visible se unifica en `En curso` y `Completadas`. La tarea rápida flotante se oculta solo para `user`; programador/admin/superadmin la conservan. La instalación PWA de `user` se mueve al menú de perfil, mientras los demás roles conservan el botón flotante.
+- TDD/validación Executor: contrato UX 23/23, contratos previos de detalle/endpoints, matriz de capacidades y notificaciones, `php -l`, `node --check` y `git diff --check` correctos.
+- Versionado: `styles.css?v=4.1`, `main.js?v=4.2`, `sidebar.js?v=1.2`, `pwa.js?v=1.1`, caché PWA `prisma-v17`. Sin migraciones ni cambios de permisos.
+- Pendiente usuario: recargar con rol `user` y validar densidad, filtros, `Mis asignadas`, apertura de detalle y ausencia de overlays; después comprobar con admin/superadmin que la tarea rápida y el instalador flotante continúan visibles. CUP.3 permanece sin marcar hasta esa validación.
+
 ## Lessons (colaboración de usuarios en peticiones)
 - Autenticación no equivale a autorización: todo endpoint que acepte `request_id` o un ID de recurso hijo debe resolver la petición padre y validar su `app_id`.
 - El acceso colaborativo debe modelarse como capacidad independiente de editar; reutilizar `can_edit_requests()` para decidir si se puede abrir un detalle bloquea usuarios legítimos y empuja a mezclar controles sensibles con contenido de lectura.
@@ -1898,3 +1910,4 @@ Actualización Executor (2026-07-13 — CUP.4.4 notificación de mejora completa
 - El usuario autorizó explícitamente continuar esta mejora sin consulta `@web`; para este flujo interno de permisos no es necesario bloquear el Executor por documentación externa.
 - Una checklist de equipo no debe reutilizar la capacidad general `edit`: una capacidad propia permite colaborar en subtareas sin ampliar privilegios sobre la mejora ni sus adjuntos.
 - Mientras `request_assignments` no almacene `assigned_by`, el último evento de asignación de cada usuario aún asignado es la fuente más precisa para avisar al asignador sin introducir una migración.
+- En una vista colaborativa, las métricas deben responder al trabajo del usuario (asignación y actividad no leída) y no a necesidades de gestión como `Sin asignar`; mantener variantes por rol evita empobrecer la vista administrativa.

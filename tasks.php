@@ -287,7 +287,7 @@ $userApps = get_user_apps();
     <script src="/assets/js/task-parser.js?v=2"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/tasks.js?v=5"></script>
-    <script src="/assets/js/pwa.js"></script>
+    <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
 </html>

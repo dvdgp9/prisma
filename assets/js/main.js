@@ -10,6 +10,7 @@ let selectedFiles = [];
 let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
+let unreadRequestIds = new Set();
 let currentChecklistItems = [];
 let currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
@@ -19,6 +20,20 @@ let currentTableSort = {
 };
 
 const userRole = document.body.dataset.userRole;
+
+window.addEventListener('prisma:notifications-updated', (event) => {
+    const notifications = event.detail?.notifications || [];
+    unreadRequestIds = new Set(
+        notifications
+            .filter(notification => parseInt(notification.is_read, 10) === 0)
+            .map(notification => parseInt(notification.request_id, 10))
+            .filter(Number.isFinite)
+    );
+
+    if (requests.length > 0) {
+        updateRequestsSummary(getFilteredRequests());
+    }
+});
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function () {
@@ -557,14 +572,6 @@ function syncRequestsViewModeUI() {
     }
 }
 
-function toggleToolbarAdvanced() {
-    const shell = document.getElementById('requests-toolbar-shell');
-    const btn = document.getElementById('toolbar-more-btn');
-    if (!shell) return;
-    const isOpen = shell.classList.toggle('is-advanced');
-    if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-}
-
 function setQuickView(view, event) {
     currentQuickView = view;
     document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
@@ -654,12 +661,36 @@ function getFilteredRequests() {
 }
 
 function updateRequestsSummary(filteredRequests) {
+    const currentUserId = parseInt(document.body.dataset.userId, 10);
+    const assignedEl = document.getElementById('summary-assigned-count');
+    const activityEl = document.getElementById('summary-activity-count');
+    const recentCompletedEl = document.getElementById('summary-recent-completed-count');
     const visibleEl = document.getElementById('summary-visible-count');
     const inProgressEl = document.getElementById('summary-in-progress-count');
     const pendingEl = document.getElementById('summary-pending-count');
     const unassignedEl = document.getElementById('summary-unassigned-count');
     const commentedEl = document.getElementById('summary-commented-count');
     const activeRequests = filteredRequests.filter(r => r.status !== 'completed' && r.status !== 'discarded');
+
+    if (userRole === 'user') {
+        const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        const assignedToUser = activeRequests.filter(request =>
+            (request.assignments || []).some(assignment => parseInt(assignment.id, 10) === currentUserId)
+        );
+        const requestsWithActivity = filteredRequests.filter(request =>
+            unreadRequestIds.has(parseInt(request.id, 10))
+        );
+        const recentlyCompleted = filteredRequests.filter(request => {
+            if (request.status !== 'completed' || !request.completed_at) return false;
+            return new Date(request.completed_at).getTime() >= recentThreshold;
+        });
+
+        if (assignedEl) assignedEl.textContent = assignedToUser.length;
+        if (activityEl) activityEl.textContent = requestsWithActivity.length;
+        if (inProgressEl) inProgressEl.textContent = activeRequests.filter(r => r.status === 'in_progress').length;
+        if (recentCompletedEl) recentCompletedEl.textContent = recentlyCompleted.length;
+        return;
+    }
 
     if (visibleEl) visibleEl.textContent = activeRequests.length;
     if (inProgressEl) inProgressEl.textContent = activeRequests.filter(r => r.status === 'in_progress').length;
@@ -679,6 +710,11 @@ function getRelativeAge(dateString) {
     const months = Math.floor(diffDays / 30);
     if (months === 1) return '1 mes';
     return `${months} meses`;
+}
+
+function getRequestCreatedLabel(dateString) {
+    const age = getRelativeAge(dateString);
+    return age === 'Hoy' ? 'Creada hoy' : `Creada hace ${age}`;
 }
 
 function getDateTimeLabel(dateString) {
@@ -1069,6 +1105,21 @@ function renderTasksWidget() {
     const container = document.getElementById('tasks-widget-stats');
     if (!container || !tasksWidgetData) return;
     const { overdue, today, week } = tasksWidgetData;
+    const widget = document.getElementById('tasks-widget');
+    const total = overdue + today + week;
+
+    if (widget) widget.classList.toggle('is-clear', total === 0);
+
+    if (total === 0) {
+        container.innerHTML = `
+            <a class="tasks-widget-clear" href="/tasks.php">
+                <i class="iconoir-check-circle"></i>
+                <span>Todo al día. No tienes tareas previstas para esta semana.</span>
+            </a>
+        `;
+        return;
+    }
+
     const tiles = [
         { key: 'overdue', label: 'Vencidas', value: overdue, cls: 'overdue' },
         { key: 'today', label: 'Para hoy', value: today, cls: 'today' },
@@ -1149,6 +1200,7 @@ function renderRequests() {
     const finishedRequests = filteredRequests.filter(r =>
         r.status === 'completed' || r.status === 'discarded'
     );
+    const revealFinishedRequests = showFinished || currentQuickView === 'completed';
 
     updateRequestsSummary(filteredRequests);
     syncRequestsViewModeUI();
@@ -1198,7 +1250,7 @@ function renderRequests() {
     // Add separator if there are finished requests
     if (finishedRequests.length > 0) {
         const separator = document.createElement('div');
-        separator.className = `requests-separator ${showFinished ? 'active' : ''}`;
+        separator.className = `requests-separator ${revealFinishedRequests ? 'active' : ''}`;
         separator.onclick = toggleFinishedRequests;
         separator.innerHTML = `
             <div class="separator-line"></div>
@@ -1212,7 +1264,7 @@ function renderRequests() {
         grid.appendChild(separator);
 
         const finishedWrapper = document.createElement('div');
-        finishedWrapper.className = `finished-requests-wrapper ${showFinished ? 'show' : ''}`;
+        finishedWrapper.className = `finished-requests-wrapper ${revealFinishedRequests ? 'show' : ''}`;
         
         // Render finished requests with subtle style
         finishedRequests.forEach(request => {
@@ -1261,9 +1313,9 @@ function createRequestCard(request, isFinished = false) {
 
     const statusLabels = {
         'pending': 'Pendiente',
-        'in_progress': 'En Progreso',
-        'completed': 'Completado',
-        'discarded': 'Descartado'
+        'in_progress': 'En curso',
+        'completed': 'Completada',
+        'discarded': 'Descartada'
     };
 
     const userRole = document.body.dataset.userRole;
@@ -1271,8 +1323,7 @@ function createRequestCard(request, isFinished = false) {
     const canManageRequest = request.capabilities?.edit === true;
     const canEdit = request.capabilities?.edit === true;
     const canDelete = request.capabilities?.delete === true;
-    const primaryOwnerLabel = getPrimaryOwnerLabel(request);
-    const requestAgeLabel = getRelativeAge(request.created_at);
+    const requestCreatedLabel = getRequestCreatedLabel(request.created_at);
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
     const checklistProgress = getChecklistProgress(request);
 
@@ -1310,7 +1361,7 @@ function createRequestCard(request, isFinished = false) {
                             <i class="iconoir-pause"></i>
                         </button>
                         <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}"
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)" title="En progreso">
+                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)" title="En curso">
                             <i class="iconoir-play"></i>
                         </button>
                         <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}"
@@ -1353,12 +1404,8 @@ function createRequestCard(request, isFinished = false) {
                 ${priorityDropdown}
             </span>
             <span class="request-card-insight">
-                <i class="iconoir-hourglass"></i>
-                <span>${requestAgeLabel}</span>
-            </span>
-            <span class="request-card-insight ${request.assignments && request.assignments.length > 0 ? 'is-highlight' : ''}">
-                <i class="iconoir-user-badge-check"></i>
-                <span>${escapeHtml(primaryOwnerLabel)}</span>
+                <i class="iconoir-calendar"></i>
+                <span>${requestCreatedLabel}</span>
             </span>
             ${hasComments ? `
                 <span class="request-card-insight is-highlight">
@@ -1394,13 +1441,13 @@ function createRequestCard(request, isFinished = false) {
 
         <div class="card-footer">
             <div class="card-footer-people">
-                <span class="card-creator" title="Creado por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}">
+                <span class="card-creator" title="Creada por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}">
                     <i class="iconoir-user"></i>
-                    <span>${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
+                    <span>Creada por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
                 </span>
                 ${request.assignments && request.assignments.length > 0 ? request.assignments.map((a, index) => `
                     <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}" title="${index === 0 ? 'Responsable' : 'Asignado'}: ${escapeHtml(a.full_name || a.username)}">
-                        ${escapeHtml(a.full_name || a.username)}
+                        ${index === 0 ? 'Responsable:' : 'Equipo:'} ${escapeHtml(a.full_name || a.username)}
                     </span>
                 `).join('') : (canEdit ? `
                     <button class="btn-assign-quick" onclick="openAssignModal(${request.id}, event)" title="Asignar">
@@ -1426,8 +1473,9 @@ function createRequestCard(request, isFinished = false) {
                     ` : ''}
                 </div>
                 <div class="card-actions-cluster">
-                    <button class="quick-action-btn view" onclick="openRequestDetailModal(${request.id})" title="Ver detalle" aria-label="Ver detalle de ${escapeHtml(request.title)}">
+                    <button class="quick-action-btn view ${canManageRequest ? '' : 'request-card-detail-cta'}" onclick="openRequestDetailModal(${request.id})" title="Ver detalle" aria-label="Ver detalle de ${escapeHtml(request.title)}">
                         <i class="iconoir-eye"></i>
+                        ${canManageRequest ? '' : '<span>Ver detalle</span>'}
                     </button>
                     ${canEdit ? `
                         ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
@@ -1615,9 +1663,9 @@ function createPriorityDropdown(requestId, currentPriority) {
 function createStatusDropdown(requestId, currentStatus) {
     const statuses = [
         { value: 'pending', label: 'Pendiente' },
-        { value: 'in_progress', label: 'En Progreso', color: 'var(--color-blue)' },
-        { value: 'completed', label: 'Completado', color: 'var(--color-green)' },
-        { value: 'discarded', label: 'Descartado', color: 'var(--color-red)' }
+        { value: 'in_progress', label: 'En curso', color: 'var(--color-blue)' },
+        { value: 'completed', label: 'Completada', color: 'var(--color-green)' },
+        { value: 'discarded', label: 'Descartada', color: 'var(--color-red)' }
     ];
 
     return `
@@ -1677,7 +1725,7 @@ async function quickUpdateRequest(requestId, field, value, event) {
             if (field === 'status') {
                 const statusMessages = {
                     'pending': { title: 'Pausada', message: 'La mejora está en espera', icon: 'iconoir-pause' },
-                    'in_progress': { title: 'En progreso', message: 'Trabajando en la mejora', icon: 'iconoir-play' },
+                    'in_progress': { title: 'En curso', message: 'Trabajando en la mejora', icon: 'iconoir-play' },
                     'completed': { title: 'Completada', message: 'La mejora está finalizada', icon: 'iconoir-check' },
                     'discarded': { title: 'Descartada', message: 'La mejora ha sido descartada', icon: 'iconoir-xmark' }
                 };
@@ -2036,9 +2084,9 @@ function getPriorityLabel(priority) {
 function getStatusLabel(status) {
     const labels = {
         'pending': 'Pendiente',
-        'in_progress': 'En Progreso',
-        'completed': 'Completado',
-        'discarded': 'Descartado'
+        'in_progress': 'En curso',
+        'completed': 'Completada',
+        'discarded': 'Descartada'
     };
     return labels[status] || status;
 }
@@ -2919,7 +2967,7 @@ async function executeCompleteAndSchedule() {
         loadRequests();
         
         showToast({
-            title: '¡Completado y programado!',
+            title: 'Mejora completada y programada',
             message: `Release programado para ${formatDateForToast(announceDate)}`,
             icon: 'iconoir-rocket'
         }, 'toast-completed');

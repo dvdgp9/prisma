@@ -113,7 +113,7 @@
     </div>
 
     <script src="/assets/js/manage-apps.js"></script>
-    <script src="/assets/js/pwa.js"></script>
+    <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
 </html>

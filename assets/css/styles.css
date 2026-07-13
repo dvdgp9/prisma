@@ -5186,6 +5186,21 @@ h4 { font-size: var(--fs-16); line-height: 1.3; }
     border-color: var(--ink-200);
 }
 
+.card-actions-cluster .quick-action-btn.request-card-detail-cta {
+    width: auto;
+    padding: 0 var(--sp-10);
+    gap: var(--sp-6);
+    border-color: var(--brand-line);
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-semibold);
+}
+
+.card-actions-cluster .quick-action-btn.request-card-detail-cta:active {
+    transform: translateY(1px);
+}
+
 .card-actions-cluster .quick-action-btn.edit:hover {
     background: var(--brand-soft);
     color: var(--brand-ink);
@@ -6968,6 +6983,33 @@ select.ai-pill-assignee.has-assignee {
 
 .tasks-widget-stat.is-empty:hover {
     opacity: 1;
+}
+
+.tasks-widget.is-clear {
+    padding: var(--sp-12) var(--sp-16);
+    margin-bottom: var(--sp-16);
+}
+
+.tasks-widget.is-clear .tasks-widget-head {
+    margin-bottom: var(--sp-6);
+}
+
+.tasks-widget.is-clear .tasks-widget-stats {
+    display: block;
+}
+
+.tasks-widget-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-8);
+    color: var(--ink-600);
+    font-size: var(--fs-13);
+    text-decoration: none;
+}
+
+.tasks-widget-clear i {
+    color: var(--success);
+    font-size: var(--fs-16);
 }
 
 @media (max-width: 600px) {
