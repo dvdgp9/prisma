@@ -50,7 +50,8 @@ assert_file_contains('api/request-checklist.php', [
     "require_request_capability((int) \$item['request_id'], 'checklist')",
 ]);
 assert_file_contains('includes/sidebar.php', [
-    'data-filter="status"',
+    'value="status"',
+    'data-read-filter="unread"',
 ]);
 assert_file_contains('assets/js/sidebar.js', [
     "completion: { iconClass: 'completion'",

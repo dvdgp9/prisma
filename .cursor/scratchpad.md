@@ -1932,3 +1932,8 @@ Revisión completa de la funcionalidad de notificaciones (panel inbox, badge, AP
 - Los tokens --text-muted y --bg-hover no existen en styles.css; usar --text-secondary/--text-light/--bg-secondary.
 - tests/request-endpoint-guards.php contiene contratos de strings literales sobre sidebar.php/sidebar.js: actualizar al renombrar.
 - Password local de admin (solo BD dev) establecida a devtest123 para poder verificar en navegador.
+
+### Executor: Iteración 2 filtros + toggle no leída (13 Julio 2026) — COMPLETADO
+- Filtros del inbox rediseñados: segmented control (Todas | No leídas con contador pill) + select compacto de tipo ("Todo tipo"). Sustituye los 6 chips de igual peso.
+- Decisión de producto: NO se añade estado "resuelta"; en su lugar, toggle leída/no leída por item (patrón GitHub/Gmail): dot azul = pendiente; items leídos muestran dot hueco al hover para re-marcar como no leída. API PUT acepta {id, is_read: 0|1}.
+- Versiones: styles.css?v=4.4, sidebar.js?v=1.4, sw prisma-v20. Suite de tests OK (contrato guards actualizado a value="status" + data-read-filter).

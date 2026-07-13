@@ -80,8 +80,10 @@ switch ($method) {
                 $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
                 $stmt->execute([$user['id']]);
             } elseif (!empty($input['id'])) {
-                $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
-                $stmt->execute([$input['id'], $user['id']]);
+                // Allow toggling back to unread so the dot can act as a "pending" marker
+                $isRead = array_key_exists('is_read', $input) ? ((int) (bool) $input['is_read']) : 1;
+                $stmt = $db->prepare("UPDATE notifications SET is_read = ? WHERE id = ? AND user_id = ?");
+                $stmt->execute([$isRead, $input['id'], $user['id']]);
             }
             
             success_response([], 'Notifications updated');

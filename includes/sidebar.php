@@ -155,17 +155,24 @@ $company_name = $user['company_name'] ?? '';
             </button>
         </div>
     </div>
-    <div class="inbox-filters" id="inbox-filters">
-        <button type="button" class="inbox-filter-chip active" data-filter="all" onclick="setInboxFilter('all', event)">Todas</button>
-        <button type="button" class="inbox-filter-chip" data-filter="unread" onclick="setInboxFilter('unread', event)">No leídas</button>
-        <button type="button" class="inbox-filter-chip" data-filter="mention" onclick="setInboxFilter('mention', event)">Menciones</button>
-        <button type="button" class="inbox-filter-chip" data-filter="assignment" onclick="setInboxFilter('assignment', event)">Asignaciones</button>
-        <button type="button" class="inbox-filter-chip" data-filter="comment" onclick="setInboxFilter('comment', event)">Comentarios</button>
-        <button type="button" class="inbox-filter-chip" data-filter="status" onclick="setInboxFilter('status', event)">Estado</button>
+    <div class="inbox-toolbar" id="inbox-toolbar">
+        <div class="inbox-segmented" role="group" aria-label="Filtrar por estado de lectura">
+            <button type="button" class="inbox-segment active" data-read-filter="all" onclick="setInboxReadFilter('all')">Todas</button>
+            <button type="button" class="inbox-segment" data-read-filter="unread" onclick="setInboxReadFilter('unread')">
+                No leídas<span class="inbox-segment-count" id="inbox-segment-count" hidden></span>
+            </button>
+        </div>
+        <select class="inbox-type-select" id="inbox-type-select" aria-label="Filtrar por tipo" onchange="setInboxTypeFilter(this.value)">
+            <option value="all">Todo tipo</option>
+            <option value="mention">Menciones</option>
+            <option value="assignment">Asignaciones</option>
+            <option value="comment">Comentarios</option>
+            <option value="status">Estado</option>
+        </select>
     </div>
     <div class="inbox-body" id="inbox-body">
         <!-- Notifications loaded dynamically -->
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.3"></script>
+<script src="/assets/js/sidebar.js?v=1.4"></script>

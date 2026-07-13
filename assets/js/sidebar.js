@@ -160,7 +160,8 @@ function escapeHtml(text) {
 // ===================
 
 let inboxNotifications = [];
-let currentInboxFilter = 'all';
+let inboxReadFilter = 'all';
+let inboxTypeFilter = 'all';
 
 const INBOX_PRESENTATION = {
     mention: { iconClass: 'mention', iconName: 'iconoir-at-sign' },
@@ -172,7 +173,6 @@ const INBOX_PRESENTATION = {
 
 const INBOX_EMPTY_MESSAGES = {
     all: 'No hay notificaciones',
-    unread: 'Estás al día',
     mention: 'Nadie te ha mencionado todavía',
     assignment: 'No tienes asignaciones nuevas',
     comment: 'No hay comentarios nuevos',
@@ -234,31 +234,39 @@ function updateInboxHeaderState(unreadCount) {
 
 function updateInboxFilterCounts() {
     const unread = inboxNotifications.filter(isUnreadNotification).length;
-    const chip = document.querySelector('.inbox-filter-chip[data-filter="unread"]');
-    if (chip) {
-        chip.textContent = unread > 0 ? `No leídas (${unread})` : 'No leídas';
+    const count = document.getElementById('inbox-segment-count');
+    if (count) {
+        count.textContent = unread;
+        count.hidden = unread === 0;
     }
 }
 
-function setInboxFilter(filter, event) {
-    currentInboxFilter = filter;
-    document.querySelectorAll('.inbox-filter-chip').forEach(chip => chip.classList.remove('active'));
-    const activeChip = document.querySelector(`.inbox-filter-chip[data-filter="${filter}"]`);
-    if (activeChip) {
-        activeChip.classList.add('active');
-    }
+function setInboxReadFilter(filter) {
+    inboxReadFilter = filter;
+    document.querySelectorAll('.inbox-segment').forEach(seg => {
+        seg.classList.toggle('active', seg.dataset.readFilter === filter);
+    });
     renderNotifications();
 }
 
+function setInboxTypeFilter(value) {
+    inboxTypeFilter = value;
+    renderNotifications();
+}
+
+function matchesInboxTypeFilter(n) {
+    if (inboxTypeFilter === 'all') return true;
+    if (inboxTypeFilter === 'status') {
+        return n.type === 'completion' || n.type === 'status_change';
+    }
+    return n.type === inboxTypeFilter;
+}
+
 function getFilteredNotifications() {
-    if (currentInboxFilter === 'all') return inboxNotifications;
-    if (currentInboxFilter === 'unread') {
-        return inboxNotifications.filter(isUnreadNotification);
-    }
-    if (currentInboxFilter === 'status') {
-        return inboxNotifications.filter(n => n.type === 'completion' || n.type === 'status_change');
-    }
-    return inboxNotifications.filter(n => n.type === currentInboxFilter);
+    return inboxNotifications.filter(n => {
+        if (inboxReadFilter === 'unread' && !isUnreadNotification(n)) return false;
+        return matchesInboxTypeFilter(n);
+    });
 }
 
 function getInboxGroupLabel(date) {
@@ -278,10 +286,13 @@ function renderNotifications() {
     const notifications = getFilteredNotifications();
 
     if (notifications.length === 0) {
-        const message = INBOX_EMPTY_MESSAGES[currentInboxFilter] || INBOX_EMPTY_MESSAGES.all;
+        const unreadView = inboxReadFilter === 'unread';
+        const message = unreadView
+            ? 'Estás al día'
+            : (INBOX_EMPTY_MESSAGES[inboxTypeFilter] || INBOX_EMPTY_MESSAGES.all);
         body.innerHTML = `
             <div class="inbox-empty">
-                <i class="${currentInboxFilter === 'unread' ? 'iconoir-check-circle' : 'iconoir-bell'}"></i>
+                <i class="${unreadView ? 'iconoir-check-circle' : 'iconoir-bell'}"></i>
                 <p>${message}</p>
             </div>
         `;
@@ -316,12 +327,12 @@ function renderNotifications() {
                         <time title="${escapeHtml(formatInboxFullDate(createdAt))}">${formatInboxTime(createdAt)}</time>
                     </div>
                 </div>
-                ${unread ? `
-                    <button type="button" class="inbox-item-read-btn" aria-label="Marcar como leída"
-                            onclick="event.stopPropagation(); markNotificationRead(${n.id});">
-                        <span class="inbox-unread-dot" aria-hidden="true"></span>
-                    </button>
-                ` : ''}
+                <button type="button" class="inbox-item-read-btn ${unread ? '' : 'is-read'}"
+                        aria-label="${unread ? 'Marcar como leída' : 'Marcar como no leída'}"
+                        title="${unread ? 'Marcar como leída' : 'Marcar como no leída'}"
+                        onclick="event.stopPropagation(); setNotificationRead(${n.id}, ${unread ? 1 : 0});">
+                    <span class="inbox-unread-dot" aria-hidden="true"></span>
+                </button>
             </div>
         `;
     });
@@ -373,11 +384,11 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-async function markNotificationRead(notificationId) {
+async function setNotificationRead(notificationId, isRead) {
     try {
         // Optimistic local update, then sync with the server
         const notification = inboxNotifications.find(n => parseInt(n.id, 10) === notificationId);
-        if (notification) notification.is_read = 1;
+        if (notification) notification.is_read = isRead;
         const unread = inboxNotifications.filter(isUnreadNotification).length;
         updateInboxBadge(unread);
         updateInboxHeaderState(unread);
@@ -387,10 +398,10 @@ async function markNotificationRead(notificationId) {
         await fetch('/api/notifications.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: notificationId })
+            body: JSON.stringify({ id: notificationId, is_read: isRead })
         });
     } catch (error) {
-        console.error('Error marking notification as read:', error);
+        console.error('Error updating notification:', error);
     }
 }
 

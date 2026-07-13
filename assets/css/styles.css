@@ -3279,35 +3279,75 @@ nav {
     padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-md);
 }
 
-.inbox-filters {
+.inbox-toolbar {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
     padding: 0 var(--spacing-lg) var(--spacing-md);
     border-bottom: 1px solid var(--border-color);
 }
 
-.inbox-filter-chip {
+.inbox-segmented {
+    display: inline-flex;
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    background: var(--bg-primary);
+    border-radius: 999px;
+    padding: 2px;
+}
+
+.inbox-segment {
+    border: none;
+    background: transparent;
     color: var(--text-secondary);
     border-radius: 999px;
-    padding: 0.3rem 0.65rem;
+    padding: 0.3rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
-.inbox-filter-chip:hover {
-    border-color: var(--text-light);
+.inbox-segment.active {
+    background: var(--bg-primary);
     color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.10);
 }
 
-.inbox-filter-chip.active {
-    background: rgba(66, 160, 209, 0.12);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+.inbox-segment-count {
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 999px;
+    padding: 0.2rem 0.4rem;
+    min-width: 1.1rem;
+    text-align: center;
+}
+
+.inbox-segment-count[hidden] {
+    display: none;
+}
+
+.inbox-type-select {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.2rem;
+    max-width: 40%;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+}
+
+.inbox-type-select:hover,
+.inbox-type-select:focus {
+    color: var(--text-primary);
 }
 
 .inbox-group-label {
@@ -3442,6 +3482,26 @@ nav {
     border-radius: 50%;
     background: var(--primary-color);
     display: block;
+}
+
+/* Read items: hollow dot, revealed on hover, to re-mark as unread */
+.inbox-item-read-btn.is-read {
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.inbox-item:hover .inbox-item-read-btn.is-read,
+.inbox-item-read-btn.is-read:focus-visible {
+    opacity: 1;
+}
+
+.inbox-item-read-btn.is-read .inbox-unread-dot {
+    background: transparent;
+    border: 1.5px solid var(--text-light);
+}
+
+.inbox-item-read-btn.is-read:hover .inbox-unread-dot {
+    border-color: var(--primary-color);
 }
 
 .inbox-empty {
