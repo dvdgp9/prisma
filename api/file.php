@@ -46,10 +46,14 @@ $file = null;
 
 switch ($type) {
     case 'request':
-        // Mirrors api/attachments.php: any logged-in user may view request files.
-        $stmt = $db->prepare("SELECT original_filename, file_path, mime_type FROM attachments WHERE id = ?");
+        // Resolve the parent request before enforcing request-scoped view access.
+        $stmt = $db->prepare("SELECT original_filename, file_path, mime_type, request_id FROM attachments WHERE id = ?");
         $stmt->execute([$id]);
-        $file = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            require_request_capability($row['request_id'], 'view');
+            $file = $row;
+        }
         break;
 
     case 'task':

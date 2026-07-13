@@ -11,6 +11,7 @@ let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
 let currentChecklistItems = [];
+let currentRequestCapabilities = { view: false, comment: false, edit: false, delete: false };
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
 let currentTableSort = {
     field: null,
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Open request from notification link
     if (openRequestId) {
-        setTimeout(() => openEditRequestModal(parseInt(openRequestId)), 500);
+        setTimeout(() => openRequestDetailModal(parseInt(openRequestId)), 500);
     }
 
     setupFileUpload();
@@ -280,18 +281,17 @@ async function loadChecklistItems(requestId) {
 }
 
 function renderRequestsTable(filteredRequests, tableBody) {
-    const canEdit = ['admin', 'superadmin', 'programador'].includes(document.body.dataset.userRole);
-    const canDelete = ['admin', 'superadmin'].includes(document.body.dataset.userRole);
-
     const sortedRequests = sortRequestsForTable(filteredRequests);
 
     tableBody.innerHTML = sortedRequests.map(request => {
+        const canEdit = request.capabilities?.edit === true;
+        const canDelete = request.capabilities?.delete === true;
         const checklistProgress = getChecklistProgress(request);
         const primaryOwner = getPrimaryOwnerLabel(request);
         const assignmentsCount = (request.assignments || []).length;
 
         return `
-            <tr data-request-id="${request.id}" onclick="openEditRequestModal(${request.id})">
+            <tr data-request-id="${request.id}" onclick="openRequestDetailModal(${request.id})">
                 <td>
                     ${getTablePriorityBadgeMarkup(request, canEdit)}
                 </td>
@@ -310,10 +310,10 @@ function renderRequestsTable(filteredRequests, tableBody) {
                 <td>${escapeHtml(getRelativeAge(request.created_at))}</td>
                 <td>
                     <div class="requests-table-actions" onclick="event.stopPropagation()">
+                        <button type="button" class="quick-action-btn view" onclick="openRequestDetailModal(${request.id})" title="Ver detalle" aria-label="Ver detalle de ${escapeHtml(request.title)}">
+                            <i class="iconoir-eye"></i>
+                        </button>
                         ${canEdit ? `
-                            <button type="button" class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
-                                <i class="iconoir-edit"></i>
-                            </button>
                             <button type="button" class="quick-action-btn quick-action-btn--task" onclick="openCreateTaskFromRequestModal(${request.id})" title="Crear tarea">
                                 <i class="iconoir-task-list"></i>
                             </button>
@@ -335,6 +335,7 @@ function renderRequestsTable(filteredRequests, tableBody) {
 function renderChecklistItems() {
     const container = document.getElementById('edit-checklist-list');
     if (!container) return;
+    const canEdit = currentRequestCapabilities.edit;
 
     if (!currentChecklistItems.length) {
         container.innerHTML = '<p class="text-muted text-small">No hay subtareas todavía</p>';
@@ -343,18 +344,18 @@ function renderChecklistItems() {
 
     container.innerHTML = currentChecklistItems.map(item => `
         <div class="checklist-item ${parseInt(item.is_completed, 10) === 1 ? 'completed' : ''}" data-checklist-id="${item.id}">
-            <label class="checklist-item-main">
-                <input type="checkbox" ${parseInt(item.is_completed, 10) === 1 ? 'checked' : ''} onchange="toggleChecklistItem(${item.id}, this.checked)">
+            <label class="checklist-item-main ${canEdit ? '' : 'is-readonly'}">
+                <input type="checkbox" ${parseInt(item.is_completed, 10) === 1 ? 'checked' : ''} ${canEdit ? `onchange="toggleChecklistItem(${item.id}, this.checked)"` : 'disabled'}>
                 <span class="checklist-item-title">${escapeHtml(item.title)}</span>
             </label>
-            <div class="checklist-item-actions">
+            ${canEdit ? `<div class="checklist-item-actions">
                 <button type="button" class="comment-action-btn" onclick="renameChecklistItem(${item.id})" title="Renombrar">
                     <i class="iconoir-edit-pencil"></i>
                 </button>
                 <button type="button" class="comment-action-btn" onclick="deleteChecklistItem(${item.id})" title="Eliminar">
                     <i class="iconoir-trash"></i>
                 </button>
-            </div>
+            </div>` : ''}
         </div>
     `).join('');
 }
@@ -367,6 +368,8 @@ function handleChecklistKeydown(event) {
 }
 
 async function addChecklistItem() {
+    if (!currentRequestCapabilities.edit) return;
+
     const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
     const input = document.getElementById('edit-checklist-input');
     const title = input?.value?.trim();
@@ -394,6 +397,8 @@ async function addChecklistItem() {
 }
 
 async function toggleChecklistItem(itemId, isCompleted) {
+    if (!currentRequestCapabilities.edit) return;
+
     const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
 
     try {
@@ -416,6 +421,8 @@ async function toggleChecklistItem(itemId, isCompleted) {
 }
 
 async function renameChecklistItem(itemId) {
+    if (!currentRequestCapabilities.edit) return;
+
     const item = currentChecklistItems.find(entry => parseInt(entry.id, 10) === parseInt(itemId, 10));
     if (!item) return;
 
@@ -446,6 +453,8 @@ async function renameChecklistItem(itemId) {
 }
 
 async function deleteChecklistItem(itemId) {
+    if (!currentRequestCapabilities.edit) return;
+
     if (!confirm('¿Eliminar esta subtarea?')) return;
 
     const requestId = parseInt(document.getElementById('edit-request-id')?.value, 10);
@@ -1221,9 +1230,9 @@ function createRequestCard(request, isFinished = false) {
 
     const userRole = document.body.dataset.userRole;
     const canAdmin = ['admin', 'superadmin'].includes(userRole);
-    const canManageRequest = ['admin', 'superadmin', 'programador'].includes(userRole);
-    const canEdit = ['admin', 'superadmin', 'programador'].includes(userRole);
-    const canDelete = ['admin', 'superadmin'].includes(userRole);
+    const canManageRequest = request.capabilities?.edit === true;
+    const canEdit = request.capabilities?.edit === true;
+    const canDelete = request.capabilities?.delete === true;
     const primaryOwnerLabel = getPrimaryOwnerLabel(request);
     const requestAgeLabel = getRelativeAge(request.created_at);
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
@@ -1290,7 +1299,11 @@ function createRequestCard(request, isFinished = false) {
             </div>
         </div>
 
-        <h3 class="card-title">${escapeHtml(request.title)}</h3>
+        <h3 class="card-title">
+            <button type="button" class="request-card-detail-trigger" onclick="openRequestDetailModal(${request.id})">
+                ${escapeHtml(request.title)}
+            </button>
+        </h3>
 
         ${description ? `<p class="card-description">${escapeHtml(description)}</p>` : ''}
 
@@ -1374,8 +1387,11 @@ function createRequestCard(request, isFinished = false) {
                         </button>
                     ` : ''}
                 </div>
-                ${canEdit ? `
-                    <div class="card-actions-cluster">
+                <div class="card-actions-cluster">
+                    <button class="quick-action-btn view" onclick="openRequestDetailModal(${request.id})" title="Ver detalle" aria-label="Ver detalle de ${escapeHtml(request.title)}">
+                        <i class="iconoir-eye"></i>
+                    </button>
+                    ${canEdit ? `
                         ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
                             <button class="quick-action-btn quick-action-btn--ship"
                                     onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})"
@@ -1383,9 +1399,6 @@ function createRequestCard(request, isFinished = false) {
                                 <i class="iconoir-rocket"></i>
                             </button>
                         ` : ''}
-                        <button class="quick-action-btn edit" onclick="openEditRequestModal(${request.id})" title="Editar">
-                            <i class="iconoir-edit-pencil"></i>
-                        </button>
                         <button class="quick-action-btn quick-action-btn--task" onclick="openCreateTaskFromRequestModal(${request.id})" title="Crear tarea">
                             <i class="iconoir-task-list"></i>
                         </button>
@@ -1394,8 +1407,8 @@ function createRequestCard(request, isFinished = false) {
                                 <i class="iconoir-trash"></i>
                             </button>
                         ` : ''}
-                    </div>
-                ` : ''}
+                    ` : ''}
+                </div>
             </div>
         </div>
     `;
@@ -1742,6 +1755,7 @@ function closeModal(modalId) {
         document.getElementById('file-list').innerHTML = '';
     }
     if (modalId === 'edit-request-modal') {
+        currentRequestCapabilities = { view: false, comment: false, edit: false, delete: false };
         currentChecklistItems = [];
         const checklistInput = document.getElementById('edit-checklist-input');
         const checklistList = document.getElementById('edit-checklist-list');
@@ -2037,15 +2051,49 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Open edit request modal
-async function openEditRequestModal(requestId) {
+function configureRequestModalMode(request) {
+    currentRequestCapabilities = {
+        view: request.capabilities?.view === true,
+        comment: request.capabilities?.comment === true,
+        edit: request.capabilities?.edit === true,
+        delete: request.capabilities?.delete === true
+    };
+
+    const canEdit = currentRequestCapabilities.edit;
+    const modalContent = document.getElementById('request-modal-content');
+    const modalTitle = document.getElementById('request-modal-title');
+    const modalIcon = document.getElementById('request-modal-icon');
+    const modeLabel = document.getElementById('request-modal-mode');
+    const titleField = document.getElementById('edit-request-title');
+    const descriptionField = document.getElementById('edit-request-description');
+    const uploadArea = document.getElementById('edit-file-upload-area');
+    const checklistAddRow = document.getElementById('edit-checklist-add-row');
+    const requesterSection = document.getElementById('edit-requester-section');
+    const submitButton = document.getElementById('edit-request-submit');
+    const closeButton = document.getElementById('edit-request-close');
+
+    modalContent?.classList.toggle('request-modal--readonly', !canEdit);
+    if (modalTitle) modalTitle.textContent = canEdit ? 'Editar petición' : 'Detalle de petición';
+    if (modalIcon) modalIcon.className = `${canEdit ? 'iconoir-edit-pencil' : 'iconoir-eye'} modal-header-icon`;
+    if (modeLabel) modeLabel.hidden = canEdit;
+    if (titleField) titleField.readOnly = !canEdit;
+    if (descriptionField) descriptionField.readOnly = !canEdit;
+    if (uploadArea) uploadArea.hidden = !canEdit;
+    if (checklistAddRow) checklistAddRow.hidden = !canEdit;
+    if (requesterSection) requesterSection.hidden = !canEdit;
+    if (submitButton) submitButton.hidden = !canEdit;
+    if (closeButton) closeButton.textContent = canEdit ? 'Cancelar' : 'Cerrar';
+}
+
+// Open the shared request modal in view or edit mode from backend capabilities.
+async function openRequestDetailModal(requestId) {
     try {
-        // Fetch request details
         const response = await fetch(`/api/requests.php?id=${requestId}`);
         const data = await response.json();
 
-        if (data.success && data.data.length > 0) {
+        if (response.ok && data.success && data.data.length > 0) {
             const request = data.data[0];
+            configureRequestModalMode(request);
 
             // Populate form
             document.getElementById('edit-request-id').value = request.id;
@@ -2096,6 +2144,7 @@ async function openEditRequestModal(requestId) {
             const commentInput = document.getElementById('edit-comment-input');
             const mentionsDropdown = document.getElementById('edit-mentions-dropdown');
             if (commentInput && mentionsDropdown) {
+                await loadMentionableUsers(requestId);
                 setupMentionsAutocomplete(commentInput, mentionsDropdown);
             }
 
@@ -2115,11 +2164,27 @@ async function openEditRequestModal(requestId) {
 
             // Open modal
             document.getElementById('edit-request-modal').classList.add('active');
+        } else {
+            console.error('Request detail unavailable:', data.error || response.statusText);
+            showToast({
+                title: 'No se pudo abrir',
+                message: data.error || 'La petición no existe o ya no tienes acceso.',
+                icon: 'iconoir-warning-triangle'
+            }, 'toast-discarded');
         }
     } catch (error) {
         console.error('Error loading request:', error);
-        alert('Error al cargar la petición');
+        showToast({
+            title: 'Error de conexión',
+            message: 'No se pudo cargar el detalle de la petición.',
+            icon: 'iconoir-warning-triangle'
+        }, 'toast-discarded');
     }
+}
+
+// Compatibility for older callers while the UI uses the neutral detail name.
+function openEditRequestModal(requestId) {
+    return openRequestDetailModal(requestId);
 }
 
 // Load attachments for a request
@@ -2142,17 +2207,17 @@ async function loadRequestAttachments(requestId) {
             } else {
                 if (countEl) countEl.textContent = `${attachments.length} archivo${attachments.length > 1 ? 's' : ''}`;
                 container.innerHTML = attachments.map(att => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-                        <a href="#" class="fv-trigger" data-type="request" data-id="${att.id}" data-mime="${att.mime_type || ''}" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-primary); flex: 1; overflow: hidden; cursor: pointer;">
-                            <i class="${getFileIcon(att.mime_type)}" style="color: var(--primary-color);"></i>
-                            <span class="fv-name" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(att.original_filename)}">
+                    <div class="request-attachment-item">
+                        <a href="#" class="fv-trigger request-attachment-link" data-type="request" data-id="${att.id}" data-mime="${att.mime_type || ''}">
+                            <i class="${getFileIcon(att.mime_type)} request-attachment-icon"></i>
+                            <span class="fv-name request-attachment-name" title="${escapeHtml(att.original_filename)}">
                                 ${escapeHtml(att.original_filename)}
                             </span>
                             <span class="text-muted text-small">(${formatFileSize(att.file_size)})</span>
                         </a>
-                        <button type="button" class="btn btn-sm" onclick="deleteAttachment(${att.id}, ${requestId})" style="padding: 0.25rem 0.5rem; color: var(--text-muted);" title="Eliminar">
+                        ${currentRequestCapabilities.edit ? `<button type="button" class="btn btn-sm request-attachment-delete" onclick="deleteAttachment(${att.id}, ${requestId})" title="Eliminar">
                             <i class="iconoir-trash"></i>
-                        </button>
+                        </button>` : ''}
                     </div>
                 `).join('');
             }
@@ -2165,6 +2230,7 @@ async function loadRequestAttachments(requestId) {
 
 // Get icon based on mime type
 function getFileIcon(mimeType) {
+    mimeType = mimeType || '';
     if (mimeType.startsWith('image/')) return 'iconoir-media-image';
     if (mimeType === 'application/pdf') return 'iconoir-page';
     if (mimeType.includes('word')) return 'iconoir-page';
@@ -2174,6 +2240,8 @@ function getFileIcon(mimeType) {
 
 // Delete attachment
 async function deleteAttachment(attachmentId, requestId) {
+    if (!currentRequestCapabilities.edit) return;
+
     if (!confirm('¿Eliminar este archivo?')) return;
     
     try {
@@ -2204,6 +2272,10 @@ async function deleteAttachment(attachmentId, requestId) {
 // Submit edit request
 async function submitEditRequest(event) {
     event.preventDefault();
+
+    if (!currentRequestCapabilities.edit) {
+        return;
+    }
 
     const requestId = document.getElementById('edit-request-id').value;
     const title = document.getElementById('edit-request-title').value;
@@ -2477,6 +2549,8 @@ async function handleAppFileUpload(files) {
 // ERR_ACCESS_DENIED / ERR_UPLOAD_FILE_CHANGED when re-uploading a previously
 // selected file (notably inside an installed PWA). Returns true if all succeeded.
 async function uploadFilesToRequest(requestId, files) {
+    if (!currentRequestCapabilities.edit) return false;
+
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         let payload;
@@ -2531,7 +2605,9 @@ function setupEditModalFileUpload() {
     const editInput = document.getElementById('edit-file-input');
     
     if (editArea && editInput) {
-        editArea.onclick = () => editInput.click();
+        editArea.onclick = () => {
+            if (currentRequestCapabilities.edit) editInput.click();
+        };
         
         editInput.onchange = async (e) => {
             const requestId = document.getElementById('edit-request-id').value;
@@ -2567,6 +2643,7 @@ function setupEditModalFileUpload() {
         editArea.ondrop = async (e) => {
             e.preventDefault();
             editArea.classList.remove('dragover');
+            if (!currentRequestCapabilities.edit) return;
             
             const requestId = document.getElementById('edit-request-id').value;
             if (!requestId) return;
@@ -3399,6 +3476,7 @@ function exportRequests() {
 // ===================
 
 let availableUsers = [];
+let mentionableUsers = [];
 
 async function loadAvailableUsers() {
     try {
@@ -3409,6 +3487,22 @@ async function loadAvailableUsers() {
         }
     } catch (error) {
         console.error('Error loading users:', error);
+    }
+}
+
+async function loadMentionableUsers(requestId) {
+    mentionableUsers = [];
+
+    try {
+        const response = await fetch(`/api/users-list.php?request_id=${encodeURIComponent(requestId)}`);
+        const data = await response.json();
+        if (response.ok && data.success) {
+            mentionableUsers = data.data;
+        } else {
+            console.error('Error loading mentionable users:', data.error || response.statusText);
+        }
+    } catch (error) {
+        console.error('Error loading mentionable users:', error);
     }
 }
 
@@ -3739,7 +3833,7 @@ function setupMentionsAutocomplete(inputElement, dropdownElement) {
                 mentionStart = lastAtIndex;
                 const searchTerm = afterAt.toLowerCase();
                 
-                const filtered = availableUsers.filter(u => 
+                const filtered = mentionableUsers.filter(u =>
                     u.username.toLowerCase().includes(searchTerm) ||
                     (u.full_name && u.full_name.toLowerCase().includes(searchTerm))
                 );

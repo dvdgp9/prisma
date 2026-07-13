@@ -239,6 +239,25 @@ function request_capabilities_for_role($role, $has_app_access)
 }
 
 /**
+ * Remove requester PII from request payloads that are not being managed.
+ */
+function sanitize_request_for_capabilities($request, $capabilities)
+{
+    if (!empty($capabilities['edit'])) {
+        return $request;
+    }
+
+    unset($request['requester_name'], $request['requester_email']);
+
+    if (empty($request['created_by'])) {
+        $request['creator_username'] = 'Solicitante externo';
+        $request['creator_name'] = 'Solicitante externo';
+    }
+
+    return $request;
+}
+
+/**
  * Require specific role - redirect if not authorized
  */
 function require_role($role)
@@ -353,6 +372,22 @@ function get_user_companies()
  * Get apps that the current user has permission to see
  * Returns apps grouped by company for multi-company support
  */
+function resolve_explicit_app_permissions($permission_rows)
+{
+    if (empty($permission_rows)) {
+        return null;
+    }
+
+    $allowed_app_ids = [];
+    foreach ($permission_rows as $permission) {
+        if ((int) ($permission['can_view'] ?? 0) === 1) {
+            $allowed_app_ids[] = (int) $permission['app_id'];
+        }
+    }
+
+    return array_values(array_unique($allowed_app_ids));
+}
+
 function get_user_apps($grouped = false)
 {
     $user = get_logged_user();
@@ -387,12 +422,13 @@ function get_user_apps($grouped = false)
     
     $company_ids = array_column($companies, 'id');
     
-    // Check if user has specific app permissions
-    $stmtPerms = $db->prepare("SELECT app_id FROM user_app_permissions WHERE user_id = ? AND can_view = 1");
+    // An existing permission row means the user is explicitly scoped, even when
+    // every row has can_view=0. Only a complete absence of rows uses company fallback.
+    $stmtPerms = $db->prepare("SELECT app_id, can_view FROM user_app_permissions WHERE user_id = ?");
     $stmtPerms->execute([$user['id']]);
-    $allowed_app_ids = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
+    $allowed_app_ids = resolve_explicit_app_permissions($stmtPerms->fetchAll(PDO::FETCH_ASSOC));
 
-    if (empty($allowed_app_ids)) {
+    if ($allowed_app_ids === null) {
         // No specific permissions: see all apps in user's companies
         $placeholders = implode(',', array_fill(0, count($company_ids), '?'));
         $stmt = $db->prepare("
@@ -403,7 +439,7 @@ function get_user_apps($grouped = false)
             ORDER BY c.name, a.name
         ");
         $stmt->execute($company_ids);
-    } else {
+    } elseif (!empty($allowed_app_ids)) {
         // Specific permissions defined: filter apps
         $placeholders = implode(',', array_fill(0, count($allowed_app_ids), '?'));
         $stmt = $db->prepare("
@@ -414,9 +450,13 @@ function get_user_apps($grouped = false)
             ORDER BY c.name, a.name
         ");
         $stmt->execute($allowed_app_ids);
+    } else {
+        $apps = [];
     }
-    
-    $apps = $stmt->fetchAll();
+
+    if (!isset($apps)) {
+        $apps = $stmt->fetchAll();
+    }
     
     if ($grouped) {
         return group_apps_by_company($apps);

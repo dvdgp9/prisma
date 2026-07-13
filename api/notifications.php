@@ -17,8 +17,24 @@ $user = get_logged_user();
 switch ($method) {
     case 'GET':
         try {
-            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
-            
+            $limit = isset($_GET['limit']) ? max(1, min(100, (int) $_GET['limit'])) : 50;
+            $scopeSql = '';
+            $scopeParams = [];
+
+            if ($user['role'] !== 'superadmin') {
+                $allowedAppIds = array_map('intval', array_column(get_user_apps(), 'id'));
+                if (empty($allowedAppIds)) {
+                    success_response([
+                        'notifications' => [],
+                        'unread_count' => 0
+                    ]);
+                }
+
+                $placeholders = implode(',', array_fill(0, count($allowedAppIds), '?'));
+                $scopeSql = " AND r.app_id IN ($placeholders)";
+                $scopeParams = $allowedAppIds;
+            }
+
             $stmt = $db->prepare("
                 SELECT 
                     n.*,
@@ -29,15 +45,22 @@ switch ($method) {
                 INNER JOIN requests r ON n.request_id = r.id
                 INNER JOIN users trigger_user ON n.triggered_by = trigger_user.id
                 WHERE n.user_id = ?
+                $scopeSql
                 ORDER BY n.created_at DESC
-                LIMIT ?
+                LIMIT {$limit}
             ");
-            $stmt->execute([$user['id'], $limit]);
+            $stmt->execute(array_merge([$user['id']], $scopeParams));
             $notifications = $stmt->fetchAll();
 
-            // Count unread
-            $stmtCount = $db->prepare("SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0");
-            $stmtCount->execute([$user['id']]);
+            // Keep the badge count aligned with the same current access scope.
+            $stmtCount = $db->prepare("
+                SELECT COUNT(*) as unread
+                FROM notifications n
+                INNER JOIN requests r ON n.request_id = r.id
+                WHERE n.user_id = ? AND n.is_read = 0
+                $scopeSql
+            ");
+            $stmtCount->execute(array_merge([$user['id']], $scopeParams));
             $unread = $stmtCount->fetch()['unread'];
 
             success_response([

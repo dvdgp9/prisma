@@ -1772,33 +1772,33 @@ Restricción de seguridad: la apertura del detalle no debe desplegarse sin verif
 ## High-level Task Breakdown (colaboración de usuarios en peticiones)
 
 ### FASE CUP.1 — Guardia de acceso reutilizable y contrato de capacidades
-- [ ] **CUP.1.1** Crear un helper backend que resuelva una petición por ID y compruebe `can_access_app(app_id)` antes de devolverla o actuar sobre ella. **IMPLEMENTADO, pendiente de verificación del usuario.**
+- [x] **CUP.1.1** Crear un helper backend que resuelva una petición por ID y compruebe `can_access_app(app_id)` antes de devolverla o actuar sobre ella. **VALIDADO por el usuario al autorizar CUP.2.**
   - **Criterio verificable**: petición inexistente o de app ajena produce 404/403 de forma consistente; petición accesible continúa.
-- [ ] **CUP.1.2** Definir helpers/capacidades separadas para `view`, `comment`, `edit` y `delete`, sin depender del estado visual del frontend. **IMPLEMENTADO, pendiente de verificación del usuario.**
+- [x] **CUP.1.2** Definir helpers/capacidades separadas para `view`, `comment`, `edit` y `delete`, sin depender del estado visual del frontend. **VALIDADO por el usuario al autorizar CUP.2.**
   - **Criterio verificable**: una matriz de roles demuestra que `user` puede ver/comentar, pero no editar; `programador` conserva CRU; admin/superadmin conservan sus permisos.
-- [ ] **CUP.1.3** Añadir pruebas o harness HTTP con dos empresas, al menos una app por empresa y usuarios con scopes distintos. **IMPLEMENTADO con harness aislado, pendiente de verificación del usuario.**
+- [x] **CUP.1.3** Añadir pruebas o harness HTTP con dos empresas, al menos una app por empresa y usuarios con scopes distintos. **VALIDADO por el usuario al autorizar CUP.2.**
   - **Criterio verificable**: los casos permitidos devuelven 2xx y todos los accesos cruzados por ID devuelven 403/404.
 
 ### FASE CUP.2 — Cierre de endpoints del detalle (bloqueante antes de UI)
-- [ ] **CUP.2.1** Aplicar la guardia a GET/POST/PUT/DELETE de `api/comments.php`.
+- [x] **CUP.2.1** Aplicar la guardia a GET/POST/PUT/DELETE de `api/comments.php`. **ACEPTADO para validación conjunta con CUP.3 por indicación del usuario.**
   - **Criterio verificable**: no se pueden leer ni escribir comentarios de una petición fuera del scope; un usuario puede modificar/eliminar solo su comentario dentro del scope.
-- [ ] **CUP.2.2** Limitar menciones y autocomplete a usuarios compatibles con la empresa/app de la petición.
+- [x] **CUP.2.2** Limitar menciones y autocomplete a usuarios compatibles con la empresa/app de la petición. **ACEPTADO para validación conjunta con CUP.3 por indicación del usuario.**
   - **Criterio verificable**: un usuario de Empresa A no aparece ni recibe una mención originada en una petición exclusiva de Empresa B.
-- [ ] **CUP.2.3** Aplicar la guardia a `api/attachments.php`, `api/file.php?type=request` y `api/upload.php`; exigir permiso de edición para subir/eliminar en esta primera versión.
+- [x] **CUP.2.3** Aplicar la guardia a `api/attachments.php`, `api/file.php?type=request` y `api/upload.php`; exigir permiso de edición para subir/eliminar en esta primera versión. **ACEPTADO para validación conjunta con CUP.3 por indicación del usuario.**
   - **Criterio verificable**: un archivo de otra empresa no se lista ni se sirve conociendo su ID; `user` puede abrir/descargar un archivo accesible pero no subirlo ni eliminarlo.
-- [ ] **CUP.2.4** Aplicar la guardia al GET/POST de asignaciones y auditar votos, notificaciones y deep-links relacionados con peticiones.
+- [x] **CUP.2.4** Aplicar la guardia al GET/POST de asignaciones y auditar votos, notificaciones y deep-links relacionados con peticiones. **ACEPTADO para validación conjunta con CUP.3 por indicación del usuario.**
   - **Criterio verificable**: ningún endpoint asociado al detalle acepta un `request_id` ajeno; votar sigue funcionando solo en peticiones visibles.
-- [ ] **CUP.2.5** Dejar de exponer `r.*` indiscriminadamente y construir una respuesta segura según capacidades, excluyendo datos del solicitante para `user`.
+- [x] **CUP.2.5** Dejar de exponer `r.*` indiscriminadamente y construir una respuesta segura según capacidades, excluyendo datos del solicitante para `user`. **ACEPTADO para validación conjunta con CUP.3 por indicación del usuario.**
   - **Criterio verificable**: la respuesta JSON del detalle para `user` no contiene email/nombre privado del solicitante; perfiles autorizados conservan los campos necesarios.
 
 ### FASE CUP.3 — Detalle de petición en modo lectura/colaboración
-- [ ] **CUP.3.1** Sustituir la acción exclusiva “Editar” por una acción neutral “Ver detalle” disponible en card y tabla para todo usuario con acceso.
+- [ ] **CUP.3.1** Sustituir la acción exclusiva “Editar” por una acción neutral “Ver detalle” disponible en card y tabla para todo usuario con acceso. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
   - **Criterio verificable**: un `user` abre una petición desde ambas vistas en un clic; el voto sigue funcionando sin abrir el detalle accidentalmente.
-- [ ] **CUP.3.2** Adaptar el modal existente a dos modos explícitos: lectura/colaboración y edición, usando capacidades recibidas o derivadas de forma fiable.
+- [ ] **CUP.3.2** Adaptar el modal existente a dos modos explícitos: lectura/colaboración y edición, usando capacidades recibidas o derivadas de forma fiable. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
   - **Criterio verificable**: `user` ve título, descripción, app, estado, prioridad, dificultad, responsables, actividad y checklist sin controles mutables; programador/admin conservan edición.
-- [ ] **CUP.3.3** Ocultar para `user` solicitante, subida/eliminación de adjuntos, edición de checklist, asignaciones, crear tarea y submit de edición.
+- [ ] **CUP.3.3** Ocultar para `user` solicitante, subida/eliminación de adjuntos, edición de checklist, asignaciones, crear tarea y submit de edición. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
   - **Criterio verificable**: inspección visual y de teclado no muestra ni permite activar controles administrativos; llamadas manuales a API siguen bloqueadas por CUP.2.
-- [ ] **CUP.3.4** Mantener los adjuntos accesibles mediante el visor in-app ya existente.
+- [ ] **CUP.3.4** Mantener los adjuntos accesibles mediante el visor in-app ya existente. **IMPLEMENTADO, pendiente de prueba con archivos reales del usuario.**
   - **Criterio verificable**: imagen/PDF se abre dentro de Prisma y otros formatos se descargan con su nombre real; archivo ajeno devuelve 403/404.
 
 ### FASE CUP.4 — Comentarios para usuarios
@@ -1818,8 +1818,8 @@ Restricción de seguridad: la apertura del detalle no debe desplegarse sin verif
   - **Criterio verificable**: un refresh/despliegue carga la nueva UI sin necesitar limpiar caché manualmente.
 
 ## Project Status Board (colaboración de usuarios en peticiones)
-- [ ] **CUP.1** Guardia reutilizable + matriz multiempresa
-- [ ] **CUP.2** Endpoints del detalle asegurados (bloqueante)
+- [x] **CUP.1** Guardia reutilizable + matriz multiempresa
+- [x] **CUP.2** Endpoints del detalle asegurados (bloqueante)
 - [ ] **CUP.3** Detalle accesible en modo lectura/colaboración
 - [ ] **CUP.4** Comentarios habilitados para `user`
 - [ ] **CUP.5** QA de roles, regresión y PWA
@@ -1848,6 +1848,26 @@ Actualización Executor (2026-07-13 — CUP.1 implementado, pendiente de verific
 - Verificación Executor: 17 casos `PASS`, `php -l` correcto en helper y test, y `git diff --check` sin errores.
 - No se ha aplicado todavía la guardia a endpoints ni se ha cambiado la UI. Eso corresponde a CUP.2 y CUP.3 respectivamente.
 - Pendiente de confirmación del usuario: ejecutar `php tests/request-access-capabilities.php` y confirmar que finaliza con `Authorization matrix completed successfully.` antes de marcar CUP.1 como completado y comenzar CUP.2.
+
+Actualización Executor (2026-07-13 — CUP.2 implementado, pendiente de verificación):
+- Aplicada `require_request_capability()` a comentarios, adjuntos, visor/descarga, subida, asignaciones, votos y CRUD de peticiones. Lectura/comentario requiere scope visible; subida, borrado de adjuntos y mutaciones requieren edición; eliminar petición requiere capacidad delete.
+- Las menciones y su autocomplete se filtran por la app concreta. La lista global de usuarios queda restringida a roles con edición. También se filtran notificaciones a asignados que conserven acceso.
+- Asignaciones rechaza IDs de usuarios ajenos a la empresa/app. Notificaciones antiguas se filtran por acceso vigente y el contador usa el mismo scope. Los deep-links vuelven a pasar por el GET protegido de la petición; no se encontró bypass.
+- Corregido `get_user_apps()`: tener permisos explícitos con todos los `can_view=0` ya no activa por error el fallback a todas las apps de la empresa.
+- La respuesta de `api/requests.php` incluye capacidades y aplica `sanitize_request_for_capabilities()` antes del JSON: para `user` omite `requester_name` y `requester_email`, y no filtra el nombre externo mediante aliases de creador. Editores conservan esos campos.
+- Añadido `tests/request-endpoint-guards.php` y ampliada la matriz aislada. Resultado Executor: 24 comprobaciones de capacidades/scope/PII y 9 endpoints/contratos pasan; `php -l`, `node --check` y `git diff --check` correctos.
+- Versionado: `main.js?v=3.9`; caché PWA `prisma-v13`. No hay migraciones ni escrituras sobre la base de datos.
+- Pendiente de verificación del usuario: ejecutar `php tests/request-access-capabilities.php` y `php tests/request-endpoint-guards.php`. Tras confirmación, marcar CUP.2 y comenzar CUP.3; la UI todavía no se ha abierto a `user`.
+
+Actualización Executor (2026-07-13 — CUP.3 implementado, pendiente de prueba visual conjunta):
+- El usuario no dispone de SSH y pidió completar CUP.3 para validar CUP.2+CUP.3 directamente desde la app. CUP.2 queda aceptado para esa validación conjunta.
+- Cards y tabla muestran una acción neutral `Ver detalle` para todo usuario con capacidad `view`; el título de la card también abre la petición. Los gestores conservan crear tarea, cambios rápidos y eliminación según sus capacidades.
+- El modal compartido usa `configureRequestModalMode(request)` con las capacidades devueltas por backend. Para `user` muestra `Detalle de petición` + `Solo lectura`, título/descripcion readonly y oculta Guardar, solicitante, subida/borrado de adjuntos, alta/edición de checklist y controles administrativos.
+- Checklist permanece legible con checks deshabilitados; adjuntos permanecen abribles en el visor in-app; comentarios siguen visibles y publicables mediante el flujo existente. Para programador/admin el mismo modal conserva edición.
+- Añadidos estilos específicos en `assets/css/styles.css`, sin CSS inline nuevo. La revisión visual detectó que una regla tardía restauraba dos columnas en móvil; se añadió un override final a una columna, `100dvh` y sin overflow horizontal.
+- Añadido `tests/request-detail-ui.php`. Resultado Executor: contrato UI 11/11, matriz permisos/PII 24/24, guardias 9/9, todos los `php -l`, `node --check` y `git diff --check` correctos.
+- Versionado: `styles.css?v=3.9`, `main.js?v=4.0`, caché PWA `prisma-v14`. No hay migraciones ni cambios sobre la base de datos.
+- Pendiente usuario: probar con rol `user` card/tabla, modo solo lectura, visor de documento y publicación de comentario; después probar con programador/admin que la edición sigue disponible. No marcar CUP.3 hasta recibir esa confirmación.
 
 ## Lessons (colaboración de usuarios en peticiones)
 - Autenticación no equivale a autorización: todo endpoint que acepte `request_id` o un ID de recurso hijo debe resolver la petición padre y validar su `app_id`.

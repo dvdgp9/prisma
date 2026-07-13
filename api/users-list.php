@@ -14,6 +14,62 @@ $db = getDB();
 $user = get_logged_user();
 
 try {
+    // Mentions can request a list limited to users who can access the same app.
+    // The parameter remains optional because this endpoint is also used by
+    // assignment and AI flows that do not yet have a request context.
+    if (isset($_GET['request_id'])) {
+        $requestScope = require_request_capability((int) $_GET['request_id'], 'comment');
+
+        $stmt = $db->prepare("
+            SELECT DISTINCT u.id, u.username, u.full_name, u.role, u.company_id
+            FROM users u
+            WHERE u.is_active = 1
+              AND (
+                    u.role = 'superadmin'
+                    OR (
+                        (
+                            (
+                                EXISTS (SELECT 1 FROM user_companies uc_any WHERE uc_any.user_id = u.id)
+                                AND EXISTS (
+                                    SELECT 1 FROM user_companies uc
+                                    WHERE uc.user_id = u.id AND uc.company_id = ?
+                                )
+                            )
+                            OR (
+                                NOT EXISTS (SELECT 1 FROM user_companies uc_any WHERE uc_any.user_id = u.id)
+                                AND u.company_id = ?
+                            )
+                        )
+                        AND (
+                            NOT EXISTS (
+                                SELECT 1 FROM user_app_permissions uap_any
+                                WHERE uap_any.user_id = u.id
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM user_app_permissions uap
+                                WHERE uap.user_id = u.id
+                                  AND uap.app_id = ?
+                                  AND uap.can_view = 1
+                            )
+                        )
+                    )
+              )
+            ORDER BY u.full_name, u.username
+        ");
+        $stmt->execute([
+            $requestScope['company_id'],
+            $requestScope['company_id'],
+            $requestScope['app_id']
+        ]);
+        success_response($stmt->fetchAll());
+    }
+
+    // The unscoped list is used for assignment controls and is not needed by
+    // regular users. Mentions must use the request-scoped branch above.
+    if (!can_edit_requests()) {
+        error_response('Unauthorized', 403);
+    }
+
     // Get users that can be mentioned/assigned
     // Superadmins see all users, others see users in their companies
     if ($user['role'] === 'superadmin') {

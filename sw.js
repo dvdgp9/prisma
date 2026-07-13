@@ -1,5 +1,5 @@
-const CACHE_NAME = 'prisma-v12';
-const RUNTIME_CACHE = 'prisma-runtime-v12';
+const CACHE_NAME = 'prisma-v14';
+const RUNTIME_CACHE = 'prisma-runtime-v14';
 
 const PRECACHE_URLS = [
   '/',

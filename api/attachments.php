@@ -21,6 +21,8 @@ switch ($method) {
         if (!$request_id) {
             error_response('Request ID is required');
         }
+
+        require_request_capability($request_id, 'view');
         
         $stmt = $db->prepare("
             SELECT 
@@ -54,7 +56,7 @@ switch ($method) {
             error_response('Attachment ID is required');
         }
         
-        // Get attachment info
+        // Resolve the parent request before checking request-scoped permissions.
         $stmt = $db->prepare("SELECT * FROM attachments WHERE id = ?");
         $stmt->execute([$attachment_id]);
         $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -62,8 +64,10 @@ switch ($method) {
         if (!$attachment) {
             error_response('Attachment not found', 404);
         }
+
+        require_request_capability($attachment['request_id'], 'edit');
         
-        // Check permission (only admin or uploader can delete)
+        // Preserve the attachment ownership rule in addition to request edit access.
         if ($user['role'] !== 'superadmin' && $user['role'] !== 'admin' && $attachment['uploaded_by'] != $user['id']) {
             error_response('No tienes permiso para eliminar este archivo', 403);
         }

@@ -15,12 +15,77 @@ require_login();
 $db = getDB();
 $user = get_logged_user();
 
+/**
+ * Return active users who can access the request's app. This mirrors the
+ * company/app fallback rules in can_access_app(), but evaluates them for the
+ * users being mentioned instead of the current session user.
+ */
+function get_mentionable_users_for_request($db, $request_scope, $usernames = [])
+{
+    $params = [
+        $request_scope['company_id'],
+        $request_scope['company_id'],
+        $request_scope['app_id']
+    ];
+    $username_filter = '';
+
+    if (!empty($usernames)) {
+        $placeholders = implode(',', array_fill(0, count($usernames), '?'));
+        $username_filter = " AND u.username IN ($placeholders)";
+        $params = array_merge($params, array_values($usernames));
+    }
+
+    $stmt = $db->prepare("
+        SELECT DISTINCT u.id, u.username, u.full_name, u.role, u.company_id
+        FROM users u
+        WHERE u.is_active = 1
+          AND (
+                u.role = 'superadmin'
+                OR (
+                    (
+                        (
+                            EXISTS (SELECT 1 FROM user_companies uc_any WHERE uc_any.user_id = u.id)
+                            AND EXISTS (
+                                SELECT 1 FROM user_companies uc
+                                WHERE uc.user_id = u.id AND uc.company_id = ?
+                            )
+                        )
+                        OR (
+                            NOT EXISTS (SELECT 1 FROM user_companies uc_any WHERE uc_any.user_id = u.id)
+                            AND u.company_id = ?
+                        )
+                    )
+                    AND (
+                        NOT EXISTS (
+                            SELECT 1 FROM user_app_permissions uap_any
+                            WHERE uap_any.user_id = u.id
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM user_app_permissions uap
+                            WHERE uap.user_id = u.id
+                              AND uap.app_id = ?
+                              AND uap.can_view = 1
+                        )
+                    )
+                )
+          )
+          $username_filter
+        ORDER BY u.full_name, u.username
+    ");
+
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
 switch ($method) {
     case 'GET':
         // Get comments for a request
         if (empty($_GET['request_id'])) {
             error_response('Request ID is required');
         }
+
+        $request_id = (int) $_GET['request_id'];
+        require_request_capability($request_id, 'view');
 
         try {
             $stmt = $db->prepare("
@@ -34,7 +99,7 @@ switch ($method) {
                 WHERE c.request_id = ?
                 ORDER BY c.created_at ASC
             ");
-            $stmt->execute([$_GET['request_id']]);
+            $stmt->execute([$request_id]);
             $comments = $stmt->fetchAll();
 
             // Get mentions for each comment
@@ -66,6 +131,9 @@ switch ($method) {
             error_response('Request ID and content are required');
         }
 
+        $request_id = (int) $input['request_id'];
+        $request_scope = require_request_capability($request_id, 'comment');
+
         try {
             $db->beginTransaction();
 
@@ -75,7 +143,7 @@ switch ($method) {
                 VALUES (?, ?, ?)
             ");
             $stmt->execute([
-                $input['request_id'],
+                $request_id,
                 $user['id'],
                 $input['content']
             ]);
@@ -86,12 +154,10 @@ switch ($method) {
             preg_match_all('/@(\w+)/', $input['content'], $matches);
             $mentioned_usernames = array_unique($matches[1]);
 
+            $mentioned_users = [];
             if (!empty($mentioned_usernames)) {
-                // Get user IDs for mentioned usernames
-                $placeholders = implode(',', array_fill(0, count($mentioned_usernames), '?'));
-                $stmt = $db->prepare("SELECT id, username FROM users WHERE username IN ($placeholders)");
-                $stmt->execute($mentioned_usernames);
-                $mentioned_users = $stmt->fetchAll();
+                // Only users who can access this request's app may be mentioned.
+                $mentioned_users = get_mentionable_users_for_request($db, $request_scope, $mentioned_usernames);
 
                 // Insert mentions and create notifications
                 foreach ($mentioned_users as $mentioned_user) {
@@ -109,7 +175,7 @@ switch ($method) {
                         ");
                         $stmtNotif->execute([
                             $mentioned_user['id'],
-                            $input['request_id'],
+                            $request_id,
                             $user['id'],
                             $user['full_name'] . ' te ha mencionado en un comentario'
                         ]);
@@ -118,23 +184,28 @@ switch ($method) {
             }
 
             // Notify assigned users about the comment (except commenter and already-mentioned)
-            $mentionedIds = !empty($mentioned_users) ? array_column($mentioned_users, 'id') : [];
+            $mentionedIds = array_column($mentioned_users, 'id');
             $stmtAssigned = $db->prepare("
                 SELECT user_id FROM request_assignments 
                 WHERE request_id = ? AND user_id != ?
             ");
-            $stmtAssigned->execute([$input['request_id'], $user['id']]);
+            $stmtAssigned->execute([$request_id, $user['id']]);
             $assignedUsers = $stmtAssigned->fetchAll(PDO::FETCH_COLUMN);
+            $mentionableIds = array_map(
+                'intval',
+                array_column(get_mentionable_users_for_request($db, $request_scope), 'id')
+            );
 
             foreach ($assignedUsers as $assignedUserId) {
-                if (!in_array($assignedUserId, $mentionedIds)) {
+                $assignedUserId = (int) $assignedUserId;
+                if (in_array($assignedUserId, $mentionableIds, true) && !in_array($assignedUserId, $mentionedIds)) {
                     $stmtNotif = $db->prepare("
                         INSERT INTO notifications (user_id, type, request_id, triggered_by, message)
                         VALUES (?, 'comment', ?, ?, ?)
                     ");
                     $stmtNotif->execute([
                         $assignedUserId,
-                        $input['request_id'],
+                        $request_id,
                         $user['id'],
                         $user['full_name'] . ' ha comentado en una tarea asignada a ti'
                     ]);
@@ -159,7 +230,9 @@ switch ($method) {
 
             success_response($comment, 'Comment created successfully');
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             error_response('Failed to create comment: ' . $e->getMessage(), 500);
         }
         break;
@@ -174,13 +247,15 @@ switch ($method) {
 
         try {
             // Check ownership
-            $stmt = $db->prepare("SELECT user_id FROM request_comments WHERE id = ?");
+            $stmt = $db->prepare("SELECT user_id, request_id FROM request_comments WHERE id = ?");
             $stmt->execute([$input['id']]);
             $comment = $stmt->fetch();
 
             if (!$comment) {
                 error_response('Comment not found', 404);
             }
+
+            $request_scope = require_request_capability((int) $comment['request_id'], 'comment');
 
             // Only owner or admin can edit
             if ($comment['user_id'] != $user['id'] && !has_role('admin')) {
@@ -202,10 +277,7 @@ switch ($method) {
             $mentioned_usernames = array_unique($matches[1]);
 
             if (!empty($mentioned_usernames)) {
-                $placeholders = implode(',', array_fill(0, count($mentioned_usernames), '?'));
-                $stmt = $db->prepare("SELECT id, username FROM users WHERE username IN ($placeholders)");
-                $stmt->execute($mentioned_usernames);
-                $mentioned_users = $stmt->fetchAll();
+                $mentioned_users = get_mentionable_users_for_request($db, $request_scope, $mentioned_usernames);
 
                 foreach ($mentioned_users as $mentioned_user) {
                     $stmtMention = $db->prepare("
@@ -220,7 +292,9 @@ switch ($method) {
 
             success_response([], 'Comment updated successfully');
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             error_response('Failed to update comment: ' . $e->getMessage(), 500);
         }
         break;
@@ -235,13 +309,15 @@ switch ($method) {
 
         try {
             // Check ownership
-            $stmt = $db->prepare("SELECT user_id FROM request_comments WHERE id = ?");
+            $stmt = $db->prepare("SELECT user_id, request_id FROM request_comments WHERE id = ?");
             $stmt->execute([$input['id']]);
             $comment = $stmt->fetch();
 
             if (!$comment) {
                 error_response('Comment not found', 404);
             }
+
+            require_request_capability((int) $comment['request_id'], 'comment');
 
             // Only owner or admin can delete
             if ($comment['user_id'] != $user['id'] && !has_role('admin')) {

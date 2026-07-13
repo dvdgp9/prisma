@@ -41,6 +41,46 @@ assert_same(
     'unknown roles receive no capabilities'
 );
 
+assert_same(null, resolve_explicit_app_permissions([]), 'no permission rows keeps the company fallback');
+assert_same(
+    [],
+    resolve_explicit_app_permissions([['app_id' => 10, 'can_view' => 0]]),
+    'an explicit deny does not fall back to every app in the company'
+);
+assert_same(
+    [10, 30],
+    resolve_explicit_app_permissions([
+        ['app_id' => 10, 'can_view' => 1],
+        ['app_id' => 20, 'can_view' => 0],
+        ['app_id' => 30, 'can_view' => '1'],
+    ]),
+    'only explicitly viewable apps remain in scope'
+);
+
+$externalRequest = [
+    'id' => 55,
+    'created_by' => null,
+    'requester_name' => 'Private Name',
+    'requester_email' => 'private@example.com',
+    'creator_username' => 'Private Name',
+    'creator_name' => 'Private Name',
+];
+$userSafeRequest = sanitize_request_for_capabilities(
+    $externalRequest,
+    ['view' => true, 'comment' => true, 'edit' => false, 'delete' => false]
+);
+assert_same(false, array_key_exists('requester_name', $userSafeRequest), 'viewer response omits requester name');
+assert_same(false, array_key_exists('requester_email', $userSafeRequest), 'viewer response omits requester email');
+assert_same('Solicitante externo', $userSafeRequest['creator_name'], 'viewer response does not leak requester identity through creator alias');
+assert_same(
+    $externalRequest,
+    sanitize_request_for_capabilities(
+        $externalRequest,
+        ['view' => true, 'comment' => true, 'edit' => true, 'delete' => false]
+    ),
+    'editor response preserves requester fields required for management'
+);
+
 $db = new PDO('sqlite::memory:');
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 $db->exec('CREATE TABLE apps (id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL)');

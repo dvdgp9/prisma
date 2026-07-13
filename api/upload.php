@@ -24,12 +24,8 @@ if (empty($_POST['request_id'])) {
 
 $request_id = $_POST['request_id'];
 
-// Verify request exists
-$stmt = $db->prepare("SELECT id FROM requests WHERE id = ?");
-$stmt->execute([$request_id]);
-if (!$stmt->fetch()) {
-    error_response('Request not found', 404);
-}
+// Verify the request exists and the current user may edit it.
+require_request_capability($request_id, 'edit');
 
 // Check if file was uploaded
 if (empty($_FILES['file'])) {
@@ -119,5 +115,6 @@ try {
     if (file_exists($file_path)) {
         unlink($file_path);
     }
-    error_response('Failed to save file metadata: ' . $e->getMessage(), 500);
+    error_log('Failed to save request attachment metadata: ' . $e->getMessage());
+    error_response('Failed to save file metadata', 500);
 }

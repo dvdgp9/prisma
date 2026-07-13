@@ -25,6 +25,8 @@ if ($method === 'POST') {
     $action = $input['action'] ?? 'up'; // 'up' or 'down'
     $is_admin = has_role('admin') || has_role('superadmin');
 
+    require_request_capability($request_id, 'view');
+
     try {
         $db->beginTransaction();
 
@@ -116,6 +118,9 @@ if ($method === 'POST') {
         error_response('Request ID is required');
     }
 
+    $request_id = $_GET['request_id'];
+    require_request_capability($request_id, 'view');
+
     try {
         // Check if current user voted
         $stmt = $db->prepare("
@@ -123,12 +128,12 @@ if ($method === 'POST') {
             FROM votes 
             WHERE request_id = ? AND user_id = ?
         ");
-        $stmt->execute([$_GET['request_id'], $user['id']]);
+        $stmt->execute([$request_id, $user['id']]);
         $user_voted = $stmt->fetch() !== false;
 
         // Get total vote count
         $stmt = $db->prepare("SELECT vote_count FROM requests WHERE id = ?");
-        $stmt->execute([$_GET['request_id']]);
+        $stmt->execute([$request_id]);
         $result = $stmt->fetch();
 
         success_response([

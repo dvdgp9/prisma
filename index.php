@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=3.8">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3.9">
 </head>
 
 <?php
@@ -423,11 +423,12 @@ $company_name = $user['company_name'] ?? '';
 
     <!-- Edit Request Modal (Admin/Superadmin) -->
     <div class="modal" id="edit-request-modal">
-        <div class="modal-content modal-wide">
+        <div class="modal-content modal-wide" id="request-modal-content">
             <div class="modal-header">
                 <div class="modal-header-left">
-                    <i class="iconoir-edit-pencil modal-header-icon"></i>
-                    <h3 class="modal-title">Editar Petición</h3>
+                    <i class="iconoir-edit-pencil modal-header-icon" id="request-modal-icon"></i>
+                    <h3 class="modal-title" id="request-modal-title">Editar Petición</h3>
+                    <span class="request-modal-mode" id="request-modal-mode" hidden>Solo lectura</span>
                     <span class="modal-request-id" id="edit-request-id-display"></span>
                 </div>
                 <button class="close-modal" onclick="closeModal('edit-request-modal')">
@@ -492,7 +493,7 @@ $company_name = $user['company_name'] ?? '';
                                 <span class="checklist-progress-text" id="edit-checklist-progress-text">0/0</span>
                             </div>
 
-                            <div class="checklist-add-row">
+                            <div class="checklist-add-row" id="edit-checklist-add-row">
                                 <input type="text" id="edit-checklist-input" placeholder="Añadir subtarea o paso de verificación..." onkeydown="handleChecklistKeydown(event)">
                                 <button type="button" class="btn btn-primary btn-sm" onclick="addChecklistItem()">
                                     <i class="iconoir-plus"></i>
@@ -688,8 +689,8 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-rocket"></i> Completar y Programar
                     </button>
                     <?php endif; ?>
-                    <button type="button" class="btn btn-ghost" onclick="closeModal('edit-request-modal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" class="btn btn-ghost" id="edit-request-close" onclick="closeModal('edit-request-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="edit-request-submit">
                         <i class="iconoir-check"></i> Guardar Cambios
                     </button>
                 </div>
@@ -1076,7 +1077,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=3.8"></script>
+    <script src="/assets/js/main.js?v=4.0"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

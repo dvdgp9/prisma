@@ -24,12 +24,16 @@ switch ($method) {
 
             // Filter by ID (single request)
             if (!empty($_GET['id'])) {
+                require_request_capability($_GET['id'], 'view');
                 $where[] = 'r.id = ?';
                 $params[] = $_GET['id'];
             }
 
             // Filter by app
             if (!empty($_GET['app_id'])) {
+                if (!can_access_app((int) $_GET['app_id'])) {
+                    error_response('No tienes acceso a esta aplicación', 403);
+                }
                 $where[] = 'r.app_id = ?';
                 $params[] = $_GET['app_id'];
             }
@@ -180,7 +184,11 @@ switch ($method) {
                 ");
                 $stmtAssign->execute([$request['id']]);
                 $request['assignments'] = $stmtAssign->fetchAll();
+
+                $request['capabilities'] = request_capabilities_for_role($user['role'], true);
+                $request = sanitize_request_for_capabilities($request, $request['capabilities']);
             }
+            unset($request);
 
             success_response($requests);
         } catch (Exception $e) {
@@ -194,6 +202,10 @@ switch ($method) {
 
         if (empty($input['app_id']) || empty($input['title'])) {
             error_response('App ID and title are required');
+        }
+
+        if (!can_access_app((int) $input['app_id'])) {
+            error_response('No tienes acceso a esta aplicación', 403);
         }
 
         try {
@@ -232,10 +244,7 @@ switch ($method) {
             error_response('Request ID is required');
         }
 
-        // Check if user has permission (programador, admin, superadmin can edit)
-        if (!can_edit_requests()) {
-            error_response('Unauthorized', 403);
-        }
+        require_request_capability($input['id'], 'edit');
 
         try {
             $fields = [];
@@ -333,16 +342,13 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        // Delete request (admin and superadmin only - programador cannot delete)
-        if (!can_delete_requests()) {
-            error_response('Unauthorized', 403);
-        }
-
         $input = get_json_input();
 
         if (empty($input['id'])) {
             error_response('Request ID is required');
         }
+
+        require_request_capability($input['id'], 'delete');
 
         try {
             $stmt = $db->prepare("DELETE FROM requests WHERE id = ?");
