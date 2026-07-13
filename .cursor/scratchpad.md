@@ -1811,6 +1811,8 @@ Restricción de seguridad: la apertura del detalle no debe desplegarse sin verif
   - **Criterio verificable**: `user A` no ve ni ejecuta acciones sobre el comentario de `user B`; sí puede operar sobre el suyo.
 - [ ] **CUP.4.3** Verificar notificaciones de comentario/mención dentro del scope permitido.
   - **Criterio verificable**: asignados y mencionados válidos reciben una sola notificación; usuarios ajenos no reciben ninguna.
+- [ ] **CUP.4.4** Notificar internamente cuando una mejora cambia a completada al creador interno y a quienes realizaron las asignaciones vigentes. **IMPLEMENTADO, pendiente de prueba visual del usuario.**
+  - **Criterio verificable**: se excluye a quien completa, cada destinatario recibe un único aviso y repetir un guardado sin transición de estado no crea duplicados.
 
 ### FASE CUP.5 — QA, regresión y entrega
 - [ ] **CUP.5.1** Ejecutar lint/syntax checks de todos los PHP/JS tocados y `git diff --check`.
@@ -1881,9 +1883,18 @@ Actualización Executor (2026-07-13 — CUP.3.5 subtareas colaborativas implemen
 - Versionado: `styles.css?v=4.0`, `main.js?v=4.1`, caché PWA `prisma-v15`. No se necesita SSH para la comprobación funcional desde la app.
 - Pendiente usuario: con rol `user`, abrir una mejora y probar alta, completar, renombrar y eliminar una subtarea; confirmar después que Guardar, subida de archivos y metadatos administrativos siguen sin aparecer. CUP.3 permanece sin marcar hasta esa validación.
 
+Actualización Executor (2026-07-13 — CUP.4.4 notificación de mejora completada implementada, pendiente de prueba visual):
+- Al producirse una transición real a `completed`, se crea una notificación interna para el creador de la mejora y para el último usuario que asignó a cada persona que continúa asignada. El actor que completa queda excluido y los destinatarios se deduplican.
+- No se ha añadido ninguna columna ni migración: el asignador vigente se resuelve a partir del historial de notificaciones de asignación ya existente, cruzado con `request_assignments` actuales.
+- El email existente al solicitante externo se mantiene sin cambios funcionales y sigue siendo independiente de estos avisos internos.
+- La bandeja incorpora el filtro `Completadas` y un icono específico. Versionado: `sidebar.js?v=1.1` y caché PWA `prisma-v16`.
+- TDD/validación Executor: nueva matriz aislada de destinatarios y payload 4/4, contratos de endpoints/UI, matriz de capacidades, `php -l`, `node --check` y `git diff --check` correctos.
+- Pendiente usuario: asignar una mejora desde la cuenta A, completarla desde otra cuenta con permiso de edición y comprobar que A recibe un único aviso que abre el detalle. CUP.4 no se marca completo hasta esa validación.
+
 ## Lessons (colaboración de usuarios en peticiones)
 - Autenticación no equivale a autorización: todo endpoint que acepte `request_id` o un ID de recurso hijo debe resolver la petición padre y validar su `app_id`.
 - El acceso colaborativo debe modelarse como capacidad independiente de editar; reutilizar `can_edit_requests()` para decidir si se puede abrir un detalle bloquea usuarios legítimos y empuja a mezclar controles sensibles con contenido de lectura.
 - Ocultar PII en el DOM no basta. Si un campo no está autorizado, debe omitirse en la respuesta del backend.
 - El usuario autorizó explícitamente continuar esta mejora sin consulta `@web`; para este flujo interno de permisos no es necesario bloquear el Executor por documentación externa.
 - Una checklist de equipo no debe reutilizar la capacidad general `edit`: una capacidad propia permite colaborar en subtareas sin ampliar privilegios sobre la mejora ni sus adjuntos.
+- Mientras `request_assignments` no almacene `assigned_by`, el último evento de asignación de cada usuario aún asignado es la fuente más precisa para avisar al asignador sin introducir una migración.

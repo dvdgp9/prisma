@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request-notifications.php';
 
 header('Content-Type: application/json');
 
@@ -319,6 +320,23 @@ switch ($method) {
 
             $stmt->execute($values);
 
+            $status_changed_to_completed = isset($input['status'])
+                && $old_status !== $input['status']
+                && $input['status'] === 'completed';
+
+            if ($status_changed_to_completed) {
+                try {
+                    create_request_completion_notifications(
+                        $db,
+                        $input['id'],
+                        $user['id'],
+                        ($user['full_name'] ?? '') ?: ($user['username'] ?? 'Alguien')
+                    );
+                } catch (Exception $e) {
+                    error_log('Failed to create completion notifications: ' . $e->getMessage());
+                }
+            }
+
             // Send email notifications if requester has both email AND name, and status changed to completed
             $has_requester_info = !empty($old_request['requester_email']) && !empty($old_request['requester_name']);
 
@@ -327,7 +345,7 @@ switch ($method) {
                     require_once __DIR__ . '/../includes/email.php';
 
                     // Only send email when completed
-                    if ($input['status'] === 'completed') {
+                    if ($status_changed_to_completed) {
                         sendRequestCompletedEmail($input['id']);
                     }
                 } catch (Exception $e) {

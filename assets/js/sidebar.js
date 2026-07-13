@@ -223,15 +223,20 @@ function renderNotifications() {
     }
 
     body.innerHTML = notifications.map(n => {
-        const iconClass = n.type === 'mention' ? 'mention' : (n.type === 'assignment' ? 'assignment' : 'comment');
-        const iconName = n.type === 'mention' ? 'iconoir-at-sign' : (n.type === 'assignment' ? 'iconoir-user-badge-check' : 'iconoir-chat-bubble');
+        const notificationPresentation = {
+            mention: { iconClass: 'mention', iconName: 'iconoir-at-sign' },
+            assignment: { iconClass: 'assignment', iconName: 'iconoir-user-badge-check' },
+            completion: { iconClass: 'comment', iconName: 'iconoir-check-circle' },
+            comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' }
+        };
+        const presentation = notificationPresentation[n.type] || notificationPresentation.comment;
         const timeAgo = getTimeAgo(new Date(n.created_at));
 
         return `
             <div class="inbox-item ${n.is_read == 0 ? 'unread' : ''}" 
                  onclick="handleNotificationClick(${n.id}, ${n.request_id})">
-                <div class="inbox-item-icon ${iconClass}">
-                    <i class="${iconName}"></i>
+                <div class="inbox-item-icon ${presentation.iconClass}">
+                    <i class="${presentation.iconName}"></i>
                 </div>
                 <div class="inbox-item-content">
                     <div class="inbox-item-text">${escapeHtml(n.message)}</div>
