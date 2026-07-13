@@ -420,11 +420,41 @@ async function handleNotificationClick(notificationId, requestId) {
 
     if (isIndexPage && typeof openEditRequestModal === 'function') {
         openEditRequestModal(requestId);
+        reopenInboxAfterModalClose();
     } else {
         window.location.href = `/index.php?open_request=${requestId}`;
     }
 
     loadNotifications();
+}
+
+// When a request is opened from a notification, bring the panel back after
+// the modal closes so the user can continue with the next notification.
+function reopenInboxAfterModalClose() {
+    const modal = document.getElementById('edit-request-modal');
+    if (!modal) return;
+
+    let sawOpen = modal.classList.contains('active');
+    const observer = new MutationObserver(() => {
+        const isOpen = modal.classList.contains('active');
+        if (isOpen) {
+            sawOpen = true;
+            return;
+        }
+        if (sawOpen) {
+            observer.disconnect();
+            const panel = document.getElementById('inbox-panel');
+            if (panel && !panel.classList.contains('open')) {
+                toggleInbox();
+            }
+        }
+    });
+    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+
+    // Safety: if the modal never opened (e.g. fetch failed), stop watching
+    setTimeout(() => {
+        if (!sawOpen) observer.disconnect();
+    }, 5000);
 }
 
 async function markAllNotificationsRead() {

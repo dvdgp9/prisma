@@ -3333,21 +3333,44 @@ nav {
     display: none;
 }
 
+.inbox-type-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
 .inbox-type-select {
-    border: none;
-    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
     color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.3rem 0.2rem;
-    max-width: 40%;
+    padding: 0.35rem 1.5rem 0.35rem 0.75rem;
     cursor: pointer;
-    border-radius: var(--radius-md);
+    border-radius: 999px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.inbox-type-wrap i {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    pointer-events: none;
 }
 
 .inbox-type-select:hover,
 .inbox-type-select:focus {
+    border-color: var(--text-light);
     color: var(--text-primary);
+}
+
+.inbox-type-select:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
 }
 
 .inbox-group-label {

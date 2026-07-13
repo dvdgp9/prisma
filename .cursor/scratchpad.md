@@ -1937,3 +1937,8 @@ Revisión completa de la funcionalidad de notificaciones (panel inbox, badge, AP
 - Filtros del inbox rediseñados: segmented control (Todas | No leídas con contador pill) + select compacto de tipo ("Todo tipo"). Sustituye los 6 chips de igual peso.
 - Decisión de producto: NO se añade estado "resuelta"; en su lugar, toggle leída/no leída por item (patrón GitHub/Gmail): dot azul = pendiente; items leídos muestran dot hueco al hover para re-marcar como no leída. API PUT acepta {id, is_read: 0|1}.
 - Versiones: styles.css?v=4.4, sidebar.js?v=1.4, sw prisma-v20. Suite de tests OK (contrato guards actualizado a value="status" + data-read-filter).
+
+### Executor: Iteración 3 flujo de retorno + select (13 Julio 2026) — COMPLETADO
+- Al abrir una mejora desde una notificación, el panel se reabre automáticamente cuando se cierra el modal (MutationObserver sobre la clase 'active' de #edit-request-modal, con timeout de seguridad de 5s si el modal nunca llega a abrirse). Permite revisar notificaciones en cadena sin reabrir el panel a mano.
+- Select de tipos con afordance: pill con borde + chevron (appearance:none + icono iconoir-nav-arrow-down en wrapper).
+- Versiones: styles.css?v=4.5, sidebar.js?v=1.5, sw prisma-v21. Tests OK.

@@ -162,17 +162,20 @@ $company_name = $user['company_name'] ?? '';
                 No leídas<span class="inbox-segment-count" id="inbox-segment-count" hidden></span>
             </button>
         </div>
-        <select class="inbox-type-select" id="inbox-type-select" aria-label="Filtrar por tipo" onchange="setInboxTypeFilter(this.value)">
-            <option value="all">Todo tipo</option>
-            <option value="mention">Menciones</option>
-            <option value="assignment">Asignaciones</option>
-            <option value="comment">Comentarios</option>
-            <option value="status">Estado</option>
-        </select>
+        <div class="inbox-type-wrap">
+            <select class="inbox-type-select" id="inbox-type-select" aria-label="Filtrar por tipo" onchange="setInboxTypeFilter(this.value)">
+                <option value="all">Todo tipo</option>
+                <option value="mention">Menciones</option>
+                <option value="assignment">Asignaciones</option>
+                <option value="comment">Comentarios</option>
+                <option value="status">Estado</option>
+            </select>
+            <i class="iconoir-nav-arrow-down" aria-hidden="true"></i>
+        </div>
     </div>
     <div class="inbox-body" id="inbox-body">
         <!-- Notifications loaded dynamically -->
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.4"></script>
+<script src="/assets/js/sidebar.js?v=1.5"></script>
