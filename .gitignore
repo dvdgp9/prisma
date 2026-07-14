@@ -27,3 +27,9 @@ uploads/*
 .vscode/
 *.swp
 *.swo
+
+# Harness locales de preview (no subir a producción)
+preview-*.html
+
+# Config local de Claude Code
+.claude/

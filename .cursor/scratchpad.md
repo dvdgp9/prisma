@@ -1949,3 +1949,27 @@ Revisión completa de la funcionalidad de notificaciones (panel inbox, badge, AP
 - main.js: botones rápidos de estado en tarjeta y dropdown de estado en tabla gateados por update_status; dificultad/prioridad siguen con edit. Modal sin cambios (la sección estado está gateada por has_role('programador') en PHP).
 - Tests actualizados (matriz de capacidades + contrato de guards). Versiones: main.js?v=4.3, sw prisma-v22.
 - Usuario local de prueba: testuser / devtest123 (rol user).
+
+## Modal de petición: scroll horizontal + dedup UX (14 Julio 2026) — COMPLETADO
+
+### Background and Motivation
+Al abrir una petición desde una notificación, el modal (`#edit-request-modal`) tenía scroll horizontal en escritorio y mostraba información repetida (comentarios duplicados en timeline, resumen redundante).
+
+### Diagnóstico (verificado con harness preview-request-modal.html)
+- Scroll horizontal: `.modal-body-grid` usaba `1fr 280px`; sin `minmax(0, 1fr)` el min-content de la columna (nombres de archivo largos con `white-space: nowrap`, URLs) ensanchaba el grid más que el modal (1023px en 855px).
+- `.request-attachment-item` como hijo flex de `.attachments-grid` (flex-wrap) crecía más que su contenedor por el mismo motivo.
+- Comentarios renderizados DOS veces: en `renderActivityTimeline` (timeline) y en `renderComments` (lista).
+- Resumen lateral duplicaba Estado/Prioridad/Dificultad (selects editables arriba) y contadores (badges junto a cada sección).
+- "Último toque"/"Responsable principal" duplicaban el último comentario y la sección Asignados.
+- Píldora de ID (`#edit-request-id-display`) nunca se rellenaba: salía como píldora vacía junto al título.
+
+### Cambios
+- styles.css: `minmax(0, 1fr)` en `.modal-body-grid` (x2 definiciones), `min-width: 0` en columnas, `width:100%; min-width:0` en `.request-attachment-item`, `.modal-request-id:empty { display:none }`. Eliminado CSS muerto de timeline/activity-overview.
+- index.php: eliminados bloque "Último toque/Responsable principal" y timeline. Resumen reducido a Creada por / Creada (fecha · antigüedad) / Última actividad; filas Estado/Prioridad/Dificultad solo para roles sin `has_role('programador')` (para ellos el resumen era la única vista de esos datos).
+- main.js: eliminada `renderActivityTimeline`; `updateEditRequestSummary` simplificada; `renderComments` refresca el resumen; se rellena `#edit-request-id-display` con `#<id>`.
+- Versiones: styles.css v4.6 (todas las páginas), main.js v4.4, sw.js prisma-v23.
+- Nuevo harness: `preview-request-modal.html` (mock de /api/requests, comments, checklist, attachments, users-list). No subir a producción.
+
+### Lessons
+- El checklist del modal usa `item.title` (no `content`) en la API mock.
+- `javascript_tool` justo tras `navigate` puede medir durante la animación `modal-pop`; repetir la medición.

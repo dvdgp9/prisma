@@ -755,84 +755,25 @@ function getLastActivityLabel(request, comments = currentComments) {
     return 'Sin actividad';
 }
 
-function renderActivityTimeline(request) {
-    const timeline = document.getElementById('edit-activity-timeline');
-    const lastActivityEl = document.getElementById('edit-last-activity');
-    const primaryOwnerEl = document.getElementById('edit-primary-owner');
-
-    if (lastActivityEl) {
-        lastActivityEl.textContent = getLastActivityLabel(request);
-    }
-
-    if (primaryOwnerEl) {
-        primaryOwnerEl.textContent = getPrimaryOwnerLabel(request);
-    }
-
-    if (!timeline) return;
-
-    const items = [
-        {
-            type: 'created',
-            icon: 'iconoir-plus-circle',
-            title: 'Mejora creada',
-            meta: `${request.creator_name || request.creator_username || 'Sistema'} · ${getDateTimeLabel(request.created_at)}`
-        }
-    ];
-
-    if (request.assignments && request.assignments.length > 0) {
-        items.push({
-            type: 'owner',
-            icon: 'iconoir-user-badge-check',
-            title: `Responsable principal: ${getPrimaryOwnerLabel(request)}`,
-            meta: `${request.assignments.length} persona(s) asignada(s)`
-        });
-    }
-
-    currentComments.forEach(comment => {
-        items.push({
-            type: 'comment',
-            icon: 'iconoir-chat-bubble',
-            title: escapeHtml(comment.full_name || comment.username),
-            meta: getDateTimeLabel(comment.created_at),
-            content: escapeHtml(comment.content)
-        });
-    });
-
-    timeline.innerHTML = items.map(item => `
-        <div class="activity-timeline-item activity-${item.type}">
-            <div class="activity-timeline-icon">
-                <i class="${item.icon}"></i>
-            </div>
-            <div class="activity-timeline-content">
-                <div class="activity-timeline-title">${item.title}</div>
-                <div class="activity-timeline-meta">${item.meta}</div>
-                ${item.content ? `<div class="activity-timeline-text">${item.content}</div>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
 function updateEditRequestSummary(request) {
+    // Estado/prioridad/dificultad solo existen para roles sin selects de edición
     const statusEl = document.getElementById('edit-summary-status');
     const priorityEl = document.getElementById('edit-summary-priority');
     const difficultyEl = document.getElementById('edit-summary-difficulty');
+    const creatorEl = document.getElementById('edit-summary-creator');
     const createdEl = document.getElementById('edit-summary-created');
-    const ageEl = document.getElementById('edit-summary-age');
-    const commentsEl = document.getElementById('edit-summary-comments');
-    const attachmentsEl = document.getElementById('edit-summary-attachments');
-    const checklistEl = document.getElementById('edit-summary-checklist');
-    const checklistProgress = getChecklistProgress(request);
+    const activityEl = document.getElementById('edit-summary-activity');
 
     if (statusEl) statusEl.textContent = getStatusLabel(request.status);
     if (priorityEl) priorityEl.textContent = getPriorityLabel(request.priority);
     if (difficultyEl) difficultyEl.textContent = getDifficultyLabel(request.difficulty);
-    if (createdEl) createdEl.textContent = new Date(request.created_at).toLocaleDateString('es-ES');
-    if (ageEl) ageEl.textContent = getRelativeAge(request.created_at);
-    if (commentsEl) commentsEl.textContent = request.comment_count || 0;
-    if (attachmentsEl) attachmentsEl.textContent = request.attachment_count || 0;
-    if (checklistEl) checklistEl.textContent = `${checklistProgress.completed}/${checklistProgress.total}`;
-
-    renderActivityTimeline(request);
+    if (creatorEl) creatorEl.textContent = request.creator_name || request.creator_username || request.requester_name || '-';
+    if (createdEl) {
+        const created = new Date(request.created_at).toLocaleDateString('es-ES');
+        const age = getRelativeAge(request.created_at);
+        createdEl.textContent = age === 'Hoy' ? `${created} · hoy` : `${created} · hace ${age}`;
+    }
+    if (activityEl) activityEl.textContent = getLastActivityLabel(request);
 }
 
 // Helper to update active nav state by app/company
@@ -2198,6 +2139,8 @@ async function openRequestDetailModal(requestId) {
 
             // Populate form
             document.getElementById('edit-request-id').value = request.id;
+            const idDisplay = document.getElementById('edit-request-id-display');
+            if (idDisplay) idDisplay.textContent = `#${request.id}`;
             document.getElementById('edit-request-title').value = request.title;
             document.getElementById('edit-request-description').value = request.description || '';
 
@@ -3799,7 +3742,7 @@ function renderComments(requestId) {
 
     const activeRequest = requests.find(r => parseInt(r.id, 10) === parseInt(requestId, 10));
     if (activeRequest) {
-        renderActivityTimeline(activeRequest);
+        updateEditRequestSummary(activeRequest);
     }
     
     if (countEl) countEl.textContent = currentComments.length > 0 ? `${currentComments.length}` : '';

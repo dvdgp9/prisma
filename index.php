@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.5">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.6">
 </head>
 
 <?php
@@ -530,21 +530,6 @@ $company_name = $user['company_name'] ?? '';
                                 <span id="edit-comments-count" class="badge-count-inline"></span>
                             </div>
 
-                            <div class="request-activity-overview" id="edit-activity-overview">
-                                <div class="request-activity-stat">
-                                    <span class="request-activity-stat-label">Último toque</span>
-                                    <strong id="edit-last-activity">Sin actividad</strong>
-                                </div>
-                                <div class="request-activity-stat">
-                                    <span class="request-activity-stat-label">Responsable principal</span>
-                                    <strong id="edit-primary-owner">Sin asignar</strong>
-                                </div>
-                            </div>
-
-                            <div id="edit-activity-timeline" class="activity-timeline">
-                                <!-- Timeline loaded dynamically -->
-                            </div>
-                            
                             <div id="edit-comments-list" class="comments-list">
                                 <!-- Comments will be loaded here -->
                             </div>
@@ -627,6 +612,8 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                             <div class="modal-side-content">
                                 <div class="request-insight-list" id="edit-request-insights">
+                                    <?php if (!has_role('programador')): ?>
+                                    <!-- Sin los selects de "Estado y prioridad", el resumen es la única vista de estos datos -->
                                     <div class="request-insight-item">
                                         <span class="request-insight-label">Estado</span>
                                         <strong id="edit-summary-status">-</strong>
@@ -639,25 +626,18 @@ $company_name = $user['company_name'] ?? '';
                                         <span class="request-insight-label">Dificultad</span>
                                         <strong id="edit-summary-difficulty">-</strong>
                                     </div>
+                                    <?php endif; ?>
+                                    <div class="request-insight-item">
+                                        <span class="request-insight-label">Creada por</span>
+                                        <strong id="edit-summary-creator">-</strong>
+                                    </div>
                                     <div class="request-insight-item">
                                         <span class="request-insight-label">Creada</span>
                                         <strong id="edit-summary-created">-</strong>
                                     </div>
                                     <div class="request-insight-item">
-                                        <span class="request-insight-label">Antigüedad</span>
-                                        <strong id="edit-summary-age">-</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Comentarios</span>
-                                        <strong id="edit-summary-comments">0</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Adjuntos</span>
-                                        <strong id="edit-summary-attachments">0</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Checklist</span>
-                                        <strong id="edit-summary-checklist">0/0</strong>
+                                        <span class="request-insight-label">Última actividad</span>
+                                        <strong id="edit-summary-activity">-</strong>
                                     </div>
                                 </div>
                             </div>
@@ -1097,7 +1077,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.3"></script>
+    <script src="/assets/js/main.js?v=4.4"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>
