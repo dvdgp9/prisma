@@ -7367,3 +7367,129 @@ select.ai-pill-assignee.has-assignee {
         flex-wrap: wrap;
     }
 }
+
+/* ============================================================
+   v2.5 · Modal de petición: jerarquía y ritmo
+   Un solo nivel de uppercase (títulos de sección), metadatos
+   discretos, acciones secundarias compactas.
+   ============================================================ */
+
+/* Labels de campo en la columna lateral: sentence case para no
+   competir con los títulos de sección (único uppercase). */
+.modal-side-section label {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--fs-12);
+    font-weight: var(--fw-medium);
+    color: var(--ink-600);
+}
+
+.modal-side-section input,
+.modal-side-section select {
+    padding: var(--sp-8) var(--sp-10);
+}
+
+.modal-side-title { margin-bottom: var(--sp-10); }
+
+/* Resumen: metadatos, no titulares */
+.request-insight-list { gap: var(--sp-8); }
+
+.request-insight-item {
+    align-items: baseline;
+    gap: var(--sp-12);
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.request-insight-label {
+    font-size: var(--fs-12);
+    color: var(--ink-500);
+    flex-shrink: 0;
+}
+
+.request-insight-item strong {
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    color: var(--ink-800);
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Subcabeceras de la columna principal (Adjuntos / Checklist / Comentarios) */
+.attachments-header label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--fs-13);
+    font-weight: var(--fw-semibold);
+    color: var(--ink-900);
+    margin: 0;
+}
+
+.attachments-header label i { color: var(--ink-400); }
+
+.comments-section .attachments-header { margin-bottom: var(--sp-12); }
+.comments-section .checklist-list + .attachments-header { margin-top: var(--sp-24); }
+
+/* Zona de subida compacta: acción secundaria, no protagonista */
+.file-upload-area--compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-8);
+    padding: var(--sp-10) var(--sp-12);
+    margin-bottom: var(--sp-8);
+}
+
+.file-upload-area--compact i { font-size: var(--fs-16); }
+.file-upload-area--compact p { font-size: var(--fs-13); }
+
+/* Adjuntos: el borde lo lleva cada item; fuera la caja gris contenedora */
+#edit-attachments-list {
+    background: transparent;
+    padding: 0;
+    min-height: 0;
+}
+
+#edit-attachments-list:empty::after {
+    font-style: normal;
+    font-size: var(--fs-13);
+}
+
+.request-attachment-item { margin-bottom: 0; }
+
+.request-attachment-name {
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+}
+
+.request-attachment-link .text-small {
+    white-space: nowrap;
+    font-size: var(--fs-12);
+}
+
+/* Descripción: alto inicial contenido, crece si hace falta */
+#edit-request-description { min-height: 110px; }
+
+/* Composer de comentarios: botón de icono anclado abajo */
+.comment-input-wrapper { align-items: flex-end; }
+
+/* El min-height genérico de .modal-column-main textarea es para la
+   descripción; el composer vuelve a su altura compacta. */
+.modal-column-main .comment-input {
+    min-height: 44px;
+    resize: none;
+}
+
+.comment-submit-btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-8);
+    font-size: var(--fs-16);
+}

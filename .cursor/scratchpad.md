@@ -1973,3 +1973,11 @@ Al abrir una petición desde una notificación, el modal (`#edit-request-modal`)
 ### Lessons
 - El checklist del modal usa `item.title` (no `content`) en la API mock.
 - `javascript_tool` justo tras `navigate` puede medir durante la animación `modal-pop`; repetir la medición.
+
+### Executor: Pulido visual del modal de petición (14 Julio 2026) — COMPLETADO
+Pase de jerarquía/ritmo sobre v2.4 (bloque "v2.5" al final de styles.css), verificado en preview-request-modal.html:
+- Un solo nivel de uppercase en la columna lateral (títulos de sección); labels de campo a sentence case.
+- Resumen como metadatos: filas de una línea, valores fs-13 medium (no bold grande), fecha compacta ("2 jul 2026 · hace 12 días").
+- Dropzone de adjuntos compacta en una fila (clase .file-upload-area--compact, inline styles retirados de index.php).
+- Lista de adjuntos sin caja gris contenedora (el borde lo lleva cada item); tamaño de archivo en una línea.
+- Composer de comentarios: textarea 44px (el min-height 140px de .modal-column-main textarea lo pisaba) + botón de envío como icono 38px anclado abajo.

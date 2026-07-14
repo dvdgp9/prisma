@@ -769,7 +769,11 @@ function updateEditRequestSummary(request) {
     if (difficultyEl) difficultyEl.textContent = getDifficultyLabel(request.difficulty);
     if (creatorEl) creatorEl.textContent = request.creator_name || request.creator_username || request.requester_name || '-';
     if (createdEl) {
-        const created = new Date(request.created_at).toLocaleDateString('es-ES');
+        const created = new Date(request.created_at).toLocaleDateString('es-ES', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
         const age = getRelativeAge(request.created_at);
         createdEl.textContent = age === 'Hoy' ? `${created} · hoy` : `${created} · hace ${age}`;
     }

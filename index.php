@@ -480,9 +480,9 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                             
                             <!-- Upload area in edit modal -->
-                            <div class="file-upload-area" id="edit-file-upload-area" style="padding: var(--spacing-lg); margin-bottom: 1rem;">
-                                <i class="iconoir-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 0.25rem;"></i>
-                                <p style="font-size: 0.875rem;">Haz clic o arrastra para añadir más archivos</p>
+                            <div class="file-upload-area file-upload-area--compact" id="edit-file-upload-area">
+                                <i class="iconoir-cloud-upload"></i>
+                                <p>Haz clic o arrastra para añadir más archivos</p>
                                 <input type="file" id="edit-file-input" style="display: none;" multiple>
                             </div>
 
@@ -493,7 +493,7 @@ $company_name = $user['company_name'] ?? '';
 
                         <!-- Comments section -->
                         <div class="comments-section">
-                            <div class="attachments-header" style="margin-bottom: 1rem; margin-top: 0.5rem;">
+                            <div class="attachments-header">
                                 <label>
                                     <i class="iconoir-check-square"></i> Checklist
                                 </label>
@@ -523,7 +523,7 @@ $company_name = $user['company_name'] ?? '';
                                 <!-- Checklist items loaded dynamically -->
                             </div>
 
-                            <div class="attachments-header" style="margin-bottom: 1rem;">
+                            <div class="attachments-header">
                                 <label>
                                     <i class="iconoir-chat-bubble"></i> Comentarios
                                 </label>
