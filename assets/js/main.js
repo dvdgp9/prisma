@@ -12,6 +12,7 @@ let requestSearchTerm = '';
 let currentQuickView = 'all';
 let unreadRequestIds = new Set();
 let currentChecklistItems = [];
+let currentModalRequest = null;
 let currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
 let currentTableSort = {
@@ -756,17 +757,11 @@ function getLastActivityLabel(request, comments = currentComments) {
 }
 
 function updateEditRequestSummary(request) {
-    // Estado/prioridad/dificultad solo existen para roles sin selects de edición
-    const statusEl = document.getElementById('edit-summary-status');
-    const priorityEl = document.getElementById('edit-summary-priority');
-    const difficultyEl = document.getElementById('edit-summary-difficulty');
+    // Metadatos read-only de la barra de propiedades
     const creatorEl = document.getElementById('edit-summary-creator');
     const createdEl = document.getElementById('edit-summary-created');
     const activityEl = document.getElementById('edit-summary-activity');
 
-    if (statusEl) statusEl.textContent = getStatusLabel(request.status);
-    if (priorityEl) priorityEl.textContent = getPriorityLabel(request.priority);
-    if (difficultyEl) difficultyEl.textContent = getDifficultyLabel(request.difficulty);
     if (creatorEl) creatorEl.textContent = request.creator_name || request.creator_username || request.requester_name || '-';
     if (createdEl) {
         const created = new Date(request.created_at).toLocaleDateString('es-ES', {
@@ -778,6 +773,160 @@ function updateEditRequestSummary(request) {
         createdEl.textContent = age === 'Hoy' ? `${created} · hoy` : `${created} · hace ${age}`;
     }
     if (activityEl) activityEl.textContent = getLastActivityLabel(request);
+}
+
+// ── Barra de propiedades del modal ────────────────────────────────────────
+// Reutiliza los mismos componentes que las cards (badges de estado/prioridad,
+// barras de dificultad, tags de asignados). Los controles guardan al instante.
+function renderRequestMetaBar(request) {
+    const bar = document.getElementById('edit-request-meta-bar');
+    if (!bar) return;
+
+    const caps = currentRequestCapabilities;
+    const id = request.id;
+    const statusLabel = getStatusLabel(request.status);
+    const priorityLabel = getPriorityLabel(request.priority);
+
+    const statusControl = caps.update_status
+        ? `<span class="status-badge-display status-${request.status} is-interactive" onclick="toggleBadgeDropdown(event, ${id}, 'status')">
+               ${escapeHtml(statusLabel)}<i class="iconoir-nav-arrow-down"></i>
+               ${createStatusDropdown(id, request.status)}
+           </span>`
+        : `<span class="status-badge-display status-${request.status}">${escapeHtml(statusLabel)}</span>`;
+
+    const priorityControl = caps.edit
+        ? `<span class="priority-badge priority-${request.priority} is-interactive" onclick="toggleBadgeDropdown(event, ${id}, 'priority')">
+               ${escapeHtml(priorityLabel)}<i class="iconoir-nav-arrow-down"></i>
+               ${createPriorityDropdown(id, request.priority)}
+           </span>`
+        : `<span class="priority-badge priority-${request.priority}">${escapeHtml(priorityLabel)}</span>`;
+
+    const lvl = getDifficultyLevel(request.difficulty);
+    const diffTitle = `Dificultad: ${escapeHtml(getDifficultyLabel(request.difficulty))}`;
+    let diffControl = '';
+    if (caps.edit) {
+        diffControl = `<div class="difficulty-indicator" title="${diffTitle}">
+                <button type="button" class="difficulty-bar ${lvl >= 1 ? 'active' : ''}" onclick="setDifficulty(${id}, 'low', event)" title="Baja"></button>
+                <button type="button" class="difficulty-bar ${lvl >= 2 ? 'active' : ''}" onclick="setDifficulty(${id}, 'medium', event)" title="Media"></button>
+                <button type="button" class="difficulty-bar ${lvl >= 3 ? 'active' : ''}" onclick="setDifficulty(${id}, 'high', event)" title="Alta"></button>
+            </div>`;
+    } else if (request.difficulty) {
+        diffControl = `<div class="difficulty-display" title="${diffTitle}">
+                <div class="difficulty-bar ${lvl >= 1 ? 'active' : ''}"></div>
+                <div class="difficulty-bar ${lvl >= 2 ? 'active' : ''}"></div>
+                <div class="difficulty-bar ${lvl >= 3 ? 'active' : ''}"></div>
+            </div>`;
+    }
+
+    bar.innerHTML = `
+        <div class="request-meta-bar__controls">
+            ${statusControl}
+            ${priorityControl}
+            ${diffControl}
+        </div>
+        <div class="request-meta-bar__divider"></div>
+        <div class="request-meta-bar__assignees" id="edit-meta-assignees">${renderMetaAssigneesHtml()}</div>
+        <div class="request-meta-bar__facts">
+            <span class="request-meta-bar__fact" title="Creada por"><i class="iconoir-user"></i><span id="edit-summary-creator">-</span></span>
+            <span class="request-meta-bar__fact" title="Creada"><i class="iconoir-calendar"></i><span id="edit-summary-created">-</span></span>
+            <span class="request-meta-bar__fact" title="Última actividad"><i class="iconoir-clock-rotate-right"></i><span id="edit-summary-activity">-</span></span>
+        </div>
+    `;
+
+    updateEditRequestSummary(request);
+    if (caps.edit) setupMetaAssignSearch();
+}
+
+function renderMetaAssigneesHtml() {
+    const list = window.currentAssignments || [];
+    const canEdit = currentRequestCapabilities.edit;
+
+    let chips = list.map((a, i) => `
+        <span class="assigned-tag ${i === 0 ? 'primary-owner-tag' : ''}">
+            ${escapeHtml(a.full_name || a.username)}${i === 0 ? ' · Resp.' : ''}
+            ${canEdit ? `<span class="remove-tag" onclick="metaRemoveAssignee(${a.id})">×</span>` : ''}
+        </span>
+    `).join('');
+
+    if (!list.length && !canEdit) {
+        chips = '<span class="text-muted text-small">Sin asignar</span>';
+    }
+
+    const adder = canEdit
+        ? `<div class="meta-assign-wrapper">
+               <input type="text" id="edit-meta-assign-search" class="meta-assign-input" placeholder="+ Asignar" autocomplete="off">
+               <div id="edit-meta-assign-dropdown" class="assign-dropdown" style="display:none;"></div>
+           </div>`
+        : '';
+
+    return chips + adder;
+}
+
+function setupMetaAssignSearch() {
+    const input = document.getElementById('edit-meta-assign-search');
+    const dropdown = document.getElementById('edit-meta-assign-dropdown');
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', () => {
+        const search = input.value.toLowerCase().trim();
+        if (!search) { dropdown.style.display = 'none'; return; }
+        const assignedIds = (window.currentAssignments || []).map(a => a.id);
+        const filtered = availableUsers.filter(u =>
+            !assignedIds.includes(u.id) &&
+            (u.username.toLowerCase().includes(search) ||
+             (u.full_name && u.full_name.toLowerCase().includes(search))));
+        if (!filtered.length) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = filtered.slice(0, 5).map(user => `
+            <div class="assign-dropdown-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-fullname="${escapeHtml(user.full_name || '')}">
+                <div class="comment-avatar" style="width:20px;height:20px;font-size:0.5rem;">${(user.full_name || user.username).charAt(0).toUpperCase()}</div>
+                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
+            </div>
+        `).join('');
+        dropdown.style.display = 'block';
+        dropdown.querySelectorAll('.assign-dropdown-item').forEach(item => {
+            item.onclick = () => metaAddAssignee({
+                id: parseInt(item.dataset.userId, 10),
+                username: item.dataset.username,
+                full_name: item.dataset.fullname
+            });
+        });
+    });
+
+    input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 200));
+}
+
+function metaAddAssignee(user) {
+    if (!window.currentAssignments) window.currentAssignments = [];
+    if (window.currentAssignments.some(a => a.id === user.id)) return;
+    window.currentAssignments.push(user);
+    persistMetaAssignees();
+}
+
+function metaRemoveAssignee(userId) {
+    window.currentAssignments = (window.currentAssignments || []).filter(a => a.id !== userId);
+    persistMetaAssignees();
+}
+
+async function persistMetaAssignees() {
+    if (currentModalRequest) {
+        currentModalRequest.assignments = (window.currentAssignments || []).slice();
+        renderRequestMetaBar(currentModalRequest);
+    }
+
+    const requestId = document.getElementById('edit-request-id').value;
+    try {
+        await fetch('/api/assignments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                request_id: parseInt(requestId, 10),
+                user_ids: (window.currentAssignments || []).map(a => a.id)
+            })
+        });
+        await loadRequests();
+    } catch (error) {
+        console.error('Error saving assignments:', error);
+    }
 }
 
 // Helper to update active nav state by app/company
@@ -1681,6 +1830,12 @@ async function quickUpdateRequest(requestId, field, value, event) {
                 showToast(statusMessages[value], `toast-${value}`);
             }
 
+            // If the detail modal is open for this request, reflect the change in its bar
+            if (currentModalRequest && parseInt(currentModalRequest.id, 10) === parseInt(requestId, 10)) {
+                currentModalRequest[field] = value;
+                renderRequestMetaBar(currentModalRequest);
+            }
+
             // Reload requests to show updated state
             await loadRequests();
         } else {
@@ -2074,6 +2229,10 @@ async function setDifficulty(requestId, difficulty, event) {
         const result = await response.json();
 
         if (result.success) {
+            if (currentModalRequest && parseInt(currentModalRequest.id, 10) === parseInt(requestId, 10)) {
+                currentModalRequest.difficulty = difficulty;
+                renderRequestMetaBar(currentModalRequest);
+            }
             await loadRequests();
         } else {
             alert(result.error || 'Error al actualizar la dificultad');
@@ -2148,13 +2307,8 @@ async function openRequestDetailModal(requestId) {
             document.getElementById('edit-request-title').value = request.title;
             document.getElementById('edit-request-description').value = request.description || '';
 
-            // Set priority and status if fields exist (admin only)
-            const priorityField = document.getElementById('edit-request-priority');
-            const statusField = document.getElementById('edit-request-status');
-            const difficultyField = document.getElementById('edit-request-difficulty');
-            if (priorityField) priorityField.value = request.priority;
-            if (statusField) statusField.value = request.status;
-            if (difficultyField) difficultyField.value = request.difficulty || '';
+            // Store the request so the meta bar controls can update it in place
+            currentModalRequest = request;
 
             // Store current request's app_id for "Complete and Schedule" flow
             window.currentRequestAppId = request.app_id;
@@ -2165,16 +2319,11 @@ async function openRequestDetailModal(requestId) {
             if (requesterNameField) requesterNameField.value = request.requester_name || '';
             if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
 
-            // Update requester dot and section state
+            // Update requester dot; el bloque queda colapsado por defecto (uso puntual).
+            // El punto indica si hay datos sin obligar a desplegarlo.
             updateRequesterDot('edit');
             const editRequesterSection = document.getElementById('edit-requester-section');
-            if (editRequesterSection) {
-                if (request.requester_name || request.requester_email) {
-                    editRequesterSection.classList.add('active');
-                } else {
-                    editRequesterSection.classList.remove('active');
-                }
-            }
+            if (editRequesterSection) editRequesterSection.classList.remove('active');
 
             // Load attachments
             await loadRequestAttachments(requestId);
@@ -2185,7 +2334,17 @@ async function openRequestDetailModal(requestId) {
             // Load comments
             await loadComments(requestId);
 
-            // Update operational summary
+            // Store current assignments for the meta bar (immediate-save)
+            window.currentAssignments = (request.assignments || []).map(a => ({
+                id: a.id,
+                username: a.username,
+                full_name: a.full_name
+            }));
+
+            // Render the property bar (status, priority, difficulty, assignees, facts)
+            renderRequestMetaBar(request);
+
+            // Update read-only facts (creada por / creada / última actividad)
             updateEditRequestSummary(request);
 
             // Setup mentions autocomplete
@@ -2194,20 +2353,6 @@ async function openRequestDetailModal(requestId) {
             if (commentInput && mentionsDropdown) {
                 await loadMentionableUsers(requestId);
                 setupMentionsAutocomplete(commentInput, mentionsDropdown);
-            }
-
-            // Setup multi-select assignments
-            const assignedTags = document.getElementById('edit-assigned-tags');
-            const assignSearch = document.getElementById('edit-assign-search');
-            if (assignedTags && assignSearch) {
-                // Store current assignments
-                window.currentAssignments = (request.assignments || []).map(a => ({
-                    id: a.id,
-                    username: a.username,
-                    full_name: a.full_name
-                }));
-                renderAssignedTags();
-                setupAssignSearchInput();
             }
 
             // Open modal
@@ -2329,19 +2474,13 @@ async function submitEditRequest(event) {
     const title = document.getElementById('edit-request-title').value;
     const description = document.getElementById('edit-request-description').value;
 
+    // Estado, prioridad, dificultad y asignados se guardan al instante desde la
+    // barra de propiedades; aquí solo viajan los campos del formulario.
     const payload = {
         id: parseInt(requestId),
         title: title,
         description: description
     };
-
-    // Add priority and status if user is admin
-    const priorityField = document.getElementById('edit-request-priority');
-    const statusField = document.getElementById('edit-request-status');
-    const difficultyField = document.getElementById('edit-request-difficulty');
-    if (priorityField) payload.priority = priorityField.value;
-    if (statusField) payload.status = statusField.value;
-    if (difficultyField) payload.difficulty = difficultyField.value || null;
 
     // Add requester info if provided
     const requesterNameField = document.getElementById('edit-request-requester-name');
@@ -2363,19 +2502,6 @@ async function submitEditRequest(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Save assignments via separate API
-            if (window.currentAssignments !== undefined) {
-                const assignmentIds = window.currentAssignments.map(a => a.id);
-                await fetch('/api/assignments.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        request_id: parseInt(requestId),
-                        user_ids: assignmentIds
-                    })
-                });
-            }
-
             closeModal('edit-request-modal');
             loadRequests();
         } else {

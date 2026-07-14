@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.6">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.7">
 </head>
 
 <?php
@@ -450,12 +450,14 @@ $company_name = $user['company_name'] ?? '';
                 </button>
             </div>
 
+            <!-- Property bar: estado, prioridad, dificultad, asignados y metadatos.
+                 Controles con guardado inmediato (fuera del form). Render por JS. -->
+            <div class="request-meta-bar" id="edit-request-meta-bar"></div>
+
             <form id="edit-request-form" onsubmit="submitEditRequest(event)">
                 <input type="hidden" id="edit-request-id">
 
-                <div class="modal-body-grid">
-                    <!-- Left Column: Main Content -->
-                    <div class="modal-column-main">
+                <div class="modal-column-main">
                         <div class="form-group">
                             <label for="edit-request-title">
                                 <i class="iconoir-text"></i> Título *
@@ -468,6 +470,28 @@ $company_name = $user['company_name'] ?? '';
                                 <i class="iconoir-align-left"></i> Descripción
                             </label>
                             <textarea id="edit-request-description" rows="8"></textarea>
+                        </div>
+
+                        <!-- Solicitante: colapsable y discreto (uso puntual) -->
+                        <div class="requester-collapse" id="edit-requester-section">
+                            <button type="button" class="requester-collapse-toggle" onclick="this.parentElement.classList.toggle('active')">
+                                <i class="iconoir-user"></i>
+                                <span>Solicitante</span>
+                                <div class="status-dot" id="edit-requester-dot"></div>
+                                <i class="iconoir-nav-arrow-right toggle-icon"></i>
+                            </button>
+                            <div class="requester-collapse-content">
+                                <div class="requester-fields">
+                                    <div class="form-group">
+                                        <label for="edit-request-requester-name">Nombre</label>
+                                        <input type="text" id="edit-request-requester-name" placeholder="Juan Pérez" oninput="updateRequesterDot('edit')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-request-requester-email">Email</label>
+                                        <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com" oninput="updateRequesterDot('edit')">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Attachments section -->
@@ -542,149 +566,15 @@ $company_name = $user['company_name'] ?? '';
                                 </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Right Column: Metadata -->
-                    <div class="modal-column-side">
-                        <?php if (has_role('programador')): ?>
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-settings"></i> Estado y prioridad
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div class="form-group">
-                                    <label for="edit-request-status">Estado</label>
-                                    <select id="edit-request-status">
-                                        <option value="pending">Pendiente</option>
-                                        <option value="in_progress">En curso</option>
-                                        <option value="completed">Completada</option>
-                                        <option value="discarded">Descartada</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="edit-request-priority">Prioridad</label>
-                                    <select id="edit-request-priority">
-                                        <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
-                                        <option value="high">Alta</option>
-                                        <option value="critical">Crítica</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="edit-request-difficulty">Dificultad</label>
-                                    <select id="edit-request-difficulty">
-                                        <option value="">Sin definir</option>
-                                        <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
-                                        <option value="high">Alta</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (has_role('programador')): ?>
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-user-badge-check"></i> Asignados
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div id="edit-assigned-tags" class="assigned-tags"></div>
-                                <div class="assign-search-wrapper">
-                                    <input type="text" id="edit-assign-search" class="assign-search-input" placeholder="Buscar usuario..." autocomplete="off">
-                                    <div id="edit-assign-dropdown" class="assign-dropdown" style="display: none;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-report-columns"></i> Resumen
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div class="request-insight-list" id="edit-request-insights">
-                                    <?php if (!has_role('programador')): ?>
-                                    <!-- Sin los selects de "Estado y prioridad", el resumen es la única vista de estos datos -->
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Estado</span>
-                                        <strong id="edit-summary-status">-</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Prioridad</span>
-                                        <strong id="edit-summary-priority">-</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Dificultad</span>
-                                        <strong id="edit-summary-difficulty">-</strong>
-                                    </div>
-                                    <?php endif; ?>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Creada por</span>
-                                        <strong id="edit-summary-creator">-</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Creada</span>
-                                        <strong id="edit-summary-created">-</strong>
-                                    </div>
-                                    <div class="request-insight-item">
-                                        <span class="request-insight-label">Última actividad</span>
-                                        <strong id="edit-summary-activity">-</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="modal-side-section collapsible" id="edit-requester-section">
-                            <div class="modal-side-title" onclick="this.parentElement.classList.toggle('active')">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-user"></i> Solicitante
-                                    <div class="status-dot" id="edit-requester-dot"></div>
-                                </div>
-                                <i class="iconoir-nav-arrow-right toggle-icon"></i>
-                            </div>
-                            <div class="modal-side-content">
-                                <p class="text-small text-muted" style="margin-bottom: 1rem;">
-                                    Datos del solicitante para notificaciones.
-                                </p>
-                                
-                                <div class="form-group">
-                                    <label for="edit-request-requester-name">Nombre</label>
-                                    <input type="text" id="edit-request-requester-name" placeholder="Juan Pérez" oninput="updateRequesterDot('edit')">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="edit-request-requester-email">Email</label>
-                                    <input type="email" id="edit-request-requester-email" placeholder="juan@ejemplo.com" oninput="updateRequesterDot('edit')">
-                                </div>
-                            </div>
-                        </div>
-
-                        <?php if (has_role('superadmin')): ?>
-                        <div class="modal-side-section modal-danger-zone">
-                            <div class="modal-side-title">
-                                <i class="iconoir-warning-triangle"></i> Zona peligrosa
-                            </div>
-                            <button type="button" class="btn btn-danger-outline btn-sm" onclick="deleteRequest()">
-                                <i class="iconoir-trash"></i> Eliminar petición
-                            </button>
-                        </div>
-                        <?php endif; ?>
-                    </div>
                 </div>
 
                 <div class="modal-footer">
                     <?php if (has_role('superadmin')): ?>
-                    <button type="button" class="btn btn-success" onclick="openCompleteAndScheduleModal()" style="margin-right: auto; background: #22c55e; color: white; border: none;">
+                    <button type="button" class="btn btn-success btn-ship-inline" onclick="openCompleteAndScheduleModal()">
                         <i class="iconoir-rocket"></i> Completar y Programar
+                    </button>
+                    <button type="button" class="btn btn-danger-outline btn-sm modal-footer-delete" onclick="deleteRequest()">
+                        <i class="iconoir-trash"></i> Eliminar
                     </button>
                     <?php endif; ?>
                     <button type="button" class="btn btn-ghost" id="edit-request-close" onclick="closeModal('edit-request-modal')">Cancelar</button>
@@ -1077,7 +967,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.4"></script>
+    <script src="/assets/js/main.js?v=4.5"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

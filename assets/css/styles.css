@@ -7493,3 +7493,167 @@ select.ai-pill-assignee.has-assignee {
     border-radius: var(--r-8);
     font-size: var(--fs-16);
 }
+
+/* ============================================================
+   v2.6 · Modal petición: barra de propiedades a ancho completo
+   Reutiliza el lenguaje visual de las cards (badges, dificultad,
+   tags). El cuerpo pasa a una sola columna.
+   ============================================================ */
+
+/* El separador lo aporta la barra, no la cabecera */
+#request-modal-content .modal-header {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.request-meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-8) var(--sp-16);
+    padding: var(--sp-12) var(--sp-24);
+    margin: 0 calc(-1 * var(--sp-24)) var(--sp-20);
+    background: var(--ink-50);
+    border-top: 1px solid var(--ink-200);
+    border-bottom: 1px solid var(--ink-200);
+}
+
+.request-meta-bar:empty { display: none; }
+
+.request-meta-bar__controls {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-8);
+    flex-wrap: wrap;
+}
+
+.request-meta-bar__divider {
+    width: 1px;
+    height: 22px;
+    background: var(--ink-200);
+}
+
+.request-meta-bar__assignees {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-6);
+    flex-wrap: wrap;
+}
+
+.request-meta-bar__facts {
+    margin-left: auto;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px var(--sp-16);
+    font-size: var(--fs-12);
+    color: var(--ink-500);
+}
+
+.request-meta-bar__fact {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.request-meta-bar__fact i { font-size: var(--fs-13); color: var(--ink-400); }
+
+/* Badges interactivos: anclan su desplegable y muestran cursor */
+.request-meta-bar .priority-badge.is-interactive,
+.request-meta-bar .status-badge-display.is-interactive {
+    position: relative;
+    cursor: pointer;
+}
+
+.request-meta-bar .status-badge-display.is-interactive i,
+.request-meta-bar .priority-badge.is-interactive i {
+    font-size: var(--fs-12);
+    opacity: 0.55;
+    margin-left: 2px;
+}
+
+.request-meta-bar .badge-dropdown { text-transform: none; }
+
+/* Buscador de asignados compacto tipo chip */
+.meta-assign-wrapper { position: relative; }
+
+.request-meta-bar .meta-assign-input {
+    height: 24px;
+    border: 1px dashed var(--ink-300);
+    border-radius: var(--r-full);
+    background: transparent;
+    font-size: var(--fs-12);
+    color: var(--ink-600);
+    padding: 0 var(--sp-10);
+    width: 96px;
+    transition: width var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+}
+
+.request-meta-bar .meta-assign-input:focus {
+    width: 160px;
+    border-style: solid;
+    border-color: var(--brand);
+    outline: none;
+    box-shadow: none;
+}
+
+.request-meta-bar .assign-dropdown { top: calc(100% + 4px); left: 0; }
+
+/* Solicitante: colapsable discreto dentro de la columna principal */
+.requester-collapse {
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-12);
+    overflow: hidden;
+}
+
+.requester-collapse-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    width: 100%;
+    padding: var(--sp-10) var(--sp-14);
+    background: var(--ink-50);
+    border: none;
+    cursor: pointer;
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    color: var(--ink-700);
+    text-align: left;
+}
+
+.requester-collapse-toggle i:first-child { color: var(--ink-400); }
+.requester-collapse-toggle .status-dot { margin-left: var(--sp-4); }
+.requester-collapse-toggle .toggle-icon {
+    margin-left: auto;
+    color: var(--ink-400);
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+.requester-collapse.active .toggle-icon { transform: rotate(90deg); }
+
+.requester-collapse-content {
+    display: none;
+    padding: var(--sp-14);
+    border-top: 1px solid var(--ink-200);
+}
+.requester-collapse.active .requester-collapse-content { display: block; }
+
+.requester-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-12);
+}
+@media (max-width: 560px) { .requester-fields { grid-template-columns: 1fr; } }
+
+/* Footer: acción de envío a la izquierda, eliminar discreto */
+.btn-ship-inline {
+    margin-right: auto;
+    background: var(--ok);
+    color: #fff;
+    border: none;
+}
+.btn-ship-inline:hover { background: #37946A; }
+
+.modal-footer .btn-danger-outline { width: auto; }
+.modal-footer-delete { border-color: transparent; }
+.modal-footer-delete:hover { border-color: var(--danger); }

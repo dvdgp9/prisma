@@ -1981,3 +1981,43 @@ Pase de jerarquía/ritmo sobre v2.4 (bloque "v2.5" al final de styles.css), veri
 - Dropzone de adjuntos compacta en una fila (clase .file-upload-area--compact, inline styles retirados de index.php).
 - Lista de adjuntos sin caja gris contenedora (el borde lo lleva cada item); tamaño de archivo en una línea.
 - Composer de comentarios: textarea 44px (el min-height 140px de .modal-column-main textarea lo pisaba) + botón de envío como icono 38px anclado abajo.
+
+## Rediseño modal petición: barra de propiedades a ancho completo (14 Julio 2026, Planner)
+
+### Background and Motivation
+El modal usa hoy 2 columnas (contenido 1fr + lateral 280px). El lateral apila Estado/Prioridad/Dificultad (selects), Asignados, Resumen, Solicitante y Zona peligrosa. Propuesta del usuario: llevar Estado, Prioridad, Asignados y casi todo el Resumen a una barra horizontal a ancho completo bajo el encabezado, con el MISMO lenguaje visual que las cards de la vista normal (badges de color, controles rápidos), liberando el lateral para dar ancho completo a Título/Descripción/Comentarios.
+
+### Key Challenges and Analysis
+- **Componentes reutilizables ya existen** (no hay que inventar visual): `priority-badge` + `createPriorityDropdown`/`toggleBadgeDropdown`, grupo `status-actions` (o `status-badge` read-only), `difficulty-indicator` (barras clicables) / `difficulty-display` (read-only), `assigned-tag`/`primary-owner-tag` + `btn-assign-quick`, y una clase `.chip` en tokens.css. Los handlers JS de las cards (`quickUpdateRequest`, `setDifficulty`, `toggleBadgeDropdown`) ya guardan al vuelo.
+- **"Una línea" es aspiracional**: Estado+Prioridad+Dificultad+Asignados+(creada por/antigüedad/última actividad) no caben cómodos en 1 línea a 900px con varios asignados. Diseñar como *barra de propiedades* que es 1 línea en ancho y hace wrap a 2 filas cuando aprieta. No forzar nowrap.
+- **Modelo de guardado cambia**: hoy los `<select>` de estado/prioridad/dificultad se leen en `submitEditRequest` al pulsar "Guardar cambios". Si se sustituyen por badges/controles inline, lo natural (y consistente con las cards) es que **guarden al instante** vía las APIs rápidas. Título/Descripción/Solicitante siguen con el botón "Guardar cambios". Decisión a confirmar con el usuario.
+- **Capacidades/roles**: los controles deben respetar `capabilities` (edit / update_status) igual que las cards → interactivo para programador+, read-only (badge) para el resto. La autorización real es server-side; los controles son solo UX. Esto además unifica el gating que hoy hace el PHP con `has_role('programador')`.
+- **Qué NO va en la barra**: Solicitante (nombre/email editables = formulario, no metadato de vistazo) y Zona peligrosa (acción destructiva). Propuesta: Solicitante como bloque colapsable en la columna principal (bajo Descripción); Eliminar petición al footer, junto a las acciones.
+- **Cuerpo a 1 columna**: al quitar el lateral, `modal-body-grid` pasa a columna única full-width. Descripción y adjuntos ganan mucho; comentarios ya se ven bien a ancho completo (verificado en screenshots previas). Riesgo menor: line-length de comentarios muy ancha → opcional cap de ancho de lectura.
+
+### High-level Task Breakdown
+1. **CUP-M.1 · Barra de propiedades (markup + CSS)**: nueva `.request-meta-bar` full-width bajo `.modal-header`, con slots para status/priority/difficulty (controles), asignados (chips + add) y tira de metadatos read-only (creada por · antigüedad · última actividad). Reusar clases de card. Wrap a 2 filas. Criterio: se ve el lenguaje de las cards, sin overflow, en escritorio y móvil.
+2. **CUP-M.2 · Poblar la barra desde JS por capacidades**: en `openRequestDetailModal`, render de controles interactivos vs read-only según `capabilities`. Reusar `toggleBadgeDropdown`/`createPriorityDropdown`, `status-actions`, `difficulty-indicator`, tags de asignados. Guardado inmediato para estado/prioridad/dificultad/asignados. Criterio: cambiar estado desde el modal persiste sin pulsar Guardar, y refleja igual que en la card.
+3. **CUP-M.3 · Reubicar Solicitante y Zona peligrosa**: Solicitante colapsable en columna principal; botón Eliminar al footer. Quitar `<select>` de estado/prioridad/dificultad y el bloque Resumen redundante. `submitEditRequest` deja de leer esos selects. Criterio: guardar título/descripción/solicitante sigue funcionando; eliminar sigue disponible para superadmin.
+4. **CUP-M.4 · Cuerpo a una columna**: `modal-body-grid` → columna única; ajustar anchos de Título/Descripción/Adjuntos/Checklist/Comentarios. Criterio: sin scroll horizontal, jerarquía limpia, verificado en harness + móvil.
+5. **CUP-M.5 · QA**: roles (superadmin/programador vs user/colaborador), guardado inmediato vs batch, responsive, versiones de assets (styles.css/main.js/sw.js). Criterio: sin regresiones respecto al modal actual.
+
+### Decisiones pendientes de confirmar con el usuario
+- (A) ¿Estado/prioridad/dificultad/asignados guardan **al instante** (como las cards) o siguen dependiendo de "Guardar cambios"? Recomendado: al instante.
+- (B) Solicitante → ¿colapsable en el cuerpo (recomendado) o se mantiene en algún lateral fino?
+- (C) Cuerpo: ¿una sola columna full-width (recomendado) o conservar 2 columnas ligeras solo para checklist/comentarios?
+
+### Executor: Barra de propiedades a ancho completo (14 Julio 2026) — COMPLETADO
+Implementadas las 5 fases (CUP-M.1..5), verificado en preview-request-modal.html (escritorio + móvil):
+- Barra `.request-meta-bar` full-bleed bajo la cabecera: estado (badge+dropdown), prioridad (badge+dropdown), dificultad (barras clicables), asignados (chips + "+ Asignar"), y metadatos read-only (creada por · creada · última actividad). Reutiliza el lenguaje de las cards.
+- Guardado inmediato (decisión A): estado/prioridad vía `quickUpdateRequest`, dificultad vía `setDifficulty` (ambas ampliadas para refrescar la barra si el modal está abierto, con `currentModalRequest`); asignados vía `metaAddAssignee`/`metaRemoveAssignee` → POST /api/assignments.php. `submitEditRequest` ya no envía estado/prioridad/dificultad/asignados (solo título/descr/solicitante).
+- Cuerpo a una sola columna (decisión C): quitado `modal-body-grid`/`modal-column-side` SOLO del modal de edición (el de "Nueva mejora" mantiene su grid).
+- Solicitante (decisión B): colapsable discreto `.requester-collapse` en la columna principal, colapsado por defecto (el punto indica si hay datos).
+- Eliminar movido al footer; "Completar y Programar" con clase `.btn-ship-inline` (sin estilos inline).
+- Nuevas funciones JS: renderRequestMetaBar, renderMetaAssigneesHtml, setupMetaAssignSearch, metaAddAssignee, metaRemoveAssignee, persistMetaAssignees. `updateEditRequestSummary` reducida a creador/creada/actividad.
+- CSS: bloque "v2.6" en styles.css. Versiones: styles.css v4.7, main.js v4.5, sw.js prisma-v24.
+
+#### Lessons
+- El `let availableUsers`/`currentModalRequest` de main.js viven en el scope del `eval` del harness: no se pueden setear/leer desde fuera (usar la vía real, p.ej. `loadAvailableUsers()`, y comprobar estado vía DOM, no vía la variable).
+- El harness necesita un `<div id="requests-grid">` oculto porque los guardados llaman a `loadRequests()`→`renderRequests()` (que no tiene guarda de contenedor nulo).
+- La dificultad usa colores por nivel (low=verde, medium=ámbar, high=rojo) por un override en styles.css (~4790); es el aspecto real de las cards.
