@@ -2021,3 +2021,42 @@ Implementadas las 5 fases (CUP-M.1..5), verificado en preview-request-modal.html
 - El `let availableUsers`/`currentModalRequest` de main.js viven en el scope del `eval` del harness: no se pueden setear/leer desde fuera (usar la vía real, p.ej. `loadAvailableUsers()`, y comprobar estado vía DOM, no vía la variable).
 - El harness necesita un `<div id="requests-grid">` oculto porque los guardados llaman a `loadRequests()`→`renderRequests()` (que no tiene guarda de contenedor nulo).
 - La dificultad usa colores por nivel (low=verde, medium=ámbar, high=rojo) por un override en styles.css (~4790); es el aspecto real de las cards.
+
+---
+
+## Resumen IA de comentarios en el modal de petición (15 Julio 2026, Planner)
+
+### Background and Motivation
+El usuario quiere un botón en la sección de comentarios del modal de petición que genere, con IA, un resumen de la conversación. Ya existe infraestructura IA (OpenRouter) en el AI Inbox (`api/ai-inbox.php`): API key cifrada en `app_settings`, modelo configurable, patrón de llamada con `response_format` JSON. Se debe reutilizar ese patrón y el lenguaje visual IA existente (icono `iconoir-sparks`, familia de clases `.ai-*` en `styles.css`).
+
+### Key Challenges and Analysis
+- **Dónde viven los comentarios**: en las peticiones/mejoras (`request_comments`), no en tareas rápidas. El botón va en la cabecera "Comentarios" del modal de edición ([index.php:550-555]).
+- **Backend nuevo y aislado**: endpoint `api/ai-summary.php` (POST `{request_id}`) que: valida capability `view` con `require_request_capability`, lee los comentarios en servidor (nunca confiar en los del cliente), incluye título/descripción de la petición como contexto, llama a OpenRouter igual que `ai-inbox.php` y devuelve el resumen. Sin escrituras en BD (efímero, como AI Inbox). Respuesta estructurada simple: `{ summary, key_points[], pending[] }` o solo texto — decidir en ejecución; empezar simple (texto markdown-lite con viñetas).
+- **Cuándo mostrar el botón**: solo si hay ≥2 comentarios (con 1 no aporta) y si la petición tiene capability view. Si la IA no está configurada, el endpoint ya devuelve 503 con mensaje claro (mismo patrón que AI Inbox).
+- **Visual**: reutilizar el vocabulario del AI Inbox para que se lea como "la misma IA de Prisma": icono sparks, acento violeta/gradiente sutil, spinner `.ai-loading-spinner`, microcopy "Generado con IA".
+- **PWA**: versionar assets tocados (`?v=`) en index.php (lección conocida).
+- CSS siempre en `styles.css`, nada inline.
+
+### Diseño visual propuesto
+1. **Botón**: píldora pequeña y discreta en la cabecera de comentarios, alineada a la derecha junto al contador: `<i class="iconoir-sparks"></i> Resumir`. Estilo ghost con tinte violeta (mismo acento que AI Inbox), borde suave, hover con fondo tenue. No debe competir con las acciones primarias del modal.
+2. **Estado de carga**: el botón pasa a disabled con spinner pequeño y texto "Resumiendo…" (sin skeleton grande; la operación dura 2-5 s).
+3. **Tarjeta de resumen**: aparece entre la cabecera y la lista de comentarios. Tarjeta tipo `.ai-note-card`: fondo tenue violeta/gradiente muy sutil, borde redondeado, cabecera con icono sparks + "Resumen IA" + botón cerrar (×), cuerpo con el resumen en viñetas cortas, pie con microcopy pequeño "Generado con IA · puede contener errores". Animación de entrada suave (fade/slide, respetando `prefers-reduced-motion`).
+4. **Efímero**: el resumen no se guarda; al cerrar el modal desaparece. Botón "Resumir" permite regenerar.
+5. **Errores**: mensaje inline en la propia tarjeta (estilo `.ai-error`), nunca un alert.
+
+### High-level Task Breakdown (resumen IA comentarios)
+1. **RIA.1 — Endpoint `api/ai-summary.php`**: POST `{request_id}`; capability `view`; lee comentarios + contexto de la petición; llama a OpenRouter (mismo patrón/ajustes que ai-inbox); devuelve `{ summary }`. Éxito: curl autenticado devuelve resumen con ≥2 comentarios; 503 sin API key; 403 sin permiso; 400 sin comentarios suficientes.
+2. **RIA.2 — Botón + tarjeta en el modal**: markup en index.php (cabecera comentarios), lógica en main.js (mostrar botón según nº comentarios, fetch, render tarjeta, cerrar/regenerar, estados carga/error). Éxito: flujo completo visible en el preview harness del modal.
+3. **RIA.3 — Estilos en styles.css**: `.comments-summary-btn`, `.comments-summary-card` (+ estados), reutilizando tokens/acentos `.ai-*`. Versionado `?v=` de css/js en index.php. Éxito: visual coherente con AI Inbox en claro/oscuro, sin CSS inline.
+4. **RIA.4 — Verificación manual**: probar en preview con petición real; casos: sin IA configurada, sin comentarios, error de red. Usuario valida el resultado.
+
+### Executor: Resumen IA de comentarios (15 Julio 2026)
+- ✅ RIA.1: creado `api/ai-summary.php` (POST request_id; capability view; lee comentarios de BD; prompt distingue registro-de-trabajo vs conversación y devuelve puntos; php -l OK).
+- ✅ RIA.2: botón "Resumir" + tarjeta en index.php y lógica en main.js (visible con ≥2 comentarios, loading en el botón, cierre, se oculta al cambiar de petición).
+- ✅ RIA.3: estilos `.comments-summary-*` en styles.css con acento `--primary` (el AI Inbox usa teal, no violeta); versiones subidas: styles.css v=4.8 (en las 9 páginas), main.js v=4.6.
+- ✅ Verificado en harness preview-request-modal.html (mock del endpoint añadido al harness): botón, carga, tarjeta con puntos y cierre funcionan.
+- ⬜ RIA.4 pendiente: prueba real con OpenRouter en entorno con BD (la hace el usuario).
+
+### Lessons (resumen IA comentarios)
+- El acento visual de la IA en Prisma es `--primary` (teal #00C9B7) con tintes `color-mix`, no violeta: `--primary-dark` existe en tokens.
+- El harness preview-request-modal.html carga main.js real vía eval y mockea fetch de /api/: hay que replicar en él cualquier markup nuevo del modal.

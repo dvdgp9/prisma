@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.7">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.8">
 </head>
 
 <?php
@@ -547,11 +547,25 @@ $company_name = $user['company_name'] ?? '';
                                 <!-- Checklist items loaded dynamically -->
                             </div>
 
-                            <div class="attachments-header">
+                            <div class="attachments-header comments-header">
                                 <label>
                                     <i class="iconoir-chat-bubble"></i> Comentarios
                                 </label>
                                 <span id="edit-comments-count" class="badge-count-inline"></span>
+                                <button type="button" id="comments-summary-btn" class="comments-summary-btn" onclick="summarizeComments()" hidden>
+                                    <i class="iconoir-sparks"></i> <span>Resumir</span>
+                                </button>
+                            </div>
+
+                            <div id="comments-summary-card" class="comments-summary-card" hidden>
+                                <div class="comments-summary-header">
+                                    <span class="comments-summary-title"><i class="iconoir-sparks"></i> Resumen IA</span>
+                                    <button type="button" class="comments-summary-close" onclick="closeCommentsSummary()" aria-label="Cerrar resumen">
+                                        <i class="iconoir-xmark"></i>
+                                    </button>
+                                </div>
+                                <div id="comments-summary-body" class="comments-summary-body"></div>
+                                <p class="comments-summary-disclaimer">Generado con IA · puede contener errores</p>
                             </div>
 
                             <div id="edit-comments-list" class="comments-list">
@@ -967,7 +981,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.5"></script>
+    <script src="/assets/js/main.js?v=4.6"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

@@ -787,11 +787,14 @@ function renderRequestMetaBar(request) {
     const statusLabel = getStatusLabel(request.status);
     const priorityLabel = getPriorityLabel(request.priority);
 
+    // Estado: mismos botones rápidos que las cards (pausa/play/ok/cancel)
     const statusControl = caps.update_status
-        ? `<span class="status-badge-display status-${request.status} is-interactive" onclick="toggleBadgeDropdown(event, ${id}, 'status')">
-               ${escapeHtml(statusLabel)}<i class="iconoir-nav-arrow-down"></i>
-               ${createStatusDropdown(id, request.status)}
-           </span>`
+        ? `<div class="status-actions" role="group" aria-label="Cambiar estado">
+                <button type="button" class="status-action-btn ${request.status === 'pending' ? 'active' : ''}" onclick="quickUpdateRequest(${id}, 'status', 'pending', event)" title="Pausar"><i class="iconoir-pause"></i></button>
+                <button type="button" class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}" onclick="quickUpdateRequest(${id}, 'status', 'in_progress', event)" title="En curso"><i class="iconoir-play"></i></button>
+                <button type="button" class="status-action-btn ${request.status === 'completed' ? 'active' : ''}" onclick="quickUpdateRequest(${id}, 'status', 'completed', event)" title="Completar"><i class="iconoir-check"></i></button>
+                <button type="button" class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}" onclick="quickUpdateRequest(${id}, 'status', 'discarded', event)" title="Descartar"><i class="iconoir-xmark"></i></button>
+            </div>`
         : `<span class="status-badge-display status-${request.status}">${escapeHtml(statusLabel)}</span>`;
 
     const priorityControl = caps.edit
@@ -3876,7 +3879,16 @@ function renderComments(requestId) {
     }
     
     if (countEl) countEl.textContent = currentComments.length > 0 ? `${currentComments.length}` : '';
-    
+
+    const summaryBtn = document.getElementById('comments-summary-btn');
+    if (summaryBtn) summaryBtn.hidden = currentComments.length < 2;
+
+    // Ocultar un resumen generado para otra petición
+    const summaryCard = document.getElementById('comments-summary-card');
+    if (summaryCard && !summaryCard.hidden && aiSummaryRequestId !== parseInt(requestId, 10)) {
+        summaryCard.hidden = true;
+    }
+
     if (currentComments.length === 0) {
         container.innerHTML = '<p class="text-muted text-small">No hay comentarios todavía</p>';
         return;
@@ -3919,6 +3931,55 @@ function renderComments(requestId) {
             </div>
         `;
     }).join('');
+}
+
+// --- Resumen IA de comentarios (efímero, no se guarda) ---
+let aiSummaryRequestId = null;
+
+async function summarizeComments() {
+    const requestId = parseInt(document.getElementById('edit-request-id').value, 10);
+    const btn = document.getElementById('comments-summary-btn');
+    const card = document.getElementById('comments-summary-card');
+    const body = document.getElementById('comments-summary-body');
+    if (!requestId || !btn || !card || !body) return;
+
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    const label = btn.querySelector('span');
+    if (label) label.textContent = 'Resumiendo…';
+
+    try {
+        const response = await fetch('/api/ai-summary.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId })
+        });
+        const data = await response.json();
+
+        if (data.success && Array.isArray(data.data?.points)) {
+            body.innerHTML = `<ul>${data.data.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`;
+            card.classList.remove('has-error');
+        } else {
+            body.innerHTML = `<p class="comments-summary-error">${escapeHtml(data.error || 'No se pudo generar el resumen. Vuelve a intentarlo.')}</p>`;
+            card.classList.add('has-error');
+        }
+    } catch (error) {
+        console.error('Error generating AI summary:', error);
+        body.innerHTML = '<p class="comments-summary-error">No se pudo conectar con el servidor. Vuelve a intentarlo.</p>';
+        card.classList.add('has-error');
+    }
+
+    aiSummaryRequestId = requestId;
+    card.hidden = false;
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+    if (label) label.textContent = 'Resumir';
+}
+
+function closeCommentsSummary() {
+    const card = document.getElementById('comments-summary-card');
+    if (card) card.hidden = true;
+    aiSummaryRequestId = null;
 }
 
 async function submitComment(requestId) {
