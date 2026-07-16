@@ -10,6 +10,7 @@ let selectedFiles = [];
 let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
+let selectedAssigneeId = null;
 let unreadRequestIds = new Set();
 let currentChecklistItems = [];
 let currentModalRequest = null;
@@ -573,12 +574,22 @@ function syncRequestsViewModeUI() {
     }
 }
 
-function setQuickView(view, event) {
-    currentQuickView = view;
+function setActiveQuickViewChip(view) {
     document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
     const selectedChip = document.querySelector(`.quick-view-chip[data-quick-view="${view}"]`);
     if (selectedChip) {
         selectedChip.classList.add('active');
+    }
+}
+
+function setQuickView(view, event) {
+    currentQuickView = view;
+    setActiveQuickViewChip(view);
+
+    if (view === 'mine' || view === 'unassigned') {
+        selectedAssigneeId = null;
+        const assigneeFilter = document.getElementById('assignee-filter');
+        if (assigneeFilter) assigneeFilter.value = '';
     }
 
     const assignedToMe = document.getElementById('assigned-to-me-filter');
@@ -596,6 +607,51 @@ function setQuickView(view, event) {
     renderRequests();
 }
 
+function populateAssigneeFilter() {
+    const select = document.getElementById('assignee-filter');
+    if (!select) return;
+
+    const assignees = new Map();
+    requests.forEach(request => {
+        (request.assignments || []).forEach(assignment => {
+            const id = parseInt(assignment.id, 10);
+            if (!Number.isFinite(id)) return;
+
+            assignees.set(id, {
+                id,
+                label: assignment.full_name || assignment.username || `Usuario ${id}`
+            });
+        });
+    });
+
+    const sortedAssignees = Array.from(assignees.values()).sort((first, second) =>
+        first.label.localeCompare(second.label, 'es', { sensitivity: 'base' })
+    );
+
+    select.innerHTML = '<option value="">Cualquier persona</option>' + sortedAssignees
+        .map(assignee => `<option value="${assignee.id}">${escapeHtml(assignee.label)}</option>`)
+        .join('');
+
+    if (selectedAssigneeId !== null && assignees.has(selectedAssigneeId)) {
+        select.value = String(selectedAssigneeId);
+    } else {
+        selectedAssigneeId = null;
+        select.value = '';
+    }
+}
+
+function handleAssigneeFilterChange() {
+    const value = document.getElementById('assignee-filter')?.value || '';
+    selectedAssigneeId = value ? parseInt(value, 10) : null;
+
+    if (selectedAssigneeId !== null && (currentQuickView === 'mine' || currentQuickView === 'unassigned')) {
+        currentQuickView = 'all';
+        setActiveQuickViewChip('all');
+    }
+
+    renderRequests();
+}
+
 function clearAllRequestFilters() {
     const priority = document.getElementById('priority-filter');
     const status = document.getElementById('status-filter');
@@ -604,6 +660,7 @@ function clearAllRequestFilters() {
     const assignedToMe = document.getElementById('assigned-to-me-filter');
     const unassigned = document.getElementById('unassigned-filter');
     const withComments = document.getElementById('with-comments-filter');
+    const assigneeFilter = document.getElementById('assignee-filter');
 
     if (priority) priority.value = '';
     if (status) status.value = '';
@@ -612,12 +669,12 @@ function clearAllRequestFilters() {
     if (assignedToMe) assignedToMe.checked = false;
     if (unassigned) unassigned.checked = false;
     if (withComments) withComments.checked = false;
+    if (assigneeFilter) assigneeFilter.value = '';
 
     requestSearchTerm = '';
     currentQuickView = 'all';
-    document.querySelectorAll('.quick-view-chip').forEach(chip => chip.classList.remove('active'));
-    const allChip = document.querySelector('.quick-view-chip[data-quick-view="all"]');
-    if (allChip) allChip.classList.add('active');
+    selectedAssigneeId = null;
+    setActiveQuickViewChip('all');
 
     loadRequests();
 }
@@ -643,6 +700,9 @@ function getFilteredRequests() {
         const isMine = assignments.some(a => parseInt(a.id, 10) === currentUserId);
         const isUnassigned = assignments.length === 0;
         const hasComments = parseInt(request.comment_count || 0, 10) > 0;
+        const matchesSelectedAssignee = selectedAssigneeId === null || assignments.some(
+            assignment => parseInt(assignment.id, 10) === selectedAssigneeId
+        );
 
         let matchesQuickView = true;
         if (currentQuickView === 'mine') matchesQuickView = isMine;
@@ -652,7 +712,7 @@ function getFilteredRequests() {
         if (currentQuickView === 'unassigned') matchesQuickView = isUnassigned;
         if (currentQuickView === 'commented') matchesQuickView = hasComments;
 
-        if (!matchesSearch || !matchesQuickView) return false;
+        if (!matchesSearch || !matchesQuickView || !matchesSelectedAssignee) return false;
         if (assignedToMe && !isMine) return false;
         if (unassigned && !isUnassigned) return false;
         if (withComments && !hasComments) return false;
@@ -1277,6 +1337,7 @@ async function loadRequests() {
 
         if (data.success) {
             requests = data.data;
+            populateAssigneeFilter();
             renderRequests();
             loadAppCounters();
         }

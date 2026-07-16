@@ -7770,3 +7770,78 @@ select.ai-pill-assignee.has-assignee {
     font-size: 0.7rem;
     color: var(--text-muted, #9ca3af);
 }
+
+/* === Filtro por persona asignada === */
+.assignee-filter-field {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-8);
+    margin-left: var(--sp-4);
+}
+
+.assignee-filter-field > label {
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-semibold);
+    white-space: nowrap;
+}
+
+.assignee-filter-select {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.assignee-filter-select > .iconoir-user {
+    position: absolute;
+    left: var(--sp-10);
+    z-index: 1;
+    color: var(--ink-500);
+    font-size: var(--fs-14);
+    pointer-events: none;
+}
+
+.assignee-filter-control {
+    min-width: 178px;
+    height: 32px;
+    padding: 0 32px 0 32px;
+    appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    color: var(--ink-800);
+    cursor: pointer;
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.assignee-filter-control:hover {
+    border-color: var(--ink-400);
+}
+
+.assignee-filter-control:focus-visible {
+    border-color: var(--brand);
+    outline: 2px solid color-mix(in srgb, var(--brand) 24%, transparent);
+    outline-offset: 2px;
+}
+
+.assignee-filter-chevron {
+    position: absolute;
+    right: var(--sp-10);
+    color: var(--ink-400);
+    font-size: var(--fs-14);
+    pointer-events: none;
+}
+
+@media (max-width: 680px) {
+    .assignee-filter-field {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .assignee-filter-select,
+    .assignee-filter-control {
+        width: 100%;
+    }
+}

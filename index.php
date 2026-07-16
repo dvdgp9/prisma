@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.8">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=4.9">
 </head>
 
 <?php
@@ -199,6 +199,16 @@ $company_name = $user['company_name'] ?? '';
                             <i class="iconoir-chat-bubble"></i>
                             <span>Con comentarios</span>
                         </button>
+                        <div class="assignee-filter-field">
+                            <label for="assignee-filter">Asignada a</label>
+                            <div class="assignee-filter-select">
+                                <i class="iconoir-user" aria-hidden="true"></i>
+                                <select id="assignee-filter" class="assignee-filter-control" onchange="handleAssigneeFilterChange()">
+                                    <option value="">Cualquier persona</option>
+                                </select>
+                                <i class="iconoir-nav-arrow-down assignee-filter-chevron" aria-hidden="true"></i>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="view-toggle-group" id="view-toggle-group">
@@ -981,7 +991,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=3"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.6"></script>
+    <script src="/assets/js/main.js?v=4.7"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

@@ -2060,3 +2060,49 @@ El usuario quiere un botón en la sección de comentarios del modal de petición
 ### Lessons (resumen IA comentarios)
 - El acento visual de la IA en Prisma es `--primary` (teal #00C9B7) con tintes `color-mix`, no violeta: `--primary-dark` existe en tokens.
 - El harness preview-request-modal.html carga main.js real vía eval y mockea fetch de /api/: hay que replicar en él cualquier markup nuevo del modal.
+
+### Cierre (15 Julio 2026)
+- ✅ RIA.4: verificado por el usuario en entorno real con OpenRouter. Funcionalidad "Resumen IA de comentarios" COMPLETADA.
+
+---
+
+## Filtro por persona asignada en Vista global (16 Julio 2026, Executor)
+
+### Background and Motivation
+El usuario ha elegido la opción 1 del plan: conservar los accesos rápidos actuales y añadir un selector de una sola persona para poder ver las peticiones/mejoras asignadas a alguien concreto. Esta entrada documenta únicamente el primer hito de localización y análisis; todavía no implementa el filtro.
+
+### Mapa del flujo actual
+- Pantalla objetivo: `index.php`, Vista global. Los chips existentes son `Mis asignadas` y `Sin asignar` dentro de `.quick-views-secondary`.
+- No es la agenda de tareas rápidas de `tasks.php`: esas tareas siempre tienen propietario (`tasks.user_id`) y sus filtros actuales son completadas, compartidas y app.
+- Estado y filtrado: `assets/js/main.js`, mediante `currentQuickView`, `setQuickView()` y `getFilteredRequests()`.
+- Carga de datos: `loadRequests()` consulta `api/requests.php` con scope opcional de app/empresa y filtros de prioridad/estado/dificultad.
+- Autorización: `api/requests.php` limita a usuarios no superadmin a las apps devueltas por `get_user_apps()`; app y empresa solicitadas se validan antes de consultar.
+- Datos disponibles: cada petición ya incluye `assignments[]` con `id`, `username` y `full_name`, obtenidos de `request_assignments`.
+- Fuente alternativa de miembros: `api/users-list.php`; su lista sin contexto está restringida a perfiles con `can_edit_requests()`, por lo que no debe reutilizarse indiscriminadamente para todos los roles.
+- CSS: todo el lenguaje visual de filtros está en `assets/css/styles.css`; no se necesita CSS inline.
+
+### Decisión técnica recomendada para el siguiente hito
+Construir el selector a partir de las personas únicas presentes en `requests[].assignments` dentro del conjunto ya autorizado y cargado. Ventajas: cero migraciones, ninguna ampliación de permisos, ninguna consulta adicional y el selector solo ofrece personas que realmente tienen resultados en el scope actual. Al cambiar entre Vista global, empresa o app, sus opciones se recalculan con el dataset visible.
+
+Si producto exige mostrar también miembros sin ninguna petición asignada, habrá que diseñar una lista read-only de miembros con scope explícito; no conviene abrir la rama sin contexto de `api/users-list.php` a roles que hoy no pueden editar.
+
+### Project Status Board
+- [x] **FPA.1 — Confirmar pantalla y alcance.** El usuario confirmó Vista global y vistas de cada aplicación. Código localizado y flujo documentado.
+- [x] **FPA.2 — Contratos TDD.** El usuario autorizó expresamente continuar sin consulta `@web` y después indicó continuar tras recibir el resultado rojo esperado. `tests/assignee-filter-ux.php` pasa 14/14 tras la implementación.
+- [ ] **FPA.3 — Selector de una persona.** Implementado en `index.php`, `assets/js/main.js` y `assets/css/styles.css`; pendiente de prueba manual del usuario antes de marcar el hito.
+- [ ] **FPA.4 — QA.** Roles, tarjetas/tabla, global/empresa/app, filtros combinados, vacío, teclado y móvil.
+
+### Executor's Feedback or Assistance Requests
+- No se ha cambiado código funcional ni base de datos.
+- El usuario confirmó la pantalla objetivo y autorizó explícitamente omitir la consulta `@web` para este cambio interno.
+- FPA.3 deriva personas únicas de `requests[].assignments`, ordena por nombre y conserva la selección mientras esa persona exista dentro del nuevo scope cargado.
+- El selector funciona en la barra común de Vista global, empresa y aplicación. Elegir persona reemplaza los filtros incompatibles `mine`/`unassigned`; puede combinarse con estado, comentarios y búsqueda.
+- `Limpiar filtros` restablece también la persona. En móvil el control ocupa todo el ancho y tiene foco visible de teclado.
+- Versionado: `styles.css?v=4.9` en las páginas, `main.js?v=4.7`, caches PWA `prisma-v25`/`prisma-runtime-v25`.
+- Verificación Executor: contrato nuevo 14/14, contrato dashboard 26/26, `php -l index.php`, `node --check` para `main.js`/`sw.js` y `git diff --check`, todo correcto.
+- Pendiente del usuario: probar en Vista global y dentro de una aplicación que elegir una persona deja solo sus peticiones, y que `Mis asignadas`, `Sin asignar` y `Limpiar filtros` siguen funcionando.
+
+### Lessons - Filtro por persona asignada
+- Los chips de asignación de esta solicitud pertenecen a peticiones/mejoras de la Vista global, no a las tareas rápidas de `tasks.php`.
+- El dataset ya autorizado de `api/requests.php` contiene `assignments[]`; derivar de ahí las opciones evita ampliar el endpoint general de usuarios y se adapta automáticamente al scope global o de aplicación.
+- El usuario autorizó explícitamente continuar esta mejora interna sin consulta `@web`.
