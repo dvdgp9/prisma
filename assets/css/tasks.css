@@ -1284,6 +1284,72 @@ button.task-due-date:focus-visible,
     background: var(--ink-200);
 }
 
+/* Título del menú ("Posponer", "Aplicación", "Compartir con") */
+.task-menu-title {
+    padding: 6px 10px 4px;
+    font-size: var(--fs-11);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+}
+
+/* Opciones que se marcan sin cerrar el menú (compartir con varias personas) */
+.task-menu-toggle .task-menu-check {
+    margin-left: auto;
+    visibility: hidden;
+}
+
+.task-menu-toggle.is-active .task-menu-check {
+    visibility: visible;
+}
+
+.task-menu-toggle:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.task-menu-toggle:disabled:hover {
+    background: transparent;
+}
+
+.task-menu-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--r-full);
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-semibold);
+}
+
+.task-menu-note {
+    padding: 8px 10px;
+    font-size: var(--fs-13);
+    color: var(--text-muted);
+}
+
+/* Etiqueta de compartida que se puede pulsar para cambiarlo */
+.task-badge-btn {
+    border: 0;
+    font-family: inherit;
+    line-height: inherit;
+    cursor: pointer;
+}
+
+.task-badge-btn:hover {
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.task-badge-btn:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
 /* Aviso con botón "Deshacer" */
 .toast-action {
     flex-shrink: 0;

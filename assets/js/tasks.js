@@ -389,10 +389,15 @@ function buildTaskCard(task, localToday) {
     if (caps.share === false && creator) {
         meta.push(`<span class="task-meta-item task-creator" title="Creada por ${escapeHtml(creator)}"><i class="iconoir-user"></i>${escapeHtml(creator)}</span>`);
     }
-    if (task.is_shared) {
-        meta.push('<span class="task-badge shared"><i class="iconoir-group"></i>Equipo</span>');
-    } else if (task.share_count > 0) {
-        meta.push(`<span class="task-badge shared"><i class="iconoir-user"></i>${task.share_count}</span>`);
+    // Con quién se comparte: el dueño lo cambia pulsando la etiqueta (o el botón de compartir si es privada).
+    const canShare = caps.share !== false && !task.is_completed;
+    if (task.is_shared || task.share_count > 0) {
+        const label = task.is_shared ? 'Equipo' : task.share_count;
+        const icon = task.is_shared ? 'iconoir-group' : 'iconoir-user';
+        const who = task.is_shared ? 'todo el equipo' : `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}`;
+        meta.push(canShare
+            ? `<button type="button" class="task-badge shared task-badge-btn" title="Compartida con ${who} · cambiar" onclick="openShareMenu(${task.id}, this, event)"><i class="${icon}"></i>${label}</button>`
+            : `<span class="task-badge shared" title="Compartida con ${who}"><i class="${icon}"></i>${label}</span>`);
     }
     if (task.attachment_count > 0) {
         meta.push(`<span class="task-meta-item"><i class="iconoir-attachment"></i>${task.attachment_count}</span>`);
@@ -413,8 +418,13 @@ function buildTaskCard(task, localToday) {
             </div>
             <div class="task-actions">
                 ${canEdit ? `
-                    <button type="button" class="task-action-btn" onclick="openPostponeMenu(${task.id}, this, event)" title="Posponer (p)">
-                        <i class="iconoir-clock-rotate-right"></i>
+                    <button type="button" class="task-action-btn" onclick="openPostponeMenu(${task.id}, this, event)" title="${task.due_date ? 'Posponer' : 'Poner fecha'} (p)">
+                        <i class="iconoir-alarm"></i>
+                    </button>
+                ` : ''}
+                ${canShare && !task.is_shared && !(task.share_count > 0) ? `
+                    <button type="button" class="task-action-btn" onclick="openShareMenu(${task.id}, this, event)" title="Compartir (s)">
+                        <i class="iconoir-user-plus"></i>
                     </button>
                 ` : ''}
                 <button type="button" class="task-action-btn" onclick="openTaskModal(${task.id})" title="Editar (e)">

@@ -2177,6 +2177,7 @@ Recomendación Planner: T1 completa primero (bugs + seguridad, bajo riesgo), lue
 - [x] T2.4 Buscador + atajos de teclado. IMPLEMENTADO, pendiente de verificación.
 - [x] T2.5 Tarjetas compactas, creador visible, completadas de 7 días + "Ver todas", "N hechas hoy". IMPLEMENTADO, pendiente de verificación.
 - [x] T2.6 Móvil: menú lateral plegable (todas las páginas) + deslizar para completar/posponer. IMPLEMENTADO, pendiente de verificación.
+- [x] T2.7 (petición del usuario 17 Oct) Cambiar con quién se comparte desde la tarjeta + título "Posponer" en el menú. IMPLEMENTADO, pendiente de verificación.
 - [ ] Verificación del usuario en producción de T1 + T2 (checklist "T1+T2" abajo). Tras OK, el Planner cierra T1 y T2 y se decide T3.
 
 ## Current Status / Progress Tracking (15 Oct 2026 — T1.1)
@@ -2277,6 +2278,19 @@ Verificación Executor: 9/9 archivos de test OK (nuevo `tests/tasks-t2.php`: fun
 8. "Completadas": muestra solo la última semana; "Ver todas" carga el resto.
 9. En tareas del equipo se ve quién la creó.
 10. En el móvil: el menú lateral sale plegado (☰) en todas las páginas; las tareas se ven sin hacer scroll. Desliza una tarea a la derecha para completarla y a la izquierda para posponerla.
+
+## Current Status / Progress Tracking (17 Oct 2026 — T2.7 compartir desde la tarjeta + "Posponer")
+Petición del usuario tras revisar T2: (1) cambiar el "usuario asignado" pulsando el icono de la persona y, si no hay nadie, un icono en hover junto a los demás; (2) que el menú diga "Posponer" (no sabía si el reloj era posponer o tarea recurrente).
+- Interpretación: las tareas NO tienen "asignado"; el icono de persona es "compartida con N". Se implementa como **cambiar con quién se comparte**. Si el usuario quiere un "responsable" distinto de compartir, sería una funcionalidad nueva con migración (T3).
+- `assets/js/tasks-interactions.js`: `openTaskMenu(anchor, items, { title })` ahora admite título, opciones `toggle` (se marcan sin cerrar el menú) y `note`, y devuelve el menú. Nuevo `openShareMenu()` ("Compartir con": Solo yo / Todo el equipo / cada persona del equipo; con "Todo el equipo" las personas se desactivan); cada cambio se ve al instante y se guarda en cadena (`saveTaskShareState`, POST `api/task-shares.php`); si falla, aviso y recarga desde el servidor. Atajo `s`. Menús con título: "Posponer" (o "Poner fecha" si no tiene) y "Aplicación".
+- `assets/js/tasks.js`: la etiqueta "Equipo"/"N" es un botón para el dueño; si la tarea es privada, botón "Compartir (s)" (`iconoir-user-plus`) en las acciones de hover. Posponer pasa de `clock-rotate-right` (parecía "repetir") a `iconoir-alarm`, con tooltip "Posponer (p)" o "Poner fecha (p)".
+- `assets/css/tasks.css`: `.task-menu-title`, `.task-menu-toggle`, `.task-menu-avatar`, `.task-menu-note`, `.task-badge-btn`. `tasks.php`: `s compartir` en la pista de atajos.
+- Versionado: `tasks.js?v=10`, `tasks-interactions.js?v=2`, `tasks.css?v=2.9`, caché PWA `prisma-v30`.
+
+Verificación Executor: 9/9 tests OK (contrato ampliado en `tests/tasks-t2.php`); `node --check` OK. En navegador local con equipo simulado (Ana, Luis): tarea privada propia → botón compartir en hover; tarea compartida con Ana → etiqueta "1" pulsable, menú con Ana marcada; añadir Luis → "2"; "Todo el equipo" → "Equipo" y personas desactivadas; "Solo yo" → sin etiqueta y vuelve el botón; POST en orden correcto. Tarea de Ana (no dueño) → etiqueta no pulsable, sin botón compartir. Títulos "Posponer" / "Poner fecha" correctos.
+
+Archivos a subir (además de los de T1+T2): sin archivos nuevos; vuelven a cambiar `assets/js/tasks.js`, `assets/js/tasks-interactions.js`, `assets/css/tasks.css`, `tasks.php`, `sw.js`.
+Checklist extra: 11. Pasa el ratón por una tarea privada tuya → icono de persona con "+" → elige con quién compartir; la etiqueta aparece al momento. 12. Pulsa la etiqueta "Equipo" o el número de una tarea compartida para cambiarlo. 13. El menú del despertador dice "Posponer" arriba.
 
 ## Executor's Feedback or Assistance Requests (Mis Tareas v2)
 - Aviso al Planner: `includes/auth.php` es central; solo se han AÑADIDO funciones nuevas al final del bloque de capacidades de peticiones, nada existente cambia.

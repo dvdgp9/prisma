@@ -94,7 +94,7 @@ assert_file_contains('assets/js/tasks-interactions.js', [
 assert_file_contains('tasks.php', [
     'id="tasks-search"',
     'id="done-today"',
-    '/assets/js/tasks-interactions.js?v=1',
+    '/assets/js/tasks-interactions.js?v=2',
     'class="tasks-shortcuts-hint"',
 ], 'tasks page has search, daily summary, shortcuts hint and the new script');
 assert_file_contains('assets/css/tasks.css', [
@@ -108,5 +108,21 @@ assert_file_contains('assets/css/tasks.css', [
 assert_file_contains('includes/sidebar.php', ['class="sidebar-mobile-toggle"'], 'sidebar has a mobile menu toggle');
 assert_file_contains('assets/css/styles.css', ['.sidebar.is-mobile-open'], 'mobile sidebar collapses until opened');
 assert_file_contains('assets/js/sidebar.js', ['function toggleMobileSidebar('], 'sidebar.js toggles the mobile menu');
+
+// Ajustes tras la revisión del usuario: compartir desde la tarjeta y menú de posponer con título.
+assert_file_contains('assets/js/tasks-interactions.js', [
+    'function openShareMenu(',
+    "item.type === 'toggle'",
+    'task-menu-title',
+    "task.due_date ? 'Posponer' : 'Poner fecha'",
+    "case 's':",
+], 'share menu, toggle items and titled menus');
+assert_file_contains('assets/js/tasks.js', [
+    'openShareMenu(${task.id}, this, event)',
+    'iconoir-alarm',
+    'iconoir-user-plus',
+], 'card opens the share menu from the badge or a hover action, and postpone uses the alarm icon');
+assert_file_contains('assets/css/tasks.css', ['.task-menu-title', '.task-badge-btn'], 'styles for menu titles and clickable share badges');
+assert_file_contains('tasks.php', ['<kbd>s</kbd> compartir'], 'shortcut hint lists the share key');
 
 fwrite(STDOUT, "Tasks T2 contract completed successfully.\n");

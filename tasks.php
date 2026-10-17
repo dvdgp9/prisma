@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.0">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.8">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.9">
 </head>
 
 <?php
@@ -142,7 +142,7 @@ $userApps = get_user_apps();
             </div>
 
             <p class="tasks-shortcuts-hint">
-                <kbd>/</kbd> buscar · <kbd>n</kbd> nueva · <kbd>j</kbd> <kbd>k</kbd> moverse · <kbd>x</kbd> completar · <kbd>p</kbd> posponer · <kbd>r</kbd> renombrar · <kbd>e</kbd> abrir · doble clic en el título para renombrar
+                <kbd>/</kbd> buscar · <kbd>n</kbd> nueva · <kbd>j</kbd> <kbd>k</kbd> moverse · <kbd>x</kbd> completar · <kbd>p</kbd> posponer · <kbd>r</kbd> renombrar · <kbd>s</kbd> compartir · <kbd>e</kbd> abrir · doble clic en el título para renombrar
             </p>
 
             <!-- Empty State -->
@@ -302,8 +302,8 @@ $userApps = get_user_apps();
     </script>
     <script src="/assets/js/task-parser.js?v=4"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=9"></script>
-    <script src="/assets/js/tasks-interactions.js?v=1"></script>
+    <script src="/assets/js/tasks.js?v=10"></script>
+    <script src="/assets/js/tasks-interactions.js?v=2"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

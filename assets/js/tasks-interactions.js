@@ -31,20 +31,46 @@ function closeTaskMenu() {
 }
 
 /**
- * Abre un menú flotante junto a `anchor`.
- * items: [{ label, icon, hint, active, onSelect }] | { type: 'date', label, value, onSelect } | { type: 'separator' }
+ * Abre un menú flotante junto a `anchor` y lo devuelve.
+ * items: [{ label, icon, hint, active, onSelect }]
+ *      | { type: 'toggle', key, label, icon | avatar, onToggle }  (no cierra el menú; el estado lo pinta quien lo abre)
+ *      | { type: 'date', label, value, onSelect } | { type: 'note', label } | { type: 'separator' }
+ * options: { title } — se muestra arriba y sirve de nombre accesible.
  */
-function openTaskMenu(anchor, items, ariaLabel) {
+function openTaskMenu(anchor, items, options = {}) {
     closeTaskMenu();
 
     const menu = document.createElement('div');
     menu.className = 'task-menu';
     menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', ariaLabel || 'Opciones de la tarea');
+    menu.setAttribute('aria-label', options.title || 'Opciones de la tarea');
+    if (options.title) {
+        menu.insertAdjacentHTML('beforeend', `<div class="task-menu-title">${escapeHtml(options.title)}</div>`);
+    }
 
     items.forEach(item => {
         if (item.type === 'separator') {
             menu.insertAdjacentHTML('beforeend', '<div class="task-menu-separator" role="separator"></div>');
+            return;
+        }
+
+        if (item.type === 'note') {
+            menu.insertAdjacentHTML('beforeend', `<div class="task-menu-note">${escapeHtml(item.label)}</div>`);
+            return;
+        }
+
+        if (item.type === 'toggle') {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'task-menu-item task-menu-toggle';
+            btn.setAttribute('role', 'menuitemcheckbox');
+            btn.dataset.key = item.key;
+            btn.innerHTML = `
+                ${item.avatar ? `<span class="task-menu-avatar">${escapeHtml(item.avatar)}</span>` : `<i class="${item.icon}"></i>`}
+                <span>${escapeHtml(item.label)}</span>
+                <i class="iconoir-check task-menu-check"></i>`;
+            btn.addEventListener('click', () => item.onToggle());
+            menu.appendChild(btn);
             return;
         }
 
@@ -115,6 +141,7 @@ function openTaskMenu(anchor, items, ariaLabel) {
 
     const first = menu.querySelector('button.task-menu-item');
     if (first) first.focus({ preventScroll: true });
+    return menu;
 }
 
 // Coloca el menú bajo el ancla, dentro de la ventana (encima si no cabe debajo).
@@ -177,7 +204,7 @@ function openPostponeMenu(taskId, anchor, event) {
         items.push({ label: 'Quitar fecha', icon: 'iconoir-calendar-xmark', onSelect: pick(null) });
     }
 
-    openTaskMenu(anchor, items, 'Cambiar fecha');
+    openTaskMenu(anchor, items, { title: task.due_date ? 'Posponer' : 'Poner fecha' });
 }
 
 // Texto para avisos: "para hoy", "para mañana", "para el 20 oct", "sin fecha".
@@ -266,7 +293,7 @@ function openAppMenu(taskId, anchor, event) {
         onSelect: () => setTaskApp(taskId, null, null)
     });
 
-    openTaskMenu(anchor, items, 'Cambiar aplicación');
+    openTaskMenu(anchor, items, { title: 'Aplicación' });
 }
 
 async function setTaskApp(taskId, appId, appName) {
@@ -282,6 +309,114 @@ async function setTaskApp(taskId, appId, appName) {
         Object.assign(task, previous);
         renderTasks(lastTasks);
     }
+}
+
+// ========== Compartir ==========
+
+// Los guardados se encadenan para que varios clics seguidos lleguen en orden.
+let shareSaveChain = Promise.resolve();
+
+// Solo el dueño cambia con quién se comparte (capacidad "share").
+function canShareTask(task) {
+    return !!task && (task.capabilities || {}).share !== false && !task.is_completed;
+}
+
+async function openShareMenu(taskId, anchor, event) {
+    if (event) event.stopPropagation();
+    const task = findTask(taskId);
+    if (!canShareTask(task)) return;
+
+    // El listado solo trae cuántas personas; para marcarlas hay que pedir quiénes son.
+    let users = [];
+    if (!task.is_shared && task.share_count > 0) {
+        try {
+            const response = await fetch(`/api/task-shares.php?task_id=${taskId}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(`${response.status} ${data.error}`);
+            users = data.data.map(u => Number(u.id));
+        } catch (error) {
+            console.error('Error loading task shares', taskId, error);
+            showErrorToast('No se pudo cargar con quién está compartida');
+            return;
+        }
+    }
+
+    const state = { all: task.is_shared == 1, users };
+    const members = typeof teamMembers !== 'undefined' ? teamMembers : [];
+    let menu = null;
+
+    // Pinta las marcas según el estado (el menú no se reconstruye para no perder el foco).
+    const refresh = () => {
+        menu.querySelectorAll('.task-menu-toggle').forEach(btn => {
+            const key = btn.dataset.key;
+            const checked = key === 'private' ? (!state.all && state.users.length === 0)
+                : key === 'all' ? state.all
+                : state.users.includes(Number(key.replace('user-', '')));
+            btn.classList.toggle('is-active', checked);
+            btn.setAttribute('aria-checked', checked ? 'true' : 'false');
+            btn.disabled = key.startsWith('user-') && state.all;
+        });
+    };
+
+    const change = (next) => {
+        Object.assign(state, next);
+        task.is_shared = state.all ? 1 : 0;
+        task.share_count = state.all ? 0 : state.users.length;
+        renderTasks(lastTasks);
+        refresh();
+        saveTaskShareState(taskId, { all: state.all, users: state.users.slice() });
+    };
+
+    const items = [
+        { type: 'toggle', key: 'private', icon: 'iconoir-lock', label: 'Solo yo', onToggle: () => change({ all: false, users: [] }) },
+        { type: 'toggle', key: 'all', icon: 'iconoir-group', label: 'Todo el equipo', onToggle: () => change({ all: !state.all, users: [] }) }
+    ];
+    if (members.length) {
+        items.push({ type: 'separator' });
+        members.forEach(member => {
+            const id = Number(member.id);
+            const name = member.full_name || member.username;
+            items.push({
+                type: 'toggle',
+                key: `user-${id}`,
+                avatar: getInitials(name),
+                label: name,
+                onToggle: () => change({
+                    all: false,
+                    users: state.users.includes(id) ? state.users.filter(u => u !== id) : state.users.concat(id)
+                })
+            });
+        });
+    } else {
+        items.push({ type: 'note', label: 'No hay más personas en el equipo' });
+    }
+
+    menu = openTaskMenu(anchor, items, { title: 'Compartir con' });
+    refresh();
+}
+
+function saveTaskShareState(taskId, state) {
+    const payload = { task_id: taskId, user_ids: state.users, share_with_all: state.all };
+
+    shareSaveChain = shareSaveChain.then(async () => {
+        try {
+            const response = await fetch('/api/task-shares.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.success) return;
+            console.error('Error saving task shares', payload, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo cambiar con quién se comparte');
+        } catch (error) {
+            console.error('Error saving task shares:', payload, error);
+            showErrorToast('No se pudo cambiar con quién se comparte');
+        }
+        // Si falla, se vuelve a lo que diga el servidor.
+        closeTaskMenu();
+        await loadTasks();
+    });
 }
 
 // ========== Renombrar en línea ==========
@@ -447,6 +582,11 @@ function handleTasksShortcut(e) {
             if (!canEditTask(focusedTask)) return;
             e.preventDefault();
             startInlineTitleEdit(focusedTask.id);
+            break;
+        case 's':
+            if (!canShareTask(focusedTask)) return;
+            e.preventDefault();
+            openShareMenu(focusedTask.id, focusedCard.querySelector('.task-badge-btn') || focusedCard);
             break;
         case 'e':
         case 'Enter':
