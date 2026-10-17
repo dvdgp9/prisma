@@ -10,8 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTaskSwipe();
 });
 
+// La tarea de la lista o, si ya no está en ella (p. ej. completada con el filtro desactivado), la del modal.
 function findTask(taskId) {
-    return lastTasks.find(t => t.id == taskId);
+    return lastTasks.find(t => t.id == taskId)
+        || (typeof currentModalTask !== 'undefined' && currentModalTask && currentModalTask.id == taskId ? currentModalTask : undefined);
 }
 
 function canEditTask(task) {
@@ -326,9 +328,10 @@ async function openShareMenu(taskId, anchor, event) {
     const task = findTask(taskId);
     if (!canShareTask(task)) return;
 
-    // El listado solo trae cuántas personas; para marcarlas hay que pedir quiénes son.
-    let users = [];
-    if (!task.is_shared && task.share_count > 0) {
+    // El listado solo trae cuántas personas; para marcarlas hay que pedir quiénes son
+    // (salvo que ya se sepa, p. ej. porque la barra del modal ya lo pidió).
+    let users = Array.isArray(task.shared_user_ids) ? task.shared_user_ids.slice() : [];
+    if (!users.length && !task.is_shared && task.share_count > 0) {
         try {
             const response = await fetch(`/api/task-shares.php?task_id=${taskId}`);
             const data = await response.json();
@@ -362,6 +365,7 @@ async function openShareMenu(taskId, anchor, event) {
         Object.assign(state, next);
         task.is_shared = state.all ? 1 : 0;
         task.share_count = state.all ? 0 : state.users.length;
+        task.shared_user_ids = state.users.slice();
         renderTasks(lastTasks);
         refresh();
         saveTaskShareState(taskId, { all: state.all, users: state.users.slice() });
@@ -516,6 +520,7 @@ function setFocusedTask(taskId) {
 
 // Llamado por renderTasks: mantiene la tarea enfocada tras cada repintado.
 function onTasksRendered() {
+    if (typeof refreshTaskModalBar === 'function') refreshTaskModalBar();
     if (focusedTaskId === null) return;
     const card = document.querySelector(`#tasks-list .task-item[data-id="${focusedTaskId}"]`);
     if (card) card.classList.add('is-focused');

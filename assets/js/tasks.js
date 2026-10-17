@@ -6,8 +6,6 @@ let currentTaskId = null;
 // Capacidades del usuario sobre la tarea abierta en el modal (vienen de la API).
 let currentTaskCaps = {};
 let teamMembers = [];
-let selectedShareUsers = [];
-let shareWithAll = false;
 
 // Detección descartada por el usuario en la creación rápida (chips con la "x").
 // Se mantiene hasta que se crea la tarea o se vacía el input.
@@ -25,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
     setupTaskModal();
     loadTeamMembers();
-    setupShareDropdown();
 });
 
 // Setup Quick Add functionality
@@ -640,70 +637,227 @@ async function deleteTaskDirect(taskId, event) {
     }
 }
 
-// Setup task modal
+// ========== Modal de tarea ==========
+// Barra de propiedades (completar, fecha, app, compartir) con guardado al momento;
+// título y descripción con "Guardar cambios". Esc / clic fuera cierran avisando
+// si hay cambios sin guardar.
+
+// Tarea abierta tal como la devolvió la API (por si deja de estar en la lista, p. ej. al completarla).
+let currentModalTask = null;
+// Título y descripción al abrir, para detectar cambios sin guardar.
+let taskModalSnapshot = null;
+// Elemento con el foco antes de abrir, para devolvérselo al cerrar.
+let taskModalReturnFocus = null;
+// Evita que un repintado lento de la barra pise a uno más reciente.
+let taskMetaBarRenderToken = 0;
+
+function isTaskModalOpen() {
+    return document.getElementById('task-modal').classList.contains('active');
+}
+
+// La copia de la lista si existe (es la que actualizan los menús); si no, la del modal.
+// La del modal se mantiene al día con la de la lista para cuando esta desaparezca
+// (p. ej. al completarla con "Completadas" desactivado).
+function getModalTask() {
+    if (currentTaskId === null) return null;
+    const listed = lastTasks.find(t => t.id == currentTaskId);
+    if (listed && currentModalTask && listed !== currentModalTask) Object.assign(currentModalTask, listed);
+    return listed || currentModalTask;
+}
+
 function setupTaskModal() {
+    const modal = document.getElementById('task-modal');
+    const content = document.getElementById('task-modal-content');
     const fileUpload = document.getElementById('task-file-upload');
     const fileInput = document.getElementById('task-file-input');
-    
+
     fileUpload.addEventListener('click', () => fileInput.click());
-    fileUpload.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileUpload.style.borderColor = 'var(--primary-color)';
-    });
-    fileUpload.addEventListener('dragleave', () => {
-        fileUpload.style.borderColor = 'var(--border-color)';
-    });
-    fileUpload.addEventListener('drop', (e) => {
-        e.preventDefault();
-        fileUpload.style.borderColor = 'var(--border-color)';
-        handleTaskFiles(e.dataTransfer.files);
+    fileUpload.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInput.click();
+        }
     });
     fileInput.addEventListener('change', () => {
         handleTaskFiles(fileInput.files);
         fileInput.value = '';
     });
+
+    // Soltar archivos en cualquier parte del modal.
+    const hasFiles = (e) => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    let dragDepth = 0;
+    content.addEventListener('dragenter', (e) => {
+        if (!hasFiles(e) || currentTaskCaps.attach === false) return;
+        e.preventDefault();
+        dragDepth++;
+        content.classList.add('is-dragging');
+    });
+    content.addEventListener('dragover', (e) => {
+        if (hasFiles(e) && currentTaskCaps.attach !== false) e.preventDefault();
+    });
+    content.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) content.classList.remove('is-dragging');
+    });
+    content.addEventListener('drop', (e) => {
+        if (!hasFiles(e) || currentTaskCaps.attach === false) return;
+        e.preventDefault();
+        dragDepth = 0;
+        content.classList.remove('is-dragging');
+        handleTaskFiles(e.dataTransfer.files);
+    });
+
+    content.addEventListener('paste', handleTaskModalPaste);
+
+    // Clic en el fondo: solo si el clic empieza y termina fuera del contenido
+    // (así no se cierra al seleccionar texto y soltar fuera).
+    let pressedOnBackdrop = false;
+    modal.addEventListener('mousedown', (e) => { pressedOnBackdrop = e.target === modal; });
+    modal.addEventListener('click', (e) => {
+        if (pressedOnBackdrop && e.target === modal) requestCloseTaskModal();
+        pressedOnBackdrop = false;
+    });
+
+    document.addEventListener('keydown', handleTaskModalKeydown);
+
+    const title = document.getElementById('task-title');
+    const description = document.getElementById('task-description');
+    title.addEventListener('input', updateTaskDirtyHint);
+    description.addEventListener('input', () => {
+        updateTaskDirtyHint();
+        autoGrowTaskDescription();
+    });
+
+    // Enlace a la mejora de origen: avisa antes de salir con cambios sin guardar.
+    document.getElementById('task-source-link').addEventListener('click', (e) => {
+        if (isTaskModalDirty() && !confirm('Tienes cambios sin guardar en la tarea. ¿Salir sin guardar?')) {
+            e.preventDefault();
+        }
+    });
 }
 
-// Handle file upload for task
-async function handleTaskFiles(files) {
-    if (!currentTaskId || files.length === 0) return;
-    
-    const progressContainer = document.getElementById('upload-progress-container');
-    if (progressContainer) progressContainer.style.display = 'flex';
-    
+function handleTaskModalKeydown(e) {
+    if (!isTaskModalOpen()) return;
+    // El visor de archivos y los menús gestionan su propio Escape.
+    if (document.querySelector('.fv-overlay.active') || (typeof openMenuEl !== 'undefined' && openMenuEl)) return;
+
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        requestCloseTaskModal();
+    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        document.getElementById('task-form').requestSubmit();
+    } else if (e.key === 'Tab') {
+        trapTaskModalFocus(e);
+    }
+}
+
+// Mantiene el foco dentro del modal con Tab / Shift+Tab.
+function trapTaskModalFocus(e) {
+    const focusables = Array.from(document.querySelectorAll(
+        '#task-modal-content button:not([disabled]), #task-modal-content a[href], #task-modal-content input:not([type="hidden"]):not(.task-file-input), #task-modal-content textarea, #task-modal-content [tabindex="0"]'
+    )).filter(el => el.offsetParent !== null);
+    if (!focusables.length) return;
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (!focusables.includes(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+    } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+    }
+}
+
+function isTaskModalDirty() {
+    if (!taskModalSnapshot) return false;
+    return document.getElementById('task-title').value.trim() !== taskModalSnapshot.title
+        || document.getElementById('task-description').value.trim() !== taskModalSnapshot.description;
+}
+
+function updateTaskDirtyHint() {
+    document.getElementById('task-unsaved-hint').hidden = !isTaskModalDirty();
+}
+
+// La descripción crece con el texto (hasta la mitad de la pantalla).
+function autoGrowTaskDescription() {
+    const textarea = document.getElementById('task-description');
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight + 2, window.innerHeight * 0.5)}px`;
+}
+
+// Pegar una captura (Ctrl/Cmd+V) la adjunta. Pegar texto en los campos funciona como siempre.
+function handleTaskModalPaste(e) {
+    const files = Array.from((e.clipboardData && e.clipboardData.files) || []);
+    if (!files.length || currentTaskCaps.attach === false) return;
+    e.preventDefault();
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    // Las capturas llegan como "image.png": se les da un nombre reconocible.
+    const named = files.map((file, i) => {
+        if (file.name && file.name !== 'image.png') return file;
+        const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+        return new File([file], `captura-${stamp}${files.length > 1 ? `-${i + 1}` : ''}.${ext}`, { type: file.type });
+    });
+    handleTaskFiles(named);
+}
+
+// Sube los archivos de uno en uno mostrando el progreso.
+async function handleTaskFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!currentTaskId || files.length === 0 || currentTaskCaps.attach === false) return;
+
+    const status = document.getElementById('task-upload-status');
+    const taskId = currentTaskId;
+    let uploaded = 0;
+
     try {
-        for (const file of files) {
+        for (const [index, file] of files.entries()) {
+            status.hidden = false;
+            status.textContent = files.length > 1
+                ? `Subiendo ${index + 1} de ${files.length}: ${file.name}…`
+                : `Subiendo ${file.name}…`;
+
             const formData = new FormData();
-            formData.append('task_id', currentTaskId);
+            formData.append('task_id', taskId);
             formData.append('file', file);
-            
+
             try {
-                const response = await fetch('/api/task-attachments.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch('/api/task-attachments.php', { method: 'POST', body: formData });
                 const data = await response.json();
-                
                 if (data.success) {
-                    await loadTaskAttachments(currentTaskId);
+                    uploaded++;
                 } else {
-                    showErrorToast(data.error || 'No se pudo completar la acción');
+                    console.error('Error uploading file', file.name, response.status, data.error);
+                    showErrorToast(`${file.name}: ${data.error || 'No se pudo subir'}`);
                 }
             } catch (error) {
-                console.error('Error uploading file:', error);
+                console.error('Error uploading file:', file.name, error);
                 showErrorToast('Error de conexión al subir el archivo');
             }
         }
     } finally {
-        if (progressContainer) progressContainer.style.display = 'none';
+        status.hidden = true;
+    }
+
+    if (uploaded && currentTaskId === taskId) {
+        await loadTaskAttachments(taskId);
+        loadTasks(); // el contador de adjuntos de la tarjeta
     }
 }
 
 // Open task modal
 async function openTaskModal(taskId) {
+    if (isTaskModalOpen() && currentTaskId == taskId) return;
+    const returnFocus = document.activeElement;
     currentTaskId = taskId;
-    
+
     try {
         // Pide la tarea por id: así se abren también completadas y del equipo.
         const response = await fetch(`/api/tasks.php?id=${taskId}`);
@@ -717,21 +871,32 @@ async function openTaskModal(taskId) {
         }
 
         const task = data.data;
+        currentModalTask = task;
         currentTaskCaps = task.capabilities || {};
+        taskModalReturnFocus = returnFocus;
+
+        const title = document.getElementById('task-title');
+        const description = document.getElementById('task-description');
         document.getElementById('task-id').value = task.id;
-        document.getElementById('task-title').value = task.title;
-        document.getElementById('task-description').value = task.description || '';
-        document.getElementById('task-app').value = task.app_id || '';
-        document.getElementById('task-due-date').value = task.due_date || '';
+        document.getElementById('task-id-display').textContent = `#${task.id}`;
+        title.value = task.title;
+        description.value = task.description || '';
+        title.readOnly = description.readOnly = currentTaskCaps.edit === false;
+        taskModalSnapshot = { title: task.title.trim(), description: (task.description || '').trim() };
+        updateTaskDirtyHint();
 
-        // Load share settings
-        await loadTaskShares(taskId, task.is_shared == 1);
+        // Borrar la tarea es solo del dueño; adjuntar, de quien pueda trabajar en ella.
+        document.getElementById('task-delete-btn').hidden = currentTaskCaps.delete === false;
+        document.getElementById('task-file-upload').hidden = currentTaskCaps.attach === false;
+        renderTaskSourceLink(task);
 
-        await loadTaskAttachments(taskId);
-
-        applyTaskModalPermissions(task);
+        await renderTaskMetaBar();
+        await loadTaskAttachments(task.id);
 
         document.getElementById('task-modal').classList.add('active');
+        autoGrowTaskDescription();
+        title.focus();
+        title.setSelectionRange(title.value.length, title.value.length);
     } catch (error) {
         console.error('Error loading task:', error);
         currentTaskId = null;
@@ -739,51 +904,201 @@ async function openTaskModal(taskId) {
     }
 }
 
-// Ajusta el modal a lo que el usuario puede hacer con la tarea abierta.
-function applyTaskModalPermissions(task) {
-    const canShare = currentTaskCaps.share !== false;
-    const hint = document.getElementById('share-readonly-hint');
+// "Mejora #142" en la cabecera si la tarea se creó desde una mejora.
+function renderTaskSourceLink(task) {
+    const link = document.getElementById('task-source-link');
+    const requestId = typeof taskSourceRequestId === 'function' ? taskSourceRequestId(task.description) : null;
+    link.hidden = !requestId;
+    if (!requestId) return;
+    link.href = `/index.php?open_request=${requestId}`;
+    link.title = 'Abrir la mejora de origen';
+    document.getElementById('task-source-link-text').textContent = `Mejora #${requestId}`;
+}
 
-    document.getElementById('share-selector').classList.toggle('is-readonly', !canShare);
-    document.getElementById('task-danger-zone').hidden = currentTaskCaps.delete === false;
-    hint.hidden = canShare;
+// Llamado tras cada repintado de la lista: la barra refleja lo que cambien los menús.
+function refreshTaskModalBar() {
+    if (isTaskModalOpen()) renderTaskMetaBar();
+}
 
-    if (!canShare) {
-        const creator = task.creator_name || task.creator_username || 'otra persona';
-        hint.textContent = `Creada por ${creator}. Solo esa persona puede cambiar con quién se comparte.`;
-        if (!shareWithAll) {
-            document.getElementById('share-status').textContent = 'Compartida contigo';
-        }
+// Ids de las personas con las que está compartida (la lista solo trae cuántas).
+async function getTaskSharedUserIds(task) {
+    if (task.is_shared == 1 || !(task.share_count > 0)) return [];
+    if (Array.isArray(task.shared_user_ids) && task.shared_user_ids.length === Number(task.share_count)) {
+        return task.shared_user_ids;
     }
+    try {
+        const response = await fetch(`/api/task-shares.php?task_id=${task.id}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(`${response.status} ${data.error}`);
+        task.shared_user_ids = data.data.map(u => Number(u.id));
+    } catch (error) {
+        console.error('Error loading task shares', task.id, error);
+        task.shared_user_ids = [];
+    }
+    return task.shared_user_ids;
+}
+
+// Fecha corta "10 oct" a partir de "YYYY-MM-DD HH:MM:SS".
+function formatShortDate(dateTime) {
+    const [y, m, d] = dateTime.slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+async function renderTaskMetaBar() {
+    const bar = document.getElementById('task-meta-bar');
+    const task = getModalTask();
+    if (!bar || !task) return;
+    const token = ++taskMetaBarRenderToken;
+
+    const caps = task.capabilities || currentTaskCaps;
+    const done = task.is_completed == 1;
+    const canEdit = caps.edit !== false && !done;
+    const canShare = caps.share !== false && !done;
+    const creator = task.creator_name || task.creator_username || '';
+
+    // Completar / reabrir
+    const completeControl = caps.complete !== false
+        ? `<button type="button" class="task-complete-toggle ${done ? 'is-done' : ''}" onclick="toggleTaskFromModal()" aria-pressed="${done ? 'true' : 'false'}">
+               <span class="task-checkbox ${done ? 'checked' : ''}" aria-hidden="true"></span>${done ? 'Completada' : 'Completar'}
+           </button>`
+        : '';
+
+    // Fecha (mismo chip y menú "Posponer" que la tarjeta)
+    let dateControl = '';
+    if (task.due_date) {
+        const diff = diffDaysFromToday(task.due_date, getLocalToday());
+        const tone = done ? '' : diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff <= 3 ? 'soon' : '';
+        const label = formatDueDate(task.due_date);
+        dateControl = canEdit
+            ? `<button type="button" class="task-due-date ${tone}" onclick="openPostponeMenu(${task.id}, this, event)" title="Posponer"><i class="iconoir-calendar"></i>${label}</button>`
+            : `<span class="task-due-date ${tone}"><i class="iconoir-calendar"></i>${label}</span>`;
+    } else if (canEdit) {
+        dateControl = `<button type="button" class="task-meta-chip is-empty" onclick="openPostponeMenu(${task.id}, this, event)"><i class="iconoir-calendar-plus"></i>Poner fecha</button>`;
+    }
+
+    // Aplicación
+    let appControl = '';
+    if (canEdit) {
+        appControl = `<button type="button" class="task-meta-chip ${task.app_name ? '' : 'is-empty'}" onclick="openAppMenu(${task.id}, this, event)" title="Cambiar aplicación">
+            <i class="iconoir-app-window"></i><span>${task.app_name ? escapeHtml(task.app_name) : 'Sin aplicación'}</span>
+        </button>`;
+    } else if (task.app_name) {
+        appControl = `<span class="task-meta-chip is-static"><i class="iconoir-app-window"></i><span>${escapeHtml(task.app_name)}</span></span>`;
+    }
+
+    // Compartir: el dueño lo cambia; el resto lo ve
+    let shareControl;
+    if (caps.share !== false) {
+        const ids = await getTaskSharedUserIds(task);
+        if (token !== taskMetaBarRenderToken) return;
+        const names = ids.map(id => {
+            const member = teamMembers.find(m => Number(m.id) === id);
+            return member ? (member.full_name || member.username) : null;
+        }).filter(Boolean);
+        const shareLabel = task.is_shared == 1 ? 'Todo el equipo'
+            : names.length === 0 ? (task.share_count > 0 ? `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}` : 'Solo yo')
+            : names.length <= 2 ? names.join(', ')
+            : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+        const icon = task.is_shared == 1 ? 'iconoir-group' : ids.length || task.share_count > 0 ? 'iconoir-user' : 'iconoir-lock';
+        shareControl = canShare
+            ? `<button type="button" class="task-meta-chip" onclick="openShareMenu(${task.id}, this, event)" title="Cambiar con quién se comparte"><i class="${icon}"></i><span>${escapeHtml(shareLabel)}</span></button>`
+            : `<span class="task-meta-chip is-static"><i class="${icon}"></i><span>${escapeHtml(shareLabel)}</span></span>`;
+    } else {
+        const shareLabel = task.is_shared == 1 ? 'Todo el equipo' : 'Compartida contigo';
+        shareControl = `<span class="task-meta-chip is-static" title="Creada por ${escapeHtml(creator || 'otra persona')}. Solo esa persona puede cambiar con quién se comparte.">
+            <i class="iconoir-group"></i><span>${shareLabel}</span>
+        </span>`;
+    }
+
+    // Metadatos de solo lectura
+    const today = getLocalToday();
+    const facts = [];
+    if (creator) {
+        facts.push(`<span class="request-meta-bar__fact"><i class="iconoir-user"></i>${caps.share !== false ? 'Creada por ti' : `Creada por ${escapeHtml(creator)}`}</span>`);
+    }
+    if (task.created_at) {
+        facts.push(`<span class="request-meta-bar__fact" title="Creada"><i class="iconoir-calendar"></i>${formatShortDate(task.created_at)} · ${taskRelativeDay(task.created_at, today)}</span>`);
+    }
+    if (done && task.completed_at) {
+        facts.push(`<span class="request-meta-bar__fact task-fact-done"><i class="iconoir-check-circle"></i>Completada ${taskRelativeDay(task.completed_at, today)}</span>`);
+    }
+
+    bar.innerHTML = `
+        <div class="request-meta-bar__controls">
+            ${completeControl}
+            ${completeControl ? '<span class="request-meta-bar__divider" aria-hidden="true"></span>' : ''}
+            ${dateControl}${appControl}${shareControl}
+        </div>
+        <div class="request-meta-bar__facts">${facts.join('')}</div>`;
+}
+
+// "YYYY-MM-DD HH:MM:SS" local de ahora (para pintar "Completada hoy" sin recargar).
+function nowAsSqlDateTime() {
+    const n = new Date();
+    const pad = (v) => String(v).padStart(2, '0');
+    return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+}
+
+// Completar / reabrir desde la barra del modal (sin cerrarlo).
+async function toggleTaskFromModal() {
+    const task = getModalTask();
+    if (!task) return;
+    const complete = task.is_completed != 1;
+
+    if (!(await putTask({ id: task.id, is_completed: complete }, complete ? 'No se pudo completar la tarea' : 'No se pudo reabrir la tarea'))) {
+        return;
+    }
+
+    [task, currentModalTask].forEach(t => {
+        if (!t) return;
+        t.is_completed = complete ? 1 : 0;
+        t.completed_at = complete ? nowAsSqlDateTime() : null;
+    });
+    await loadTasks();
+    renderTaskMetaBar();
+}
+
+// Tamaño legible: "482 KB", "1,2 MB".
+function formatFileSize(bytes) {
+    const size = Number(bytes) || 0;
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
 }
 
 // Load task attachments
 async function loadTaskAttachments(taskId) {
     const container = document.getElementById('task-attachments');
-    
+    const count = document.getElementById('task-attachment-count');
+
     try {
         const response = await fetch(`/api/task-attachments.php?task_id=${taskId}`);
         const data = await response.json();
-        
-        if (data.success) {
-            if (data.data.length === 0) {
-                container.innerHTML = '<p class="text-muted text-small">Sin archivos adjuntos</p>';
-            } else {
-                container.innerHTML = data.data.map(att => `
-                    <div class="task-attachment-item">
-                        <a href="#" class="fv-trigger" data-type="task" data-id="${att.id}" data-mime="${att.mime_type || ''}">
-                            <i class="${getFileIcon(att.mime_type)}"></i>
-                            <span class="fv-name">${escapeHtml(att.original_filename)}</span>
-                        </a>
-                        ${currentTaskCaps.delete !== false ? `
-                            <button type="button" class="task-action-btn delete" onclick="deleteTaskAttachment(${att.id})" title="Eliminar archivo">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                `).join('');
-            }
+        if (!data.success) {
+            console.error('Error loading attachments', taskId, response.status, data.error);
+            return;
         }
+
+        count.textContent = data.data.length || '';
+        count.hidden = data.data.length === 0;
+        container.innerHTML = data.data.map(att => {
+            const isImage = (att.mime_type || '').startsWith('image/');
+            return `
+                <div class="task-attachment-item">
+                    <a href="#" class="fv-trigger" data-type="task" data-id="${att.id}" data-mime="${att.mime_type || ''}">
+                        ${isImage
+                            ? `<img class="task-attachment-thumb" src="/api/file.php?type=task&id=${att.id}" alt="" loading="lazy">`
+                            : `<span class="task-attachment-icon"><i class="${getFileIcon(att.mime_type)}"></i></span>`}
+                        <span class="fv-name">${escapeHtml(att.original_filename)}</span>
+                        ${att.file_size ? `<span class="task-attachment-size">${formatFileSize(att.file_size)}</span>` : ''}
+                    </a>
+                    ${currentTaskCaps.delete !== false ? `
+                        <button type="button" class="task-action-btn delete" onclick="deleteTaskAttachment(${att.id})" title="Eliminar archivo" aria-label="Eliminar ${escapeHtml(att.original_filename)}">
+                            <i class="iconoir-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>`;
+        }).join('');
     } catch (error) {
         console.error('Error loading attachments:', error);
     }
@@ -802,6 +1117,7 @@ async function deleteTaskAttachment(attachmentId) {
         
         if (data.success) {
             await loadTaskAttachments(currentTaskId);
+            loadTasks(); // el contador de adjuntos de la tarjeta
         } else {
             console.error('Error deleting attachment', attachmentId, response.status, data.error);
             showErrorToast(data.error || 'No se pudo eliminar el archivo');
@@ -812,7 +1128,7 @@ async function deleteTaskAttachment(attachmentId) {
     }
 }
 
-// Save task
+// Guardar: solo título y descripción (fecha, app, compartir y completar se guardan al momento).
 async function saveTask(event) {
     event.preventDefault();
     
@@ -821,9 +1137,7 @@ async function saveTask(event) {
     const taskData = {
         id: taskId,
         title: document.getElementById('task-title').value.trim(),
-        description: document.getElementById('task-description').value.trim() || null,
-        app_id: document.getElementById('task-app').value || null,
-        due_date: document.getElementById('task-due-date').value || null
+        description: document.getElementById('task-description').value.trim() || null
     };
     
     try {
@@ -836,11 +1150,7 @@ async function saveTask(event) {
         const data = await response.json();
         
         if (data.success) {
-            // Compartir solo lo cambia el dueño; para el resto el selector es de solo lectura.
-            if (currentTaskCaps.share !== false && !(await saveTaskShares(taskId))) {
-                showErrorToast('La tarea se guardó, pero no se pudo cambiar con quién se comparte');
-            }
-            
+            taskModalSnapshot = null;
             closeTaskModal();
             await loadTasks();
             showToast({ title: 'Guardado', message: 'Tarea actualizada', icon: 'iconoir-check' }, 'toast-completed');
@@ -856,7 +1166,7 @@ async function saveTask(event) {
 
 // Delete task from modal
 async function deleteTask() {
-    if (!confirm('¿Eliminar esta tarea?')) return;
+    if (!confirm('¿Eliminar esta tarea? También se borrarán sus archivos.')) return;
     
     try {
         const response = await fetch('/api/tasks.php', {
@@ -868,6 +1178,7 @@ async function deleteTask() {
         const data = await response.json();
         
         if (data.success) {
+            taskModalSnapshot = null;
             closeTaskModal();
             await loadTasks();
             showToast({ title: 'Eliminada', message: 'Tarea eliminada', icon: 'iconoir-check' }, 'toast-completed');
@@ -881,14 +1192,27 @@ async function deleteTask() {
     }
 }
 
+// Cerrar desde X, Cancelar, Esc o el fondo: avisa si hay cambios sin guardar.
+function requestCloseTaskModal() {
+    if (isTaskModalDirty() && !confirm('Tienes cambios sin guardar. ¿Cerrar sin guardar?')) return;
+    closeTaskModal();
+}
+
 // Close task modal
 function closeTaskModal() {
+    if (typeof closeTaskMenu === 'function') closeTaskMenu();
     document.getElementById('task-modal').classList.remove('active');
-    document.getElementById('share-selector').classList.remove('open');
+    document.getElementById('task-modal-content').classList.remove('is-dragging');
     currentTaskId = null;
     currentTaskCaps = {};
-    selectedShareUsers = [];
-    shareWithAll = false;
+    currentModalTask = null;
+    taskModalSnapshot = null;
+
+    const returnFocus = taskModalReturnFocus;
+    taskModalReturnFocus = null;
+    if (returnFocus && document.contains(returnFocus) && typeof returnFocus.focus === 'function') {
+        returnFocus.focus({ preventScroll: true });
+    }
 }
 
 // Format due date for display
@@ -910,13 +1234,6 @@ function formatDueDate(dateString) {
     return date.toLocaleDateString('es-ES', options);
 }
 
-// Escape HTML helper
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // Utility functions
 function escapeHtml(text) {
     if (!text) return '';
@@ -934,165 +1251,26 @@ function getFileIcon(mimeType) {
     return 'iconoir-attachment';
 }
 
-// ========== Share Functions ==========
+// ========== Equipo ==========
 
-// Load team members for sharing
+// Personas de la empresa (para el menú "Compartir con" y los nombres de la barra del modal).
 async function loadTeamMembers() {
     try {
         const response = await fetch('/api/task-shares.php');
         const data = await response.json();
         if (data.success) {
             teamMembers = data.data;
-            renderShareUsersList();
+            refreshTaskModalBar();
         }
     } catch (error) {
         console.error('Error loading team members:', error);
     }
 }
 
-// Render users list in dropdown
-function renderShareUsersList() {
-    const container = document.getElementById('share-users-list');
-    if (!container) return;
-    
-    if (teamMembers.length === 0) {
-        container.innerHTML = '<div class="share-option" style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem;">No hay otros miembros en el equipo</div>';
-        return;
-    }
-    
-    container.innerHTML = teamMembers.map(user => {
-        const initials = getInitials(user.full_name || user.username);
-        const isChecked = selectedShareUsers.includes(user.id);
-        return `
-            <div class="share-option">
-                <label>
-                    <div class="share-user-item">
-                        <div class="share-user-avatar">${initials}</div>
-                        <span class="share-user-name">${escapeHtml(user.full_name || user.username)}</span>
-                    </div>
-                    <input type="checkbox" 
-                           value="${user.id}" 
-                           ${isChecked ? 'checked' : ''}
-                           ${shareWithAll ? 'disabled' : ''}
-                           onchange="toggleShareUser(${user.id})">
-                </label>
-            </div>
-        `;
-    }).join('');
-}
-
 // Get initials from name
 function getInitials(name) {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-}
-
-// Toggle share dropdown
-function toggleShareDropdown() {
-    const selector = document.getElementById('share-selector');
-    if (selector.classList.contains('is-readonly')) return;
-    selector.classList.toggle('open');
-}
-
-// Setup share dropdown (close on outside click)
-function setupShareDropdown() {
-    document.addEventListener('click', (e) => {
-        const selector = document.getElementById('share-selector');
-        if (selector && !selector.contains(e.target)) {
-            selector.classList.remove('open');
-        }
-    });
-}
-
-// Toggle share with all
-function toggleShareAll() {
-    shareWithAll = document.getElementById('share-with-all').checked;
-    if (shareWithAll) {
-        selectedShareUsers = [];
-    }
-    renderShareUsersList();
-    updateShareStatus();
-}
-
-// Toggle individual user
-function toggleShareUser(userId) {
-    const index = selectedShareUsers.indexOf(userId);
-    if (index > -1) {
-        selectedShareUsers.splice(index, 1);
-    } else {
-        selectedShareUsers.push(userId);
-    }
-    updateShareStatus();
-}
-
-// Update share status display
-function updateShareStatus() {
-    const statusEl = document.getElementById('share-status');
-    
-    if (shareWithAll) {
-        statusEl.innerHTML = '<span class="user-chip all"><i class="iconoir-group"></i> Todo el equipo</span>';
-    } else if (selectedShareUsers.length === 0) {
-        statusEl.textContent = 'Privada';
-    } else {
-        const chips = selectedShareUsers.slice(0, 3).map(userId => {
-            const user = teamMembers.find(u => u.id === userId);
-            if (user) {
-                const initials = getInitials(user.full_name || user.username);
-                return `<span class="user-chip">${initials}</span>`;
-            }
-            return '';
-        }).join('');
-        
-        const extra = selectedShareUsers.length > 3 ? `<span class="user-chip">+${selectedShareUsers.length - 3}</span>` : '';
-        statusEl.innerHTML = chips + extra;
-    }
-}
-
-// Load task shares when opening modal
-async function loadTaskShares(taskId, isSharedWithAll) {
-    shareWithAll = isSharedWithAll;
-    selectedShareUsers = [];
-    
-    document.getElementById('share-with-all').checked = isSharedWithAll;
-    
-    if (!isSharedWithAll) {
-        try {
-            const response = await fetch(`/api/task-shares.php?task_id=${taskId}`);
-            const data = await response.json();
-            if (data.success) {
-                selectedShareUsers = data.data.map(u => u.id);
-            }
-        } catch (error) {
-            console.error('Error loading task shares:', error);
-        }
-    }
-    
-    renderShareUsersList();
-    updateShareStatus();
-}
-
-// Save share settings (called from saveTask)
-// Devuelve true si se guardó.
-async function saveTaskShares(taskId) {
-    try {
-        const response = await fetch('/api/task-shares.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                task_id: taskId,
-                user_ids: selectedShareUsers,
-                share_with_all: shareWithAll
-            })
-        });
-        const data = await response.json();
-        if (!data.success) {
-            console.error('Error saving shares', taskId, response.status, data.error);
-        }
-        return data.success === true;
-    } catch (error) {
-        console.error('Error saving shares:', error);
-        return false;
-    }
 }
 
 // config: { title, message, icon, duration (ms, 3000 por defecto), action: { label, onClick } }

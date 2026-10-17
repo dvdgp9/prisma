@@ -98,13 +98,16 @@
     --fw-regular: 400;
     --fw-medium:  500;
     --fw-semibold:600;
+    --fw-bold:   700;
 
     /* -------- Spacing (4px grid) -------- */
     --sp-2:  2px;
     --sp-4:  4px;
     --sp-6:  6px;
     --sp-8:  8px;
+    --sp-10: 10px;
     --sp-12: 12px;
+    --sp-14: 14px;
     --sp-16: 16px;
     --sp-20: 20px;
     --sp-24: 24px;
@@ -151,12 +154,15 @@
     --prisma-blue:   var(--brand);
 
     --primary-color: var(--brand);
+    --primary-rgb:   66, 160, 209; /* --brand en RGB, para rgba(var(--primary-rgb), a) */
     --primary-dark:  var(--brand-strong);
     --primary-light: #66b3dc;
+    --primary:       var(--primary-color);
 
     --secondary-color: var(--danger);
     --secondary-dark:  #C2453C;
     --secondary-light: #E78A82;
+    --secondary:       var(--secondary-color);
 
     --accent-color: var(--warn);
     --accent-dark:  #B97516;
@@ -165,8 +171,10 @@
     --success-color: var(--ok);
     --success-dark:  #2F8C61;
     --success-light: #8DD5B0;
+    --success:       var(--ok);
 
     --danger-color: var(--danger);
+    --error-color:  var(--danger-color);
     --danger-dark:  #B33D34;
     --danger-light: #E78A82;
 
@@ -183,11 +191,13 @@
     --bg-primary:   var(--surface);
     --bg-secondary: var(--ink-50);
     --bg-tertiary:  var(--ink-100);
+    --bg-hover:     var(--ink-100);
     --text-primary:   var(--ink-900);
     --text-secondary: var(--ink-600);
     --text-muted:     var(--ink-500);
     --text-light:     var(--ink-400);
     --border-color:   var(--ink-200);
+    --border-light:   var(--ink-200);
     --shadow:        rgba(20, 30, 40, 0.06);
     --shadow-hover:  rgba(20, 30, 40, 0.10);
 
@@ -197,6 +207,7 @@
     --spacing-lg:  var(--sp-20);
     --spacing-xl:  var(--sp-32);
     --spacing-2xl: var(--sp-48);
+    --spacing-3xl: var(--sp-64);
 
     --radius-sm:   var(--r-6);
     --radius-md:   var(--r-8);
@@ -205,6 +216,11 @@
     --radius-full: var(--r-full);
 
     --font-family: var(--font-sans);
+    --font-weight-medium:   var(--fw-medium);
+    --font-weight-semibold: var(--fw-semibold);
+    --font-weight-bold:     var(--fw-bold);
+
+    --transition-fast: var(--dur-fast) var(--ease-out);
 }
 
 /* ============================================================

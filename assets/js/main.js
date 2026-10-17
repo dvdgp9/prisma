@@ -1826,9 +1826,9 @@ function createPriorityDropdown(requestId, currentPriority) {
 function createStatusDropdown(requestId, currentStatus) {
     const statuses = [
         { value: 'pending', label: 'Pendiente' },
-        { value: 'in_progress', label: 'En curso', color: 'var(--color-blue)' },
-        { value: 'completed', label: 'Completada', color: 'var(--color-green)' },
-        { value: 'discarded', label: 'Descartada', color: 'var(--color-red)' }
+        { value: 'in_progress', label: 'En curso' },
+        { value: 'completed', label: 'Completada' },
+        { value: 'discarded', label: 'Descartada' }
     ];
 
     return `

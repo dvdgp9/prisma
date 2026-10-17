@@ -19,9 +19,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.0">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.9">
+    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.0">
 </head>
 
 <?php
@@ -155,136 +155,73 @@ $userApps = get_user_apps();
     </div>
 
     <!-- Task Detail Modal -->
-    <div class="modal" id="task-modal">
-        <div class="modal-content modal-wide">
+    <div class="modal" id="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-heading">
+        <div class="modal-content modal-wide task-modal-content" id="task-modal-content">
             <div class="modal-header">
                 <div class="modal-header-left">
-                    <i class="iconoir-edit-pencil modal-header-icon"></i>
-                    <h3 class="modal-title">Editar Tarea</h3>
+                    <i class="iconoir-task-list modal-header-icon"></i>
+                    <h3 class="modal-title" id="task-modal-heading">Tarea</h3>
+                    <span class="modal-request-id" id="task-id-display"></span>
+                    <a class="task-source-link" id="task-source-link" href="#" hidden>
+                        <i class="iconoir-light-bulb"></i>
+                        <span id="task-source-link-text"></span>
+                    </a>
                 </div>
-                <button class="close-modal" onclick="closeTaskModal()">
+                <button type="button" class="close-modal" onclick="requestCloseTaskModal()" aria-label="Cerrar">
                     <i class="iconoir-xmark"></i>
                 </button>
             </div>
-            
+
+            <!-- Barra de propiedades: completar, fecha, app, compartir y metadatos.
+                 Se guardan al momento (fuera del form). La pinta renderTaskMetaBar(). -->
+            <div class="request-meta-bar task-meta-bar" id="task-meta-bar"></div>
+
             <form id="task-form" onsubmit="saveTask(event)">
                 <input type="hidden" id="task-id">
-                
-                <div class="modal-body-grid">
-                    <!-- Left Column: Main Content -->
-                    <div class="modal-column-main">
-                        <div class="form-group">
-                            <label for="task-title">
-                                <i class="iconoir-text"></i> Título *
-                            </label>
-                            <input type="text" id="task-title" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="task-description">
-                                <i class="iconoir-align-left"></i> Descripción
-                            </label>
-                            <textarea id="task-description" rows="6"></textarea>
-                        </div>
 
-                        <!-- Attachments -->
-                        <div class="form-group">
-                            <div class="attachments-header">
-                                <label>
-                                    <i class="iconoir-attachment"></i> Archivos adjuntos
-                                </label>
-                            </div>
-                            
-                            <!-- Upload area -->
-                            <div class="file-upload-area" id="task-file-upload" style="padding: var(--spacing-lg); margin-bottom: 1rem; position: relative;">
-                                <div id="upload-progress-container" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
-                                    <i class="iconoir-loading animate-spin" style="font-size: 1.5rem; color: var(--primary-color); margin-bottom: 0.5rem;"></i>
-                                    <p style="font-size: 0.875rem; font-weight: 500;">Subiendo archivo...</p>
-                                </div>
-                                <i class="iconoir-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 0.25rem;"></i>
-                                <p style="font-size: 0.875rem;">Haz clic o arrastra para añadir archivos</p>
-                                <input type="file" id="task-file-input" style="display: none;" multiple>
-                            </div>
-
-                            <div id="task-attachments" class="task-attachments-list">
-                                <!-- Loaded dynamically -->
-                            </div>
-                        </div>
+                <div class="task-modal-body">
+                    <div class="form-group">
+                        <label for="task-title" class="visually-hidden">Título</label>
+                        <input type="text" id="task-title" class="task-title-field" required maxlength="500" placeholder="Título de la tarea" autocomplete="off">
                     </div>
 
-                    <!-- Right Column: Metadata -->
-                    <div class="modal-column-side">
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-settings"></i> Configuración
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div class="form-group">
-                                    <label for="task-app">Aplicación</label>
-                                    <select id="task-app">
-                                        <option value="">Sin aplicación</option>
-                                        <?php foreach ($userApps as $app): ?>
-                                            <option value="<?php echo $app['id']; ?>"><?php echo htmlspecialchars($app['name']); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="task-due-date">
-                                        <i class="iconoir-calendar"></i> Fecha límite
-                                    </label>
-                                    <input type="date" id="task-due-date">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label>
-                                        <i class="iconoir-group"></i> Compartir
-                                    </label>
-                                    <div class="share-selector" id="share-selector">
-                                        <div class="share-display" onclick="toggleShareDropdown()">
-                                            <span class="share-status" id="share-status">Privada</span>
-                                            <i class="iconoir-nav-arrow-down"></i>
-                                        </div>
-                                        <div class="share-dropdown" id="share-dropdown">
-                                            <div class="share-option share-all">
-                                                <label>
-                                                    <div class="share-user-item">
-                                                        <div class="share-user-avatar">
-                                                            <i class="iconoir-group"></i>
-                                                        </div>
-                                                        <span class="share-user-name">Todo el equipo</span>
-                                                    </div>
-                                                    <input type="checkbox" id="share-with-all" onchange="toggleShareAll()">
-                                                </label>
-                                            </div>
-                                            <div class="share-users-list" id="share-users-list">
-                                                <!-- Users loaded dynamically -->
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p class="share-readonly-hint" id="share-readonly-hint" hidden></p>
-                                    <input type="hidden" id="task-shared">
-                                </div>
-                            </div>
+                    <div class="form-group">
+                        <label for="task-description">
+                            <i class="iconoir-align-left"></i> Descripción
+                        </label>
+                        <textarea id="task-description" class="task-description-field" rows="3" placeholder="Añade detalles, enlaces o notas"></textarea>
+                    </div>
+
+                    <!-- Attachments -->
+                    <div class="form-group">
+                        <div class="attachments-header">
+                            <label>
+                                <i class="iconoir-attachment"></i> Archivos adjuntos
+                            </label>
+                            <span class="badge-count-inline" id="task-attachment-count"></span>
                         </div>
 
-                        <div class="modal-side-section modal-danger-zone" id="task-danger-zone">
-                            <div class="modal-side-title">
-                                <i class="iconoir-warning-triangle"></i> Zona peligrosa
-                            </div>
-                            <button type="button" class="btn btn-danger-outline btn-sm" onclick="deleteTask()">
-                                <i class="iconoir-trash"></i> Eliminar tarea
-                            </button>
+                        <div class="file-upload-area file-upload-area--compact" id="task-file-upload" role="button" tabindex="0" aria-label="Añadir archivos">
+                            <i class="iconoir-cloud-upload"></i>
+                            <p>Haz clic, arrastra o pega una captura</p>
+                            <input type="file" id="task-file-input" class="task-file-input" multiple>
+                        </div>
+                        <p class="task-upload-status" id="task-upload-status" role="status" hidden></p>
+
+                        <div id="task-attachments" class="task-attachments-list">
+                            <!-- Loaded dynamically -->
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-ghost" onclick="closeTaskModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="iconoir-check"></i> Guardar Cambios
+                    <button type="button" class="btn btn-danger-outline btn-sm modal-footer-delete" id="task-delete-btn" onclick="deleteTask()">
+                        <i class="iconoir-trash"></i> Eliminar
+                    </button>
+                    <span class="task-unsaved-hint" id="task-unsaved-hint" hidden>Cambios sin guardar</span>
+                    <button type="button" class="btn btn-ghost" onclick="requestCloseTaskModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" title="Guardar (Ctrl/Cmd + Enter)">
+                        <i class="iconoir-check"></i> Guardar cambios
                     </button>
                 </div>
             </form>
@@ -300,10 +237,10 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=4"></script>
+    <script src="/assets/js/task-parser.js?v=5"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=10"></script>
-    <script src="/assets/js/tasks-interactions.js?v=2"></script>
+    <script src="/assets/js/tasks.js?v=11"></script>
+    <script src="/assets/js/tasks-interactions.js?v=3"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

@@ -594,7 +594,7 @@
 /* Empty State */
 .empty-state {
     text-align: center;
-    padding: var(--spacing-xxl) var(--spacing-lg);
+    padding: var(--spacing-2xl) var(--spacing-lg);
     color: var(--text-muted);
 }
 
@@ -667,216 +667,6 @@
 .file-upload-area:hover {
     border-color: var(--primary-color);
     background: rgba(var(--primary-rgb), 0.02);
-}
-
-/* Share Selector Redesign */
-.share-selector {
-    position: relative;
-    width: 100%;
-}
-
-.share-display {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.625rem 0.875rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 42px;
-}
-
-.share-display:hover {
-    border-color: var(--primary-color);
-    background: var(--bg-secondary);
-}
-
-.share-selector.open .share-display {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-}
-
-.share-display i {
-    font-size: 1rem;
-    color: var(--text-muted);
-    transition: transform 0.3s ease;
-}
-
-.share-selector.open .share-display i {
-    transform: rotate(180deg);
-}
-
-/* Solo lectura: quien no es dueño ve con quién se comparte pero no puede cambiarlo */
-.share-selector.is-readonly .share-display {
-    cursor: default;
-}
-
-.share-selector.is-readonly .share-display:hover {
-    border-color: var(--border-color);
-    background: var(--bg-primary);
-}
-
-.share-selector.is-readonly .share-display i {
-    display: none;
-}
-
-.share-readonly-hint {
-    margin: 0.375rem 0 0;
-    font-size: 0.75rem;
-    line-height: 1.4;
-    color: var(--text-muted);
-}
-
-.share-status {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    flex-wrap: wrap;
-    color: var(--text-secondary);
-}
-
-.share-status .user-chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    background: var(--primary-color);
-    color: white;
-    border-radius: 50%;
-    font-size: 0.65rem;
-    font-weight: 600;
-    border: 2px solid var(--bg-primary);
-    margin-left: -8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.share-status .user-chip:first-child {
-    margin-left: 0;
-}
-
-.share-status .user-chip.all {
-    width: auto;
-    height: auto;
-    border-radius: 12px;
-    padding: 2px 8px;
-    margin-left: 0;
-    gap: 4px;
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary-color);
-    border: none;
-    box-shadow: none;
-}
-
-.share-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: 0;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    z-index: 1000;
-    display: none;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    animation: dropdownFade 0.2s ease;
-    transform-origin: top center;
-}
-
-@keyframes dropdownFade {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.share-selector.open .share-dropdown {
-    display: block;
-}
-
-.share-option {
-    padding: 0.75rem 1rem;
-    transition: background 0.2s ease;
-}
-
-.share-option:hover {
-    background: var(--bg-secondary);
-}
-
-.share-option label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    cursor: pointer;
-    margin: 0;
-}
-
-.share-option input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    accent-color: var(--primary-color);
-    cursor: pointer;
-    order: 2;
-}
-
-.share-user-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    order: 1;
-}
-
-.share-user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), #00a89a);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: white;
-    flex-shrink: 0;
-}
-
-.share-user-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.share-option.share-all {
-    background: rgba(var(--primary-rgb), 0.03);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.share-option.share-all .share-user-avatar {
-    background: var(--bg-tertiary);
-    color: var(--primary-color);
-}
-
-.share-users-list {
-    max-height: 240px;
-    overflow-y: auto;
-}
-
-/* Custom Scrollbar for dropdown */
-.share-users-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.share-users-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.share-users-list::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 10px;
 }
 
 /* Responsive */
@@ -1396,5 +1186,354 @@ button.task-due-date:focus-visible,
     .task-item.is-completing,
     .task-menu {
         animation: none;
+    }
+}
+
+/* ============================================================
+   Modal de tarea v2: barra de propiedades + una columna
+   (mismo lenguaje que el modal de peticiones)
+   ============================================================ */
+
+/* En este modal el atributo hidden manda, aunque el elemento tenga display propio */
+.task-modal-content [hidden] {
+    display: none !important;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.task-file-input {
+    display: none;
+}
+
+.task-modal-content {
+    max-width: 760px;
+}
+
+/* El separador lo pone la barra, no la cabecera */
+.task-modal-content .modal-header {
+    margin-bottom: 0;
+    padding-bottom: var(--sp-16);
+    border-bottom: none;
+}
+
+.task-modal-content .modal-title {
+    font-size: var(--fs-16);
+}
+
+.task-source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: 2px 10px;
+    border-radius: var(--r-full);
+    background: var(--warn-soft);
+    color: var(--prio-medium-ink);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+}
+
+.task-source-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* Barra: completar */
+.task-complete-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-8);
+    height: 30px;
+    padding: 0 12px 0 8px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-full);
+    background: var(--surface);
+    color: var(--ink-700);
+    font-family: inherit;
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}
+
+.task-complete-toggle:hover {
+    border-color: var(--ok);
+    color: #2B7A56;
+}
+
+.task-complete-toggle .task-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    pointer-events: none;
+}
+
+.task-complete-toggle .task-checkbox.checked::after {
+    width: 4px;
+    height: 8px;
+    margin-bottom: 1px;
+}
+
+.task-complete-toggle.is-done {
+    border-color: var(--ok-line);
+    background: var(--ok-soft);
+    color: #2B7A56;
+}
+
+.task-complete-toggle.is-done .task-checkbox {
+    border-color: var(--ok);
+    background: var(--ok);
+}
+
+/* Barra: fecha, app y compartir */
+.task-meta-bar .task-due-date {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: var(--r-full);
+    font-size: var(--fs-13);
+}
+
+.task-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 260px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-full);
+    background: var(--surface);
+    color: var(--ink-700);
+    font-family: inherit;
+    font-size: var(--fs-13);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.task-meta-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-meta-chip i {
+    flex-shrink: 0;
+    font-size: 0.95rem;
+    color: var(--ink-400);
+}
+
+button.task-meta-chip:hover {
+    border-color: var(--ink-300);
+    background: var(--ink-50);
+}
+
+.task-meta-chip.is-empty {
+    border-style: dashed;
+    color: var(--ink-500);
+}
+
+.task-meta-chip.is-static {
+    background: transparent;
+    cursor: default;
+}
+
+.task-complete-toggle:focus-visible,
+.task-meta-chip:focus-visible,
+.task-meta-bar .task-due-date:focus-visible,
+.task-source-link:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
+.task-fact-done {
+    color: #2B7A56;
+}
+
+.task-fact-done i {
+    color: var(--ok);
+}
+
+/* Cuerpo a una columna */
+.task-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-16);
+}
+
+.task-modal-body .form-group {
+    margin-bottom: 0;
+}
+
+/* Título como encabezado editable: sin caja hasta pasar el ratón o enfocarlo */
+.task-modal-content .task-title-field {
+    width: calc(100% + 20px);
+    margin: 0 -10px;
+    padding: 6px 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: var(--fs-18);
+    font-weight: var(--fw-semibold);
+    color: var(--ink-950);
+}
+
+.task-modal-content .task-description-field {
+    min-height: 76px;
+    max-height: 50vh;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.task-modal-content .task-title-field[readonly],
+.task-modal-content .task-description-field[readonly] {
+    background: transparent;
+}
+
+/* Adjuntos */
+.task-modal-body .attachments-header {
+    margin-bottom: var(--sp-8);
+}
+
+.task-upload-status {
+    margin: 0 0 var(--sp-8);
+    font-size: var(--fs-12);
+    color: var(--ink-500);
+}
+
+.task-modal-content .task-attachments-list {
+    gap: var(--sp-6);
+    margin-bottom: 0;
+}
+
+.task-modal-content .task-attachment-item {
+    gap: var(--sp-8);
+    padding: 6px 8px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+}
+
+.task-modal-content .task-attachment-item a {
+    min-width: 0;
+    gap: var(--sp-10);
+}
+
+.task-attachment-thumb,
+.task-attachment-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-6);
+}
+
+.task-attachment-thumb {
+    object-fit: cover;
+    border: 1px solid var(--ink-200);
+    background: var(--ink-50);
+}
+
+.task-attachment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink-100);
+    color: var(--ink-500);
+    font-size: 1rem;
+}
+
+.task-modal-content .task-attachment-item .task-attachment-size {
+    flex-shrink: 0;
+    margin-left: auto;
+    overflow: visible;
+    font-size: var(--fs-12);
+    color: var(--ink-400);
+}
+
+/* Soltar archivos en cualquier parte del modal */
+.task-modal-content.is-dragging {
+    outline: 2px dashed var(--brand);
+    outline-offset: -8px;
+}
+
+.task-modal-content.is-dragging .file-upload-area {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+/* Pie: eliminar discreto a la izquierda, aviso de cambios y acciones a la derecha */
+.task-modal-content .modal-footer-delete {
+    margin-right: auto;
+}
+
+.task-unsaved-hint {
+    font-size: var(--fs-12);
+    color: var(--prio-medium-ink);
+}
+
+.task-modal-content .modal-footer .btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 400px) {
+    .task-modal-content .modal-footer .btn-primary i {
+        display: none;
+    }
+}
+
+/* Móvil: pantalla completa con el pie siempre visible */
+@media (max-width: 768px) {
+    #task-modal {
+        align-items: stretch;
+        padding: 0;
+    }
+
+    #task-modal .task-modal-content {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        min-height: 100dvh;
+        max-height: 100dvh;
+        padding: var(--sp-16);
+        border: 0;
+        border-radius: 0;
+    }
+
+    .task-modal-content .request-meta-bar {
+        margin: 0 calc(-1 * var(--sp-16)) var(--sp-16);
+        padding: var(--sp-12) var(--sp-16);
+    }
+
+    .task-modal-content .request-meta-bar__facts {
+        margin-left: 0;
+    }
+
+    .task-modal-content #task-form {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .task-modal-content .task-modal-body {
+        flex: 1;
+    }
+
+    .task-modal-content .modal-footer {
+        position: sticky;
+        bottom: calc(-1 * var(--sp-16));
+        margin: var(--sp-16) calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16));
+        padding: var(--sp-12) var(--sp-16);
+        background: var(--surface);
+    }
+
+    .task-unsaved-hint {
+        display: none;
     }
 }

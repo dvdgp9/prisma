@@ -256,7 +256,26 @@
         return words.every(word => haystack.indexOf(word) !== -1);
     }
 
+    // Id de la mejora de origen si la tarea se creó desde una ("Creada desde mejora #142: ...").
+    function taskSourceRequestId(description) {
+        const match = /Creada desde mejora #(\d+)/.exec(description || '');
+        return match ? parseInt(match[1], 10) : null;
+    }
+
+    // "hoy" / "ayer" / "hace N días" para una fecha "YYYY-MM-DD HH:MM:SS" (horario local).
+    function taskRelativeDay(dateTime, today) {
+        if (!dateTime) return '';
+        const [y, m, d] = dateTime.slice(0, 10).split('-').map(Number);
+        const base = localDate(today.getFullYear(), today.getMonth(), today.getDate());
+        const days = Math.round((base - localDate(y, m - 1, d)) / 86400000);
+        if (days <= 0) return 'hoy';
+        if (days === 1) return 'ayer';
+        return `hace ${days} días`;
+    }
+
     global.parseQuickTask = parseQuickTask;
+    global.taskSourceRequestId = taskSourceRequestId;
+    global.taskRelativeDay = taskRelativeDay;
     global.stripQuickMatch = stripMatch;
     global.normalizeRequestTitleForTask = normalizeRequestTitleForTask;
     global.taskDateShortcuts = taskDateShortcuts;

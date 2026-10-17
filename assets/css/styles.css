@@ -7891,3 +7891,21 @@ select.ai-pill-assignee.has-assignee {
         border-bottom: 0;
     }
 }
+
+/* ============================================================
+   Modales de 2 columnas en móvil
+   La regla del rediseño v2.4 (.modal-body-grid con 280px) va
+   después de la media query original y la pisaba: la columna
+   principal quedaba a 0px ("Nueva petición" y similares).
+   ============================================================ */
+@media (max-width: 768px) {
+    .modal-body-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--sp-20);
+    }
+
+    .modal-column-main,
+    .modal-column-side {
+        min-width: 0;
+    }
+}

@@ -26,8 +26,8 @@ $userApps = get_user_apps();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.0">
+    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
     <style>
         .view-toggle {
             display: flex;
@@ -36,7 +36,11 @@ $userApps = get_user_apps();
             padding: var(--spacing-xs);
             border-radius: var(--radius-md);
         }
+        /* styles.css define .view-toggle-btn como botón de solo icono de 32x28 px;
+           aquí lleva texto, así que el tamaño lo marca el contenido. */
         .view-toggle-btn {
+            width: auto;
+            height: auto;
             padding: var(--spacing-sm) var(--spacing-md);
             border: none;
             background: transparent;
@@ -331,6 +335,13 @@ $userApps = get_user_apps();
             gap: var(--spacing-md);
             align-items: end;
         }
+        /* .form-group es columna en styles.css; los dos botones van en fila */
+        .quick-add-actions {
+            display: flex;
+            flex-direction: row;
+            align-items: end;
+            gap: var(--spacing-sm);
+        }
         .form-group { margin-bottom: 0; }
         .form-group label {
             display: block;
@@ -477,6 +488,49 @@ $userApps = get_user_apps();
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
         .form-group.full { grid-column: 1 / -1; }
         .modal .form-group { margin-bottom: var(--spacing-md); }
+
+        /* ===== Móvil (<= 640 px): en tablet y escritorio no cambia nada ===== */
+        @media (max-width: 640px) {
+            /* Formulario a una columna: título, fecha y los botones alineados a la derecha */
+            .quick-add-release { padding: var(--spacing-md); }
+            .quick-add-row { grid-template-columns: minmax(0, 1fr); gap: var(--spacing-sm); }
+            .quick-add-title { grid-column: 1 / -1; }
+            .quick-add-actions { justify-content: flex-end; }
+            .quick-add-expanded-grid { grid-template-columns: 1fr; }
+
+            /* Pestañas de filtro: bajan de línea en vez de cortarse */
+            .filter-tabs { flex-wrap: wrap; }
+
+            /* Calendario: cabecera compacta y días con ancho mínimo, con scroll lateral */
+            .calendar-header { padding: var(--spacing-sm) var(--spacing-md); gap: var(--spacing-sm); }
+            .calendar-nav { gap: var(--spacing-xs); }
+            .calendar-nav-btn { width: 32px; height: 32px; }
+            .calendar-month-year { min-width: 0; font-size: 0.95rem; white-space: nowrap; }
+            .calendar-header .btn { padding: 6px 10px; }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(88px, 1fr));
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Lista: fecha y contenido arriba, estado y acción en una fila debajo */
+            .release-card { flex-wrap: wrap; gap: var(--spacing-md); padding: var(--spacing-md); }
+            .release-date-block { min-width: 56px; padding: var(--spacing-sm); }
+            .release-content { flex: 1 1 0; }
+            .release-actions {
+                flex-basis: 100%;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            /* Modal de editar: campos a una columna y pie que puede ocupar dos filas */
+            .modal-body { padding: var(--spacing-md); }
+            .modal-header { padding: var(--spacing-md); }
+            .modal-body .form-row { grid-template-columns: 1fr; }
+            .modal-footer { flex-wrap: wrap; padding: var(--spacing-md); }
+            .modal-footer-right { margin-left: auto; }
+        }
     </style>
 </head>
 
@@ -496,10 +550,10 @@ $userApps = get_user_apps();
                 </div>
                 <div class="header-actions">
                     <div class="view-toggle">
-                        <button class="view-toggle-btn active" data-view="calendar" onclick="switchView('calendar')">
+                        <button class="view-toggle-btn active" data-view="calendar" onclick="chooseView('calendar')">
                             <i class="iconoir-calendar"></i> Calendario
                         </button>
-                        <button class="view-toggle-btn" data-view="list" onclick="switchView('list')">
+                        <button class="view-toggle-btn" data-view="list" onclick="chooseView('list')">
                             <i class="iconoir-list"></i> Lista
                         </button>
                     </div>
@@ -513,7 +567,7 @@ $userApps = get_user_apps();
                 </div>
                 <form id="quick-add-form" onsubmit="createRelease(event)">
                     <div class="quick-add-row">
-                        <div class="form-group" style="flex: 1;">
+                        <div class="form-group quick-add-title">
                             <label for="qa-title">Título *</label>
                             <input type="text" id="qa-title" placeholder="Ej: Generador de cursos con IA" required>
                         </div>
@@ -521,8 +575,8 @@ $userApps = get_user_apps();
                             <label for="qa-announce">Fecha de anuncio *</label>
                             <input type="date" id="qa-announce" required>
                         </div>
-                        <div class="form-group" style="display: flex; align-items: end; gap: var(--spacing-sm);">
-                            <button type="button" class="btn btn-ghost" onclick="toggleQuickAddExpanded()">
+                        <div class="form-group quick-add-actions">
+                            <button type="button" class="btn btn-ghost" onclick="toggleQuickAddExpanded()" title="Más opciones" aria-label="Más opciones">
                                 <i class="iconoir-more-horiz"></i>
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -702,6 +756,13 @@ $userApps = get_user_apps();
         document.addEventListener('DOMContentLoaded', () => {
             // Set default date
             document.getElementById('qa-announce').value = getTodayString();
+
+            // En pantallas estrechas el calendario no cabe: se abre la Lista,
+            // salvo que la persona haya elegido una vista con los botones.
+            let savedView = null;
+            try { savedView = localStorage.getItem('prisma_releases_view'); } catch (e) {}
+            const initialView = savedView || (window.matchMedia('(max-width: 640px)').matches ? 'list' : 'calendar');
+            if (initialView !== currentView) switchView(initialView);
             
             loadReleases();
         });
@@ -829,6 +890,12 @@ $userApps = get_user_apps();
         }
 
         // View Functions
+        // Elección explícita con los botones: se recuerda para las próximas visitas.
+        function chooseView(view) {
+            try { localStorage.setItem('prisma_releases_view', view); } catch (e) {}
+            switchView(view);
+        }
+
         function switchView(view) {
             currentView = view;
             document.querySelectorAll('.view-toggle-btn').forEach(btn => {

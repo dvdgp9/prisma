@@ -110,14 +110,14 @@ assert_file_contains('api/tasks.php', ["\$task['capabilities'] = task_capabiliti
 assert_file_contains('assets/js/tasks.js', [
     'function showErrorToast(',
     'caps.delete !== false',
-    'currentTaskCaps.share',
+    'Solo esa persona puede cambiar con quién se comparte',
     'currentTaskCaps.delete',
     "showErrorToast(data.error || 'No se pudo actualizar la tarea')",
     "showErrorToast(data.error || 'No se pudo eliminar la tarea')",
     "showErrorToast(data.error || 'No se pudo eliminar el archivo')",
 ]);
-assert_file_contains('tasks.php', ['id="task-danger-zone"', 'id="share-readonly-hint"']);
-assert_file_contains('assets/css/tasks.css', ['.share-selector.is-readonly', '.share-readonly-hint']);
+assert_file_contains('tasks.php', ['id="task-delete-btn"', 'id="task-meta-bar"']);
+assert_file_contains('assets/css/tasks.css', ['.task-meta-chip.is-static', '.task-modal-content [hidden]']);
 
 assert_file_not_contains('api/tasks.php', ['is_shared = 1 AND company_id = ?']);
 assert_file_not_contains('api/task-attachments.php', ['is_shared = 1 AND company_id = ?', 'SELECT * FROM task_attachments']);

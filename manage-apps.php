@@ -19,8 +19,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.0">
+    <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
 </head>
 
 <body>

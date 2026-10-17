@@ -2314,3 +2314,231 @@ Checklist extra: 11. Pasa el ratón por una tarea privada tuya → icono de pers
 - Estilos globales que hay que contrarrestar en controles compactos: `.sidebar-header` tiene `flex-direction: column` de base; `input` lleva `width:100%`, padding, borde y sombra de foco (`input:focus` y `input:hover:not(:focus)`), así que los inputs embebidos (buscador, renombrar, fecha del menú) necesitan reglas con más especificidad.
 - Elementos con `display` propio (`inline-flex`, etc.) necesitan `[hidden] { display: none; }` explícito.
 - Las funciones puras de `task-parser.js` se pueden probar desde PHP con `node -e` (shim `global.window = global`), como hace `tests/tasks-t2.php`.
+
+---
+
+# PLAN: Modal de tarea v2 — análisis y propuestas (Planner, 17 Octubre 2026)
+
+## Background and Motivation (Modal de tarea v2)
+Tras T1/T2, el usuario pide mejorar el modal de editar tarea (`#task-modal` en `tasks.php`): analizar diseño, estructura y funcionalidad y proponer mejoras. El modal de peticiones ya se rediseñó en julio (barra de propiedades a ancho completo, una columna, eliminar en el pie, pantalla completa en móvil); el de tareas sigue con el diseño antiguo de 2 columnas.
+
+## Key Challenges and Analysis (Modal de tarea v2)
+Verificado leyendo código y renderizando el modal en local (1366 px y 375 px) con una tarea propia (descripción, 2 adjuntos, compartida con 1) y una ajena.
+
+### Bugs confirmados
+1. **Móvil roto**: en ≤768 px la rejilla queda `0px 280px` (la columna principal mide 0 y todo se solapa). Causa: la regla global `.modal-body-grid { grid-template-columns: minmax(0,1fr) 280px }` del rediseño v2.4 (styles.css ~5674) va DESPUÉS de la media query responsive (~2150) y la pisa. El modal de peticiones tiene su propio arreglo por id; **"Nueva petición" (index.php) usa la misma rejilla y también está afectado**.
+2. **Token `--sp-10` inexistente**: se usa 17 veces en styles.css y no está definido en tokens.css → esas declaraciones se ignoran (padding 0 / gap 0). En el modal: los campos Aplicación y Fecha miden 19–21 px y parecen subrayados. También afecta a otras zonas (sidebar, etc.).
+3. Escape y clic fuera no cierran el modal; al abrirlo el foco se queda en `body`; sin `role="dialog"`/`aria-modal`; al cerrar se pierden cambios sin aviso.
+4. 7 estilos inline en el marcado del modal (contra la regla de CSS en hojas de estilo).
+
+### Diseño / estructura
+- Título genérico "Editar Tarea", "Guardar Cambios" y "Zona peligrosa" (bloque rojo grande para una acción secundaria); mayúsculas tipo título, a diferencia del resto ("Editar petición").
+- Columna lateral "Configuración" con selects y un selector de compartir que solo muestra iniciales ("AL"): poco legible.
+- Zona de adjuntos de 109 px de alto para una acción secundaria; adjuntos sin tamaño ni miniatura.
+- Descripción de alto fijo.
+
+### Funcionalidad que falta
+- No se puede completar/reabrir desde el modal.
+- No se ve quién la creó, cuándo, ni cuándo se completó (datos que ya devuelve la API: `created_at`, `completed_at`, `creator_name`).
+- Las tareas creadas desde una mejora solo lo dicen en texto ("Creada desde mejora #142"), sin enlace.
+- Dos formas de guardar distintas: en la tarjeta (T2) fecha/app/compartir se guardan al momento; en el modal hay que pulsar Guardar.
+
+## High-level Task Breakdown (Modal de tarea v2) — PROPUESTA, pendiente de que el usuario elija
+
+### Fase M1 — Arreglos (sin BD, bajo riesgo)
+- [ ] M1.1 Rejilla de modales en móvil: mover/duplicar la regla responsive tras el rediseño para que gane. Éxito: tarea y "Nueva petición" en 375 px a una columna, sin solapes.
+- [ ] M1.2 Definir `--sp-10: 10px` en tokens.css. Éxito: campos laterales con padding; repaso visual de sidebar/menús afectados (cambio global de espaciado, avisar).
+- [ ] M1.3 Escape y clic fuera cierran; foco al título al abrir y vuelta a la tarjeta al cerrar; `role="dialog"`, `aria-modal`, `aria-labelledby`.
+- [ ] M1.4 Quitar estilos inline del modal.
+
+### Fase M2 — Rediseño alineado con el modal de peticiones
+- [ ] M2.1 Barra de propiedades a ancho completo bajo la cabecera: casilla Completar, chip de fecha (menú Posponer), chip de app, chips de compartir (menú Compartir con), reutilizando los menús de la tarjeta y guardando al momento. Línea de metadatos: "Creada por X · 10 oct · hace 7 días" (+ "Completada el …").
+- [ ] M2.2 Cuerpo a una columna: título como encabezado editable, descripción que crece con el texto, adjuntos, y "Eliminar" discreto en el pie (sin "Zona peligrosa"). Textos en minúscula inicial.
+- [ ] M2.3 Adjuntos: zona compacta de una línea, tamaño de archivo, miniatura en imágenes, pegar capturas con Cmd/Ctrl+V y soltar archivos en cualquier parte del modal.
+- [ ] M2.4 Móvil: pantalla completa con pie fijo (como el de peticiones).
+
+### Fase M3 — Comportamiento
+- [ ] M3.1 Aviso si cierras con cambios sin guardar; Cmd/Ctrl+Enter guarda.
+- [ ] M3.2 Si la descripción contiene "Creada desde mejora #N", mostrar enlace a la mejora (provisional sin BD; la solución buena es T3.3 `source_request_id`).
+
+### Decisiones a confirmar con el usuario
+- (A) Propiedades de la barra se guardan al momento (recomendado, igual que tarjetas y modal de peticiones) o con "Guardar".
+- (B) Título/descripción: mantener "Guardar cambios" (recomendado, como en peticiones) o autoguardado.
+- (C) `--sp-10`: arreglo global (recomendado; cambia algunos espaciados fuera del modal) o solo en el modal.
+
+## Project Status Board (Modal de tarea v2)
+- [x] Usuario elige fases y responde A/B/C → todo (M1+M2+M3); A: al momento; B: mantener "Guardar cambios"; C: arreglo global de `--sp-10` (17 Oct 2026).
+- [x] M1.1 Rejilla de modales en móvil. IMPLEMENTADO.
+- [x] M1.2 `--sp-10` (+ `--primary-rgb`, `--spacing-xxl` → `--spacing-2xl` en tasks.css). IMPLEMENTADO.
+- [x] M1.3 Esc / clic fuera / foco / role=dialog. IMPLEMENTADO.
+- [x] M1.4 Sin estilos inline en el modal. IMPLEMENTADO.
+- [x] M2.1–M2.4 Barra de propiedades, una columna, adjuntos (compacto, tamaño, miniatura, pegar, soltar), pantalla completa en móvil. IMPLEMENTADO.
+- [x] M3.1–M3.2 Aviso de cambios sin guardar, Cmd/Ctrl+Enter, enlace a la mejora de origen. IMPLEMENTADO.
+- [ ] Verificación del usuario en producción (checklist abajo).
+
+## Current Status / Progress Tracking (17 Oct 2026 — Modal de tarea v2)
+Base: commits del usuario "Mejora V2" (T1+T2) y "Mejora V2.1" (T2.7). Esta ronda está sin commitear.
+- `tasks.php`: modal nuevo (`role="dialog"`, `aria-modal`, `aria-labelledby`): cabecera "Tarea #id" + enlace "Mejora #N"; barra `#task-meta-bar` (reutiliza `.request-meta-bar`); cuerpo de una columna con título como encabezado editable, descripción que crece, adjuntos con zona compacta; pie con "Eliminar" discreto, aviso "Cambios sin guardar", Cancelar y "Guardar cambios". Fuera la columna "Configuración", el selector de compartir antiguo y "Zona peligrosa".
+- `assets/js/tasks.js`: módulo "Modal de tarea": `renderTaskMetaBar()` (completar/reabrir sin cerrar, chip de fecha → menú Posponer, chip de app → menú Aplicación, chip de compartir → menú Compartir con / solo lectura para no dueños; metadatos "Creada por…", "10 oct · hace 7 días", "Completada hoy"), `getModalTask()` (mantiene sincronizada la copia del modal con la de la lista), `toggleTaskFromModal()`, `handleTaskFiles()` con progreso "Subiendo 1 de 2…", `handleTaskModalPaste()` (capturas como `captura-AAAAMMDD-HHMM.png`), soltar archivos en todo el modal, `loadTaskAttachments()` con miniatura (imágenes vía `api/file.php`) y tamaño, `requestCloseTaskModal()` + `isTaskModalDirty()`, Esc / clic en el fondo / Cmd+Enter / Tab atrapado / foco al título y vuelta al cerrar. `saveTask()` solo envía título y descripción. Eliminado el código del selector de compartir antiguo y la `escapeHtml` duplicada.
+- `assets/js/tasks-interactions.js`: `findTask()` cae a la tarea del modal; `onTasksRendered()` refresca la barra; `openShareMenu()` usa/guarda `shared_user_ids`.
+- `assets/js/task-parser.js`: `taskSourceRequestId()`, `taskRelativeDay()`.
+- CSS: `tokens.css` (`--sp-10`, `--primary-rgb`); `styles.css` (regla móvil de `.modal-body-grid` al final); `tasks.css` (bloque "Modal de tarea v2", fuera 210 líneas del selector de compartir antiguo, `--spacing-xxl` → `--spacing-2xl`).
+- Tests: NUEVO `tests/task-modal-v2.php` (funciones puras con Node, variables CSS definidas, orden de la regla móvil, contrato del modal); actualizado el contrato UI de `tests/task-access-capabilities.php` al diseño nuevo.
+- Versionado: `tokens.css?v=2.5` y `styles.css?v=5.1` (9 páginas), `tasks.css?v=3.0`, `tasks.js?v=11`, `tasks-interactions.js?v=3`, `task-parser.js?v=5` (tasks.php e index.php), caché PWA `prisma-v31`.
+
+Verificación Executor: 10/10 archivos de test OK; `node --check` y `php -l` OK; `git diff --check` limpio. En navegador local (1366 px y 375 px) con datos simulados: abrir (foco en título, role dialog, enlace `/index.php?open_request=142`); Esc sin cambios cierra; con cambios Esc y clic en el fondo preguntan; Cmd+Enter guarda solo título/descripción; fecha, app y compartir desde la barra (guardan al momento y la barra se actualiza); completar y reabrir sin cerrar ("Completada hoy", fecha pasa a solo lectura); pegar captura → `captura-20261017-1315.png`; soltar PDF; contador de adjuntos; tarea ajena sin Eliminar y compartir en solo lectura con explicación; tarea vacía con "Poner fecha" / "Sin aplicación" / "Solo yo"; Tab da la vuelta. Móvil: pantalla completa, pie fijo en una línea. "Nueva petición" en móvil vuelve a una columna. Vista global en escritorio sin roturas por `--sp-10` (iconos del menú lateral con su separación).
+Bug encontrado y corregido durante la prueba: al completar desde el modal con "Completadas" desactivado la barra mostraba fecha/app antiguas (la copia del modal no se sincronizaba) → `getModalTask()` sincroniza.
+**No verificado**: con la BD real; miniaturas reales (en local `api/file.php` necesita login); pegar desde el portapapeles real del iPhone/Mac (probado con eventos simulados).
+
+### ARCHIVOS A SUBIR (Modal v2) — sin migraciones de BD
+`tasks.php`, `assets/js/tasks.js`, `assets/js/tasks-interactions.js`, `assets/js/task-parser.js`, `assets/css/tasks.css`, `assets/css/styles.css`, `assets/css/tokens.css`, `sw.js`, `index.php`, y por el cambio de versión de CSS: `admin.php`, `ai-inbox.php`, `changelog.php`, `login.php`, `manage-apps.php`, `releases.php`, `solicitud.php`.
+
+### CHECKLIST DE PRUEBA (Modal v2)
+1. Abre una tarea: arriba "Tarea #id", la barra (Completar, fecha, app, compartir) y "Creada por… · fecha · hace N días".
+2. Cambia fecha, app y con quién se comparte desde la barra: se guarda al momento y la tarjeta de detrás cambia.
+3. Pulsa "Completar": no se cierra, pasa a "Completada" y aparece "Completada hoy". Vuelve a pulsar para reabrir.
+4. Escribe en el título o la descripción y pulsa Esc o fuera: te pregunta antes de cerrar. Cmd/Ctrl+Enter guarda.
+5. Copia una captura de pantalla y pégala con el modal abierto: se adjunta como "captura-….png". Arrastra un archivo a cualquier parte del modal.
+6. Las imágenes adjuntas se ven en miniatura y todos los archivos muestran su tamaño.
+7. En una tarea creada desde una mejora aparece "Mejora #N" en la cabecera y lleva a esa mejora.
+8. En una tarea de otra persona no aparece "Eliminar" y "Compartir" sale en solo lectura.
+9. En el móvil: el modal ocupa toda la pantalla y los botones de abajo se quedan fijos.
+10. En el móvil, "Nueva petición" (Vista global) se ve a una columna y sin campos aplastados.
+11. Echa un vistazo general al menú lateral y a los filtros de la Vista global: el arreglo de `--sp-10` añade algo de espacio que antes faltaba.
+
+## Executor's Feedback or Assistance Requests (Modal de tarea v2)
+- Hallazgo pendiente de decidir: además de `--sp-10`, hay variables CSS usadas pero nunca definidas en `styles.css`: `--bg-hover`, `--border-light`, `--font-weight-medium`, `--font-weight-semibold`, `--fw-bold`, `--sp-14`, `--success`, `--transition-fast`. Sus declaraciones se ignoran. No se han tocado (fuera del alcance aprobado). Propuesto como tarea aparte.
+- En "Nueva petición" en móvil la columna de configuración (app, prioridad…) sale antes que Título y Descripción: es la regla original (`order: -1`); no se ha cambiado.
+
+## Lessons (Modal de tarea v2)
+- Una variable CSS sin definir invalida toda la declaración (padding/gap vuelven a 0): por eso los campos laterales medían 19 px. `tests/task-modal-v2.php` comprueba que `tasks.css` solo usa variables definidas.
+- Reglas sin media query que van DESPUÉS de una media query del mismo selector la pisan: las correcciones móviles tienen que ir al final o con más especificidad.
+- `javascript_tool`/capturas justo tras abrir un modal pillan la animación `modal-pop` (se ve translúcido): esperar ~700 ms.
+
+---
+
+# PLAN: Variables CSS sin definir en styles.css (Planner, 17 Octubre 2026)
+
+## Background and Motivation (variables CSS)
+Seguimiento del modal v2: además de `--sp-10` (ya arreglado), `styles.css` usa 8 variables que nunca se han definido (comprobado también en el historial de git), así que esas declaraciones se ignoran. El usuario pide hacerlo en esta sesión.
+
+## Key Challenges and Analysis (variables CSS)
+| Variable | Valor propuesto | Dónde se nota |
+|---|---|---|
+| `--bg-hover` | `var(--ink-100)` | Fondo al pasar el ratón: botones de acción de las cards, "+ Asignar", sugerencias de @mención, lista de asignar. Hoy no hay fondo en hover. |
+| `--border-light` | `var(--ink-200)` | Admin › permisos por app: línea bajo "Marcar/Desmarcar todas", borde de cada app y el separador "\|" (hoy sin borde). Se elige ink-200 (línea estándar): ink-100 casi no se ve sobre blanco. |
+| `--font-weight-medium` | `var(--fw-medium)` (500) | Títulos de enlaces y notas de los recursos de app. En `.nav-item` no cambia nada (lo fija una regla posterior). |
+| `--font-weight-semibold` | `var(--fw-semibold)` (600) | Opción elegida en el desplegable de prioridad; título de tarjeta de nota. En `.nav-section-title` no cambia nada. |
+| `--fw-bold` | `700` | "DESDE MEJORA" en el modal "Crear tarea desde mejora". |
+| `--sp-14` | `14px` | Relleno de la caja de origen de "Crear tarea desde mejora", del desplegable "Solicitante" del modal de petición y del botón "Ver detalle" (rol usuario). Hoy salen sin relleno. |
+| `--success` | `var(--ok)` | Icono verde de "Todo al día" en el widget "Qué toca". |
+| `--transition-fast` | `var(--dur-fast) var(--ease-out)` | Transición suave al pasar por los ítems del menú lateral. |
+
+Comparativa visual antes/después hecha en local con una página temporal (`_tmp-css-vars.html`, NO subir) que carga los CSS reales y define las variables solo en la columna "Después".
+
+## High-level Task Breakdown (variables CSS)
+- [ ] V.1 Test que falle si `styles.css` usa una variable sin definir (ampliar `tests/task-modal-v2.php` o test nuevo).
+- [ ] V.2 Definir los alias en `tokens.css` (`--sp-14` y `--fw-bold` en sus escalas; el resto en el bloque LEGACY ALIASES).
+- [ ] V.3 Verificar en local (página de comparación + Vista global + tareas) y versionar `tokens.css` en todas las páginas + `sw.js`.
+
+## Project Status Board (variables CSS)
+- [x] Confirmación del usuario para aplicar el cambio visual global (17 Oct 2026: "aplica los valores propuestos para las 8 variables").
+- [x] V.1 Test `tests/css-variables.php` (falla si alguna hoja de `assets/css/` usa una variable sin definir).
+- [x] V.2 Alias en `tokens.css`: `--fw-bold: 700` y `--sp-14: 14px` en sus escalas; `--success`, `--bg-hover`, `--border-light`, `--font-weight-medium`, `--font-weight-semibold`, `--transition-fast` en LEGACY ALIASES.
+- [x] V.3 Verificado en local y versionado (`tokens.css?v=2.6` en 9 páginas, caché PWA `prisma-v32`).
+- [ ] Verificación del usuario en producción.
+
+## Current Status / Progress Tracking (17 Oct 2026 — variables CSS)
+Verificación Executor: 11/11 archivos de test OK; en la página de comparación las columnas "Antes" y "Después" quedan idénticas (las variables ya vienen de tokens.css) y cada variable resuelve a su valor (`--bg-hover` #F2F4F6, `--border-light` #E4E8EC, `--success` #3FA877, `--fw-bold` 700, `--sp-14` 14px, `--transition-fast` 120 ms ease-out). Página temporal borrada.
+Nota: las mismas variables también se usan en estilos embebidos de `admin.php`, `releases.php`, `changelog.php`, `index.php` y `admin.js`, así que esos usos también empiezan a funcionar (pesos de letra, bordes claros, transiciones). No se ha renderizado `admin.php` ni `releases.php` completos.
+Archivos a subir: los mismos 16 de la ronda "Modal v2" (sigue sin commitear); en esta ronda solo cambian otra vez `assets/css/tokens.css`, `sw.js` y la versión de CSS de las 9 páginas.
+
+## Executor's Feedback or Assistance Requests (variables CSS)
+- Encontradas otras 7 variables sin definir FUERA de las hojas de estilo (estilos inline en PHP/JS), no tocadas por estar fuera de lo aprobado: `--color-blue`, `--color-green`, `--color-red` (main.js), `--error-color` (changelog.js), `--font-weight-bold` y `--spacing-3xl` (releases.php), `--primary` (admin.php, releases.php), `--secondary` (admin.php, admin.js). Mismo síntoma: esas declaraciones se ignoran. Pendiente de decisión del usuario.
+
+---
+
+# PLAN: Variables CSS sin definir en estilos inline de PHP/JS (Planner, 17 Octubre 2026)
+
+## Background and Motivation (variables inline)
+Seguimiento de la tarea anterior: 7 variables sin definir en estilos inline/embebidos de PHP y JS (fuera de `assets/css/`). El usuario pide hacerlo en esta sesión.
+
+## Key Challenges and Analysis (variables inline)
+| Variable | Dónde | Propuesta | Efecto |
+|---|---|---|---|
+| `--primary` | admin.php (pestaña activa), releases.php (11 usos) | alias `var(--primary-color)` (#42a0d1) | **Release Planner**: la pestaña de filtro activa ("Todos 2") y el número del día de hoy en el calendario llevan texto blanco sobre un fondo que no existe → hoy son invisibles; pasan a azul. También: icono del título, "Nuevo lanzamiento", vista activa, borde de foco de campos, contorno al arrastrar un lanzamiento. **Admin**: pestaña activa en azul. |
+| `--secondary` | admin.php (insignia superadmin), admin.js (botones eliminar) | alias `var(--secondary-color)` (#ed6f66, rojo Prisma) | **Admin**: la insignia "Superadmin" (texto blanco sin fondo → invisible) pasa a degradado azul→rojo; iconos de eliminar en rojo. |
+| `--font-weight-bold` | releases.php (número de día de cada lanzamiento) | alias `var(--fw-bold)` | Número en negrita. |
+| `--spacing-3xl` | releases.php (estado vacío) | alias `var(--sp-64)` (64 px; sigue a `--spacing-2xl` = 48) | Más aire en "no hay lanzamientos". |
+| `--error-color` | changelog.js (mensaje de error) | alias `var(--danger-color)` | El error del Changelog sale en rojo (hoy en gris oscuro). |
+| `--color-blue/green/red` | main.js `createStatusDropdown()` | **quitar** | Son una propiedad `color` de la lista de estados que la plantilla nunca usa: código muerto, sin efecto visual. |
+
+Comparativa hecha en local renderizando `releases.php`, `admin.php` y `changelog.php` con datos simulados (páginas temporales `_tmp-*-render.html`, se borran al terminar) y activando los alias solo con `?after=1`.
+Visto de paso (no relacionado, existe antes y después): en el Release Planner los botones "Calendario" y "Lista" de arriba a la derecha se montan uno encima del otro en 1366 px.
+
+## High-level Task Breakdown (variables inline)
+- [x] VI.1 Test: `tests/css-variables.php` ahora revisa también `*.php`, `includes/*.php` y `assets/js/*.js` (falla hoy con las 10 referencias).
+- [x] VI.2 Alias en tokens.css (LEGACY ALIASES: `--primary`, `--secondary`, `--error-color`, `--spacing-3xl`, `--font-weight-bold`) + quitados los `color` muertos de `createStatusDropdown()` en main.js.
+- [x] VI.3 Verificado y versionado (`tokens.css?v=2.7` en 9 páginas, `main.js?v=4.9` en index.php, caché PWA `prisma-v33`).
+
+## Project Status Board (variables inline)
+- [x] Confirmación del usuario para aplicar (17 Oct 2026: "aplica los alias propuestos y quita los colores sin usar de main.js").
+- [ ] Verificación del usuario en producción.
+
+## Current Status / Progress Tracking (17 Oct 2026 — variables inline)
+Verificación Executor: 11/11 archivos de test OK (`tests/css-variables.php` ya revisa CSS, PHP y JS: 0 variables sin definir); `node --check assets/js/main.js` OK; `git diff --check` limpio. En local, renderizando las páginas reales con datos simulados y SIN estilos inyectados (solo el tokens.css real): Release Planner con filtro activo y día de hoy en azul, icono del título azul, estado vacío con 64 px y número de día en negrita; Admin con pestaña activa azul, insignia "Superadmin" con degradado azul→rojo e iconos de eliminar en rojo; error del Changelog en rojo. Páginas temporales borradas.
+Archivos a subir: los 16 de la ronda "Modal v2" (sigue sin commitear) + `assets/js/main.js` (este cambio). Vuelven a cambiar `assets/css/tokens.css`, `sw.js`, `index.php` y la versión de CSS en las 9 páginas.
+
+## Lessons (variables inline)
+- Medir colores justo después de un cambio de clase con `transition` en el panel del navegador puede dar el valor de partida: si el panel no está pintando, la transición no avanza. Forzar una captura (`zoom`/`screenshot`) y volver a medir.
+- Para comparar antes/después sin tocar el código: renderizar la página real con stubs de PHP e inyectar un `<style media="not all">` con los alias que se activa con `?after=1`.
+
+---
+
+# Release Planner: botones Calendario/Lista solapados (Executor, 17 Octubre 2026) — IMPLEMENTADO
+- **Causa**: `styles.css` (rediseño v2.4, ~5092) define `.view-toggle-btn` como botón de solo icono de 32×28 px (selector de vista de la Vista global; en Mis tareas el texto va en `<span>` oculto). `releases.php` reutiliza la clase con texto ("Calendario", "Lista") y su `<style>` embebido no anulaba ese tamaño → contenido de 62/42 px en 32 px → solape. Medido en local renderizando la página real con stubs.
+- **Arreglo** (no toca CSS compartido): en el `<style>` de `releases.php`, `.view-toggle-btn { width: auto; height: auto; ... }`. Vista global y Mis tareas no cambian.
+- **Test**: NUEVO `tests/releases-view-toggle.php` (exige el reset en releases.php y comprueba que el tamaño global de 32×28 sigue intacto). 12/12 archivos de test OK.
+- **Verificación**: escritorio 1366 px → botones de 124 y 85 px, lado a lado, "Lista" cambia de vista; móvil 375 px → en una línea, sin scroll horizontal. Caché PWA `prisma-v34`.
+- **Archivos a subir**: `releases.php`, `sw.js` (además de lo pendiente de las rondas anteriores, sin commitear).
+- **Visto de paso (no arreglado, fuera de alcance)**: el Release Planner no está adaptado a móvil: el formulario "Nuevo lanzamiento" se sale por la derecha (botón "Añadir" y "…" cortados, campo Título aplastado) y las pestañas de filtro y el calendario se cortan (faltan "Borradores", sábado y domingo).
+
+---
+
+# PLAN: Release Planner en móvil (Planner, 17 Octubre 2026)
+
+## Background and Motivation (Release Planner móvil)
+Visto al arreglar el solape de los botones Calendario/Lista: `releases.php` no tiene ninguna media query. El usuario pide hacerlo en esta sesión.
+
+## Key Challenges and Analysis (Release Planner móvil)
+Medido en local (página real con stubs + 3 lanzamientos simulados). A 768 px todo cabe; los problemas aparecen por debajo de ~640 px. A 375 px:
+- **Formulario "Nuevo lanzamiento"**: rejilla `1fr auto auto auto` → el campo Título queda en 34 px y "Añadir" / "…" se salen ~50 px por la derecha. Además lleva 2 estilos inline.
+- **Pestañas de filtro**: necesitan 416 px y hay 311 → "Borradores" cortado.
+- **Calendario**: la rejilla de 7 columnas necesita 392 px (311 disponibles) → sábado y domingo cortados; la cabecera del mes (ancho mínimo 180 px + botones + "Hoy") tampoco cabe.
+- **Vista Lista**: las tarjetas caben, pero la columna de acciones (estado + "Marcar anunciado") se monta encima del título.
+- **Modal de editar**: contenido de 431 px en 325 px (filas de 2 campos y pie con 3 botones).
+- Arrastrar lanzamientos en el calendario usa drag & drop de HTML5, que no funciona con el dedo: el calendario en móvil es de consulta.
+
+## High-level Task Breakdown (Release Planner móvil) — PROPUESTA
+Todo en el `<style>` de releases.php dentro de `@media (max-width: 640px)` (escritorio y tablet no cambian), salvo lo indicado.
+- [ ] RM.1 Formulario: Título a ancho completo; debajo, fecha + "…" + "Añadir" en una fila; campos extra a una columna. Quitar los 2 estilos inline del formulario (clases nuevas).
+- [ ] RM.2 Pestañas de filtro en dos filas si no caben (`flex-wrap`).
+- [ ] RM.3 Calendario: **recomendado** abrir la vista Lista por defecto en pantallas estrechas (si eliges Calendario, se respeta) y que el calendario tenga scroll horizontal dentro de su caja (mín. ~640 px) en vez de cortarse; cabecera del mes compacta. Alternativa: calendario compacto con puntos por día y lista del día al tocarlo (más trabajo).
+- [ ] RM.4 Tarjetas de la Lista: fecha + contenido arriba y estado + "Marcar anunciado" en una fila debajo.
+- [ ] RM.5 Modal de editar: campos a una columna y pie que se reparte en dos filas si no cabe.
+- [ ] RM.6 Test de contrato + verificación en 375 / 768 / 1366 px + versionar `sw.js`.
+
+## Project Status Board (Release Planner móvil)
+- [x] Confirmación del usuario (17 Oct 2026): "en el móvil, Lista por defecto y calendario con scroll horizontal".
+- [x] RM.1–RM.6 IMPLEMENTADO.
+- [ ] Verificación del usuario en producción (móvil real).
+
+## Current Status / Progress Tracking (17 Oct 2026 — Release Planner móvil)
+Todo en `releases.php` (sin tocar CSS compartido):
+- `@media (max-width: 640px)` al final del `<style>`: formulario a una columna (Título, Fecha, y "…" + "Añadir" a la derecha), campos extra a una columna; pestañas de filtro con `flex-wrap`; calendario con días de mín. 88 px y `overflow-x: auto` (desplazamiento lateral dentro de su caja) y cabecera compacta (el mes no se parte ni con "Septiembre 2026"); tarjetas de la Lista con estado + "Marcar anunciado" en una fila debajo; modal de editar a una columna con pie que pasa a dos filas.
+- Vista inicial: `matchMedia('(max-width: 640px)')` → Lista; si la persona pulsa Calendario o Lista se guarda en `localStorage` (`prisma_releases_view`, `chooseView()`) y se respeta en las siguientes visitas (en cualquier dispositivo).
+- Formulario: fuera los 2 estilos inline (`.quick-add-title`, `.quick-add-actions`). Arreglo colateral en todos los tamaños: "…" y "Añadir" ahora van uno al lado del otro (antes "…" quedaba encima porque `.form-group` es columna en styles.css).
+- Test NUEVO `tests/releases-mobile.php`. 13/13 archivos de test OK. Caché PWA `prisma-v35`.
+- Verificación local (página real con stubs + 3 lanzamientos): 375 px → abre Lista, sin scroll horizontal de página, formulario/pestañas/tarjetas caben, calendario desplazable (616 px en 311), modal cabe (325/325); 768 px y 1366 px → igual que antes (calendario por defecto, 7 columnas sin scroll, formulario y pestañas en una fila).
+- Nota: en el mock la fecha del modal salía vacía porque usé "AAAA-MM-DD HH:MM:SS"; en la BD `announce_at` es DATE ("AAAA-MM-DD") y funciona.
+- Archivos a subir: `releases.php`, `sw.js` (además de lo pendiente sin commitear).
