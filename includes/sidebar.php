@@ -28,6 +28,10 @@ $company_name = $user['company_name'] ?? '';
             <img src="/assets/images/logo.png" alt="" aria-hidden="true">
             <span class="sidebar-brand-text">Prisma</span>
         </a>
+        <!-- Solo en móvil: el menú va plegado para que el contenido se vea sin hacer scroll -->
+        <button type="button" class="sidebar-mobile-toggle" onclick="toggleMobileSidebar()" aria-label="Abrir menú" aria-expanded="false">
+            <i class="iconoir-menu"></i>
+        </button>
     </div>
 
     <nav class="sidebar-nav">
@@ -178,4 +182,4 @@ $company_name = $user['company_name'] ?? '';
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.5"></script>
+<script src="/assets/js/sidebar.js?v=1.7"></script>

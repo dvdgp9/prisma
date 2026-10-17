@@ -57,20 +57,13 @@ switch ($type) {
         break;
 
     case 'task':
-        // Access if owner, a shared task in the user's company, or shared directly with the user.
-        $stmt = $db->prepare("
-            SELECT ta.original_filename, ta.file_path, ta.mime_type
-            FROM task_attachments ta
-            JOIN tasks t ON ta.task_id = t.id
-            WHERE ta.id = :aid
-              AND (
-                    t.user_id = :uid
-                 OR (t.is_shared = 1 AND t.company_id = :cid)
-                 OR EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = :uid2)
-              )
-        ");
-        $stmt->execute([':aid' => $id, ':uid' => $user['id'], ':cid' => $user['company_id'], ':uid2' => $user['id']]);
-        $file = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Same rule as the tasks API: owner, team-shared in the user's company, or shared directly.
+        $stmt = $db->prepare("SELECT original_filename, file_path, mime_type, task_id FROM task_attachments WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && get_task_access($row['task_id'])) {
+            $file = $row;
+        }
         break;
 
     case 'appfile':

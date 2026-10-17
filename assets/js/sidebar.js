@@ -156,6 +156,71 @@ function escapeHtml(text) {
 }
 
 // ===================
+// Menú plegable en móvil (shared across all pages)
+// ===================
+
+function toggleMobileSidebar(force) {
+    const sidebar = document.querySelector('.sidebar');
+    const button = sidebar && sidebar.querySelector('.sidebar-mobile-toggle');
+    if (!button) return;
+
+    const open = sidebar.classList.toggle('is-mobile-open', force);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    button.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    button.querySelector('i').className = open ? 'iconoir-xmark' : 'iconoir-menu';
+}
+
+// Al elegir un destino del menú en móvil, se pliega de nuevo.
+document.addEventListener('click', (e) => {
+    const sidebar = document.querySelector('.sidebar.is-mobile-open');
+    if (sidebar && e.target.closest('.sidebar-nav a')) toggleMobileSidebar(false);
+});
+
+// ===================
+// Mis tareas: contador de vencidas + hoy (shared across all pages)
+// ===================
+
+// Cuenta tareas pendientes vencidas y para hoy, en horario local.
+function countTasksDue(tasks, localToday) {
+    const counts = { overdue: 0, today: 0 };
+    (tasks || []).forEach(task => {
+        if (task.is_completed == 1 || !task.due_date) return;
+        const [y, m, d] = task.due_date.split('-').map(Number);
+        const diff = Math.round((new Date(y, m - 1, d) - localToday) / (1000 * 60 * 60 * 24));
+        if (diff < 0) counts.overdue++;
+        else if (diff === 0) counts.today++;
+    });
+    return counts;
+}
+
+async function loadTasksCount() {
+    const badge = document.getElementById('tasks-count');
+    if (!badge) return;
+
+    try {
+        const response = await fetch('/api/tasks.php?completed=0&shared=0');
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Error loading tasks count', response.status, data.error);
+            return;
+        }
+
+        const now = new Date();
+        const counts = countTasksDue(data.data, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+        const total = counts.overdue + counts.today;
+
+        badge.hidden = total === 0;
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.classList.toggle('nav-count--accent', counts.overdue > 0);
+        badge.title = `${counts.overdue} ${counts.overdue === 1 ? 'vencida' : 'vencidas'} · ${counts.today} para hoy`;
+    } catch (error) {
+        console.error('Error loading tasks count:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadTasksCount);
+
+// ===================
 // Inbox / Notifications (shared across all pages)
 // ===================
 

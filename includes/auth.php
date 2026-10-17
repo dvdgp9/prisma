@@ -653,6 +653,101 @@ function require_request_capability($request_id, $capability)
 }
 
 /**
+ * Capabilities over a quick task. Owners manage everything; people the task is
+ * shared with (whole team or individually) can work on it but cannot delete it
+ * or change who it is shared with.
+ */
+function task_capabilities_for_access($is_owner, $is_shared_with_user)
+{
+    $can_work = $is_owner || $is_shared_with_user;
+
+    return [
+        'view' => (bool) $can_work,
+        'edit' => (bool) $can_work,
+        'complete' => (bool) $can_work,
+        'attach' => (bool) $can_work,
+        'delete' => (bool) $is_owner,
+        'share' => (bool) $is_owner
+    ];
+}
+
+/**
+ * Resolve a task and the current user's capabilities over it.
+ *
+ * Returns false when the task does not exist or the user cannot see it, so
+ * callers answer 404 without revealing that the ID exists. An optional PDO
+ * connection keeps authorization tests isolated from the real database.
+ */
+function get_task_access($task_id, $db = null)
+{
+    $task_id = filter_var($task_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $user = get_logged_user();
+    if ($task_id === false || !$user) {
+        return false;
+    }
+
+    $db = $db ?: getDB();
+    $stmt = $db->prepare("
+        SELECT t.*,
+               EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = ?) AS shared_with_user
+        FROM tasks t
+        WHERE t.id = ?
+    ");
+    $stmt->execute([$user['id'], $task_id]);
+    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$task) {
+        return false;
+    }
+
+    $is_owner = (int) $task['user_id'] === (int) $user['id'];
+    $is_team_shared = (int) $task['is_shared'] === 1 && (int) $task['company_id'] === (int) $user['company_id'];
+    $is_shared_with_user = $is_team_shared || (int) $task['shared_with_user'] === 1;
+    unset($task['shared_with_user']);
+
+    $capabilities = task_capabilities_for_access($is_owner, $is_shared_with_user);
+    if (!$capabilities['view']) {
+        return false;
+    }
+
+    return ['task' => $task, 'capabilities' => $capabilities];
+}
+
+/**
+ * Capability a task update needs, based on which fields it changes.
+ */
+function task_capability_for_update($input)
+{
+    if (array_key_exists('is_shared', $input)) {
+        return 'share';
+    }
+
+    $changedFields = array_diff(array_keys($input), ['id', 'is_completed']);
+    return empty($changedFields) ? 'complete' : 'edit';
+}
+
+/**
+ * Require one task capability; returns the resolved task and capabilities.
+ */
+function require_task_capability($task_id, $capability)
+{
+    if (!in_array($capability, ['view', 'edit', 'complete', 'attach', 'delete', 'share'], true)) {
+        error_response('Invalid task capability', 500);
+    }
+
+    $access = get_task_access($task_id);
+    if ($access === false) {
+        error_response('Tarea no encontrada', 404);
+    }
+
+    if (!$access['capabilities'][$capability]) {
+        error_response('No tienes permiso para esta acción en la tarea', 403);
+    }
+
+    return $access;
+}
+
+/**
  * Check if user can access a specific company
  */
 function can_access_company($company_id)

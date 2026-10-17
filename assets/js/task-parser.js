@@ -234,7 +234,31 @@
         return capitalizeFirstLetter(cleaned);
     }
 
+    // Fechas de los atajos de "Posponer" a partir de un día local.
+    // "Próximo lunes" nunca es hoy: si hoy es lunes, es el de la semana siguiente.
+    function taskDateShortcuts(today) {
+        const base = localDate(today.getFullYear(), today.getMonth(), today.getDate());
+        const daysToMonday = ((8 - base.getDay()) % 7) || 7;
+        return {
+            today: toISO(base),
+            tomorrow: toISO(addDays(base, 1)),
+            nextMonday: toISO(addDays(base, daysToMonday)),
+            nextWeek: toISO(addDays(base, 7))
+        };
+    }
+
+    // Búsqueda tolerante (sin acentos ni mayúsculas) en título, descripción y app.
+    // Todas las palabras de la búsqueda tienen que aparecer.
+    function matchesTaskSearch(task, query) {
+        const words = normalize(query).split(/\s+/).filter(Boolean);
+        if (words.length === 0) return true;
+        const haystack = normalize([task.title, task.description, task.app_name].filter(Boolean).join(' '));
+        return words.every(word => haystack.indexOf(word) !== -1);
+    }
+
     global.parseQuickTask = parseQuickTask;
     global.stripQuickMatch = stripMatch;
     global.normalizeRequestTitleForTask = normalizeRequestTitleForTask;
+    global.taskDateShortcuts = taskDateShortcuts;
+    global.matchesTaskSearch = matchesTaskSearch;
 })(window);

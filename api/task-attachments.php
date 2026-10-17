@@ -16,18 +16,20 @@ $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
         // Get attachments for a task
-        $taskId = $_GET['task_id'] ?? null;
-        
-        if (!$taskId) {
+        if (empty($_GET['task_id'])) {
             error_response('Task ID is required');
         }
-        
+
+        $access = require_task_capability($_GET['task_id'], 'view');
+
+        // No file_path: files are served through api/file.php with a permission check.
         $stmt = $db->prepare("
-            SELECT * FROM task_attachments 
+            SELECT id, task_id, original_filename, file_size, mime_type, created_at
+            FROM task_attachments
             WHERE task_id = ?
             ORDER BY created_at DESC
         ");
-        $stmt->execute([$taskId]);
+        $stmt->execute([$access['task']['id']]);
         $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         success_response($attachments);
@@ -39,15 +41,9 @@ switch ($method) {
             error_response('Task ID is required');
         }
         
-        $taskId = $_POST['task_id'];
-        
-        // Verify task exists and user has access
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND (user_id = ? OR (is_shared = 1 AND company_id = ?))");
-        $stmt->execute([$taskId, $user['id'], $user['company_id']]);
-        if (!$stmt->fetch()) {
-            error_response('Task not found', 404);
-        }
-        
+        $access = require_task_capability($_POST['task_id'], 'attach');
+        $taskId = $access['task']['id'];
+
         if (empty($_FILES['file'])) {
             error_response('No file uploaded');
         }
@@ -126,20 +122,17 @@ switch ($method) {
             error_response('Attachment ID required');
         }
         
-        // Get attachment and verify ownership
-        $stmt = $db->prepare("
-            SELECT ta.*, t.user_id 
-            FROM task_attachments ta
-            JOIN tasks t ON ta.task_id = t.id
-            WHERE ta.id = ?
-        ");
+        $stmt = $db->prepare("SELECT id, task_id, file_path FROM task_attachments WHERE id = ?");
         $stmt->execute([$input['id']]);
         $attachment = $stmt->fetch();
-        
-        if (!$attachment || $attachment['user_id'] != $user['id']) {
+
+        if (!$attachment) {
             error_response('No encontrado o sin permiso', 404);
         }
-        
+
+        // Removing files stays owner-only, as before
+        require_task_capability($attachment['task_id'], 'delete');
+
         // Delete file
         $filePath = __DIR__ . '/../' . $attachment['file_path'];
         if (file_exists($filePath)) {

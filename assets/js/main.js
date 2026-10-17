@@ -1783,6 +1783,7 @@ async function createTaskFromRequest() {
         if (typeof loadTasksWidget === 'function') {
             loadTasksWidget();
         }
+        if (typeof loadTasksCount === 'function') loadTasksCount();
     } catch (error) {
         console.error('Error creating task from request:', error);
         if (errorBox) {
@@ -3013,6 +3014,8 @@ async function submitFloatingTask() {
                 message: detected.length ? `${title} · ${detected.join(' · ')}` : title,
                 icon: 'iconoir-check'
             }, 'toast-completed');
+            if (typeof loadTasksWidget === 'function') loadTasksWidget();
+            if (typeof loadTasksCount === 'function') loadTasksCount();
         } else {
             showToast({
                 title: 'Error',

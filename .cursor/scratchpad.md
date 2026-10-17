@@ -2106,3 +2106,197 @@ Si producto exige mostrar también miembros sin ninguna petición asignada, habr
 - Los chips de asignación de esta solicitud pertenecen a peticiones/mejoras de la Vista global, no a las tareas rápidas de `tasks.php`.
 - El dataset ya autorizado de `api/requests.php` contiene `assignments[]`; derivar de ahí las opciones evita ampliar el endpoint general de usuarios y se adapta automáticamente al scope global o de aplicación.
 - El usuario autorizó explícitamente continuar esta mejora interna sin consulta `@web`.
+
+---
+
+# PLAN: Mis Tareas v2 — propuestas de mejora (Planner, 15 Octubre 2026)
+
+## Background and Motivation (Mis Tareas v2)
+El usuario quiere que "Mis tareas" sea mejor y pide propuestas. Ya existen: creación rápida con parser NLP (fecha/@app), vista Agenda por buckets + Lista, widget "Qué toca" en la home, crear tarea desde mejora, compartir con equipo/personas, adjuntos. Decisión previa vigente (19 Jun 2026): **no añadir campo de prioridad**.
+
+## Key Challenges and Analysis (Mis Tareas v2)
+Diagnóstico verificado leyendo código y renderizando `tasks.php` en local con datos simulados (escritorio 1366px y móvil 375px).
+
+### Bugs confirmados en código
+1. `openTaskModal()` (`assets/js/tasks.js:537`) pide `/api/tasks.php?` sin parámetros → la API solo devuelve pendientes propias → **no se pueden abrir tareas completadas ni del equipo** (el clic no hace nada, sin error).
+2. `PUT api/tasks.php` (línea ~107) solo permite dueño o `is_shared=1` → quien recibe una tarea compartida **con personas concretas** (`task_shares`) la ve pero **no puede completarla ni editarla** (404 silencioso).
+3. La papelera se muestra en tareas ajenas pero `DELETE` exige ser dueño → falla en silencio. `toggleTask`/`deleteTaskDirect` no muestran toast de error.
+4. **Seguridad**: `GET api/task-attachments.php?task_id=` y `GET api/task-shares.php?task_id=` no comprueban acceso. Cualquier usuario logueado puede listar adjuntos de cualquier tarea (incluido `file_path`, servido públicamente en `/uploads/tasks/`), también de otras empresas.
+5. El badge `#tasks-count` del sidebar (`includes/sidebar.php:51`) existe pero ningún JS lo rellena.
+
+### Fricciones UX observadas
+- Densidad baja: ~50px por tarea; con 8 tareas no cabe la agenda en una pantalla.
+- Completar: recarga toda la lista, sin animación ni "Deshacer".
+- Sin forma rápida de posponer (hay que abrir modal → date picker). Las vencidas se acumulan.
+- Sin edición inline (título/fecha/app solo vía modal), sin búsqueda, sin atajos de teclado.
+- "Completadas" carga todo el histórico sin límite.
+- En tareas del equipo no se ve quién la creó (`creator_name` ya viene en la API).
+- Móvil/PWA: el sidebar se apila arriba y ocupa ~1 pantalla antes de ver las tareas (comportamiento global de `styles.css` en ≤768px).
+
+### Deuda técnica
+- `openTaskModal` descarga todas las tareas para buscar una (falta `GET ?id=`).
+- `escapeHtml` duplicada en `tasks.js`; estilos inline en `tasks.php` (contra la regla "CSS en hojas de estilo"); `confirm()` nativo.
+- `app_id` no se valida contra las apps del usuario en POST/PUT.
+- La tabla `tasks` no está en `schema.sql`.
+
+## High-level Task Breakdown (Mis Tareas v2) — PROPUESTA, pendiente de que el usuario elija
+
+### Fase T1 — Arreglos (sin BD)
+- [ ] T1.1 Endpoint `GET api/tasks.php?id=` con control de acceso (dueño / `is_shared` / `task_shares`) y `openTaskModal` usándolo. Éxito: se abren completadas y del equipo.
+- [ ] T1.2 Unificar regla de acceso (helper) en PUT y en GET de adjuntos/shares. Éxito: destinatario individual puede completar/editar; usuario ajeno recibe 404 en adjuntos/shares.
+- [ ] T1.3 Ocultar papelera/compartir en tareas ajenas + toasts de error en toggle/delete.
+- [ ] T1.4 Rellenar `#tasks-count` (vencidas + hoy) en todas las páginas.
+
+### Fase T2 — Fluidez diaria (sin BD)
+- [ ] T2.1 Completar optimista con animación + toast "Deshacer".
+- [ ] T2.2 Posponer rápido (Mañana / Próx. lunes / Elegir fecha) por tarea + "Mover vencidas a hoy" en la cabecera de Vencidas.
+- [ ] T2.3 Edición inline de título y chips de fecha/app clicables.
+- [ ] T2.4 Búsqueda en cliente + atajos de teclado (`/`, `n`, `j/k`, `x`, `e`).
+- [ ] T2.5 Densidad compacta, creador visible en tareas del equipo, completadas limitadas a 7 días + "Hechas hoy: N".
+- [ ] T2.6 Móvil: menú colapsable del sidebar y swipe para completar/posponer.
+
+### Fase T3 — Funcionalidad nueva (requiere migración que ejecuta el usuario)
+- [ ] T3.1 Tareas recurrentes (diaria/semanal/mensual); al completar se crea la siguiente. Parser: "cada lunes", "cada mes".
+- [ ] T3.2 Checklist/subtareas dentro de la tarea (patrón de `request_checklist_items`).
+- [ ] T3.3 Vínculo real tarea ↔ mejora (`tasks.source_request_id`) con enlace en ambos sentidos.
+- [ ] T3.4 Avisos: notificación in-app al compartir/asignar; opcional resumen diario por email o push PWA.
+- [ ] T3.5 "Mi día" / orden manual como alternativa a prioridad (respeta la decisión de no tener campo prioridad).
+
+Recomendación Planner: T1 completa primero (bugs + seguridad, bajo riesgo), luego T2.1 + T2.2 + T2.3 (mayor impacto diario), luego decidir T3.
+
+## Project Status Board (Mis Tareas v2)
+- [x] Usuario elige qué fases/puntos ejecutar → Fase T1, en modo Executor, paso a paso (15 Oct 2026).
+- [x] T1.1 Helper de acceso + `GET api/tasks.php?id=` + modal por id. IMPLEMENTADO, pendiente de verificación del usuario.
+- [x] T1.2 Aplicar el helper en PUT/DELETE de tareas y en GET/POST/DELETE de adjuntos y shares. IMPLEMENTADO, pendiente de verificación del usuario. (Regla de permisos aprobada por el usuario el 17 Oct 2026.)
+- [x] T1.3 UI según capacidades (ocultar papelera/compartir en ajenas) + toasts de error. IMPLEMENTADO, pendiente de verificación del usuario. (Usuario confirma 17 Oct 2026: borrar adjuntos sigue siendo solo del dueño.)
+- [x] T1.4 Rellenar `#tasks-count` del sidebar. IMPLEMENTADO, pendiente de verificación del usuario.
+- [ ] Verificación del usuario en producción de T1.1–T1.4 (checklist abajo). (17 Oct: el usuario pide hacer T2 antes y probarlo todo junto.)
+- [x] T2.1 Completar con animación + "Deshacer". IMPLEMENTADO, pendiente de verificación del usuario.
+- [x] T2.2 Posponer rápido + "Pasar todo a hoy" en Vencidas. IMPLEMENTADO, pendiente de verificación.
+- [x] T2.3 Renombrar con doble clic + chips de fecha y app clicables. IMPLEMENTADO, pendiente de verificación.
+- [x] T2.4 Buscador + atajos de teclado. IMPLEMENTADO, pendiente de verificación.
+- [x] T2.5 Tarjetas compactas, creador visible, completadas de 7 días + "Ver todas", "N hechas hoy". IMPLEMENTADO, pendiente de verificación.
+- [x] T2.6 Móvil: menú lateral plegable (todas las páginas) + deslizar para completar/posponer. IMPLEMENTADO, pendiente de verificación.
+- [ ] Verificación del usuario en producción de T1 + T2 (checklist "T1+T2" abajo). Tras OK, el Planner cierra T1 y T2 y se decide T3.
+
+## Current Status / Progress Tracking (15 Oct 2026 — T1.1)
+**T1.1 IMPLEMENTADA.** Archivos:
+- `includes/auth.php`: nuevas funciones (no se modifica nada existente) `task_capabilities_for_access($is_owner, $is_shared_with_user)` (pura), `get_task_access($task_id, $db = null)` y `require_task_capability($task_id, $capability)`. Capacidades: `view`, `edit`, `complete`, `attach` (dueño o compartida con el usuario: equipo de su empresa o `task_shares`), `delete` y `share` (solo dueño). Si no hay acceso devuelve false → 404 sin revelar que la tarea existe.
+- `api/tasks.php`: GET con `?id=` devuelve una tarea (completada o compartida incluida) + `capabilities`. El SELECT se comparte con el listado (`$taskSelect`), sin cambios en el listado.
+- `assets/js/tasks.js`: `openTaskModal()` usa `/api/tasks.php?id=`; si falla muestra toast y log de depuración (id, status, error) en vez de no hacer nada.
+- `tests/task-access-capabilities.php` (NUEVO, SQLite en memoria, no toca la BD real).
+- Versionado: `tasks.js?v=6` en `tasks.php`, caché PWA `prisma-v26`.
+
+Verificación Executor: test nuevo 15/15 PASS; los 6 tests existentes siguen pasando; `php -l` (api/tasks.php, includes/auth.php) y `node --check` OK; `git diff --check` limpio. En navegador local (render temporal de `tasks.php` con fetch simulado, ya borrado): clic en tarea completada abre el modal con título/descr./app correctos; id inexistente → toast "Tarea no encontrada" y modal cerrado. Sin errores de consola salvo el log intencionado del caso 404.
+**No verificado**: la consulta contra MySQL real (no hay BD local); la lógica de acceso sí está cubierta por el test.
+
+Archivos a subir: `includes/auth.php`, `api/tasks.php`, `assets/js/tasks.js`, `tasks.php`, `sw.js`.
+
+## Current Status / Progress Tracking (17 Oct 2026 — T1.2)
+**T1.2 IMPLEMENTADA.** Todas las comprobaciones de acceso a tareas pasan por `require_task_capability()` / `get_task_access()`:
+- `includes/auth.php`: nueva `task_capability_for_update($input)` → `share` si cambia `is_shared`, `complete` si solo cambia `is_completed`, `edit` en el resto.
+- `api/tasks.php`: PUT exige esa capacidad (el destinatario individual ya puede completar/editar); DELETE exige `delete` (solo dueño).
+- `api/task-attachments.php`: GET exige `view` y ya NO devuelve `file_path`/`filename` (la ruta pública de `/uploads/`); POST exige `attach`; DELETE exige `delete` (solo dueño, como antes).
+- `api/task-shares.php`: GET `?task_id=` exige `view`; POST y DELETE exigen `share` (solo dueño).
+- `api/file.php` (tipo `task`): usa `get_task_access()` en vez de su propia consulta (misma regla, una sola fuente de verdad).
+- Sin cambios de JS/CSS → no hace falta subir versión de assets ni caché PWA.
+
+Verificación Executor: `tests/task-access-capabilities.php` 35/35 PASS (incluye guardias por endpoint y ausencia de las consultas antiguas); los 6 tests existentes siguen pasando; `php -l` OK en los 5 PHP tocados; `git diff --check` limpio. No hay verificación en navegador: es solo backend y no hay BD local.
+**No verificado**: comportamiento real contra MySQL de producción.
+
+Archivos a subir (T1.2): `includes/auth.php`, `api/tasks.php`, `api/task-attachments.php`, `api/task-shares.php`, `api/file.php`. (Si aún no se subió T1.1: además `assets/js/tasks.js`, `tasks.php`, `sw.js`.)
+
+## Current Status / Progress Tracking (17 Oct 2026 — T1.3)
+**T1.3 IMPLEMENTADA.** La pantalla muestra solo lo que el usuario puede hacer y avisa cuando algo falla:
+- `api/tasks.php`: el listado añade `capabilities` a cada tarea (dueño → todo; no dueño → la consulta ya garantiza que se la han compartido).
+- `assets/js/tasks.js`:
+  - Tarjeta sin papelera si `capabilities.delete === false` (si la API no manda capacidades, se mantiene el comportamiento anterior).
+  - Modal: `currentTaskCaps` + `applyTaskModalPermissions()` → oculta "Zona peligrosa" (`#task-danger-zone`), selector de compartir en solo lectura (`.is-readonly`, no abre el desplegable), estado "Compartida contigo" y aviso "Creada por X. Solo esa persona puede cambiar con quién se comparte." Papelera de adjuntos oculta sin permiso de borrar.
+  - `saveTask()` ya no intenta guardar el compartir si no eres dueño; si el dueño guarda y el compartir falla, lo avisa.
+  - Nueva `showErrorToast()` (escapa el texto). Avisos de error con log de depuración (id, status, error) en cargar, completar, guardar, borrar tarea y borrar adjunto; antes fallaban en silencio.
+- `tasks.php`: ids `task-danger-zone` y `share-readonly-hint`. `assets/css/tasks.css`: `.share-selector.is-readonly`, `.share-readonly-hint`.
+- Versionado: `tasks.css?v=2.7`, `tasks.js?v=7`, caché PWA `prisma-v27`.
+
+Verificación Executor: test 46/46 PASS (incluye contrato de UI); 6 tests existentes OK; `php -l` + `node --check` + `git diff --check` OK. En navegador local con fetch simulado (dos tareas: propia y compartida por otra persona): propia con papelera, ajena sin ella; modal de ajena sin zona peligrosa, compartir bloqueado con aviso, sin papelera en adjuntos, y al guardar solo se llama a PUT (no a task-shares); modal propia con todo visible; completar con 403 simulado → toast "No tienes permiso para esta acción en la tarea". Consola sin errores salvo el log intencionado del 403.
+
+Archivos a subir (T1.3): `api/tasks.php`, `assets/js/tasks.js`, `assets/css/tasks.css`, `tasks.php`, `sw.js`.
+**Acumulado T1.1–T1.3 sin subir aún**: `includes/auth.php`, `api/tasks.php`, `api/task-attachments.php`, `api/task-shares.php`, `api/file.php`, `assets/js/tasks.js`, `assets/css/tasks.css`, `tasks.php`, `sw.js`. (`tests/` es opcional.)
+
+## Current Status / Progress Tracking (17 Oct 2026 — T1.4 + cierre Executor de la Fase T1)
+**T1.4 IMPLEMENTADA.** El usuario pidió terminar lo que faltaba de T1 y probarlo todo junto después.
+- `assets/js/sidebar.js` (se carga en todas las páginas): `countTasksDue()` (pura) + `loadTasksCount()` en `DOMContentLoaded`. Pide `/api/tasks.php?completed=0&shared=0` (solo tareas propias, igual que el widget "Qué toca") y muestra vencidas + hoy en `#tasks-count`; en rojo (`nav-count--accent`) si hay vencidas; tooltip "N vencidas · N para hoy"; oculto si es 0.
+- `assets/js/tasks.js`: refresca el contador tras cada recarga de la lista (crear/completar/borrar/guardar).
+- `assets/js/main.js`: refresca el contador al crear tarea desde una mejora y desde el botón flotante; el botón flotante ahora también refresca el widget "Qué toca" (antes no lo hacía).
+- `tests/tasks-sidebar-count.php` (NUEVO, contrato).
+- Versionado: `sidebar.js?v=1.6` (includes/sidebar.php), `main.js?v=4.8` (index.php), `tasks.js?v=8` (tasks.php), caché PWA `prisma-v28`.
+
+Verificación Executor: 8/8 tests OK; `node --check` (sidebar.js, tasks.js, main.js) y `php -l` OK; `git diff --check` limpio. En navegador local con fetch simulado: 2 vencidas + 1 hoy → "3" en rojo; al completar las vencidas → "1" sin rojo; al completar todo → oculto; al reabrir una vencida → "1" en rojo. En la propia página de tareas el número sale en color neutro porque el estilo del ítem activo del menú tiene prioridad (igual que otros contadores); en el resto de páginas sale en rojo (comprobado por estilo calculado).
+
+### ARCHIVOS A SUBIR (acumulado T1.1–T1.4) — sin migraciones de BD
+`includes/auth.php`, `includes/sidebar.php`, `api/tasks.php`, `api/task-attachments.php`, `api/task-shares.php`, `api/file.php`, `assets/js/tasks.js`, `assets/js/sidebar.js`, `assets/js/main.js`, `assets/css/tasks.css`, `tasks.php`, `index.php`, `sw.js`. (`tests/` no hace falta subirlo.)
+
+### CHECKLIST DE PRUEBA DEL USUARIO (tras subir y refrescar la PWA)
+1. Activa "Completadas" y pulsa una tarea hecha → se abre el editor con sus datos.
+2. Activa "Del equipo" y pulsa una tarea de un compañero → se abre; no hay papelera ni "Zona peligrosa"; "Compartir" sale bloqueado con "Creada por X…".
+3. Con una tarea que te hayan compartido individualmente: puedes marcarla como hecha y guardar cambios.
+4. Tus tareas siguen igual: puedes editarlas, compartirlas, borrarlas y borrar adjuntos.
+5. Los adjuntos se siguen viendo y descargando desde el editor.
+6. El menú lateral muestra junto a "Mis tareas" el número de vencidas + hoy (rojo si hay vencidas, en otras páginas); cambia al completar una.
+7. Crear una tarea desde el botón flotante de la home actualiza el número.
+
+## Current Status / Progress Tracking (17 Oct 2026 — Fase T2 completa)
+**T2 IMPLEMENTADA ENTERA** a petición del usuario ("sigue con la T2 y luego hago pruebas"). Sin migraciones de BD.
+- `assets/js/task-parser.js`: nuevas funciones puras `taskDateShortcuts(today)` (hoy / mañana / próximo lunes, que nunca es hoy / en una semana) y `matchesTaskSearch(task, query)` (sin acentos ni mayúsculas; título, descripción y app; todas las palabras).
+- `api/tasks.php`: `?summary=1` → `{completed_today}` (propias, completadas desde `CURDATE()` del servidor); `completed_days=N` limita las completadas a los últimos N días; completadas ordenadas por `completed_at` desc.
+- `assets/js/tasks.js`:
+  - `completeTaskWithUndo()`: animación (`.is-completing`, 320 ms, respeta reduced-motion) + aviso "Tarea completada · Deshacer" (6 s). `putTask()` como helper común de PUT con aviso de error.
+  - `showToast()` admite `action {label, onClick}` y `duration`.
+  - Tarjeta: chip de fecha y de app son botones (abren menú), botón "Posponer", doble clic en título para renombrar, creador visible en tareas ajenas, fila de meta solo si hay contenido.
+  - Buscador (`setupSearch`, Escape lo vacía), estado "Ninguna tarea coincide…", "N hechas hoy" (`loadTasksSummary`), completadas de 7 días con pie "Ver todas" (`showAllCompleted`).
+  - Agenda: botón "Pasar todo a hoy" en la cabecera de Vencidas.
+- `assets/js/tasks-interactions.js` (NUEVO): menú flotante genérico (`openTaskMenu`, teclado ↑/↓/Escape, se cierra al hacer clic fuera o scroll), `openPostponeMenu` + `setTaskDueDate` (optimista, revierte si falla, "Deshacer"), `moveOverdueToToday` (con "Deshacer"), `openAppMenu` + `setTaskApp`, renombrar en línea (Enter guarda, Escape cancela, al salir guarda), atajos (`/` buscar, `n` nueva, `j`/`k` moverse, flechas si ya hay una seleccionada, `x` completar, `p` posponer, `r` renombrar, `e`/Enter abrir, Escape quitar selección), deslizar en táctil (derecha completa, izquierda abre posponer; se ignora el clic sintético posterior).
+- `tasks.php`: buscador, píldora "hechas hoy", pista de atajos (oculta en móvil/táctil), carga de `tasks-interactions.js`.
+- `assets/css/tasks.css`: bloque "Mis tareas v2 (T2)".
+- **Cambio global**: `includes/sidebar.php` + `assets/css/styles.css` + `assets/js/sidebar.js`: en ≤768 px el menú lateral va plegado (logo + botón ☰) en TODAS las páginas; se despliega con el botón y se pliega al elegir un enlace. En escritorio no cambia nada.
+- Versionado: `styles.css?v=5.0` (9 páginas), `tasks.css?v=2.8`, `tasks.js?v=9`, `tasks-interactions.js?v=1`, `task-parser.js?v=4` (tasks.php e index.php), `sidebar.js?v=1.7`, caché PWA `prisma-v29`.
+
+Verificación Executor: 9/9 archivos de test OK (nuevo `tests/tasks-t2.php`: funciones puras ejecutadas con Node + contrato de cada pieza); `node --check` y `php -l` OK; `git diff --check` limpio. En navegador local con fetch simulado con estado (escritorio 1366 px y móvil 375 px): posponer a mañana y deshacer; "Pasar todo a hoy" y deshacer; completar con animación, "hechas hoy" 1→2 y deshacer (vuelve a 1); un clic en el título abre el editor y el doble clic renombra sin abrirlo; cambio de app desde el chip; búsqueda "factura" (2 resultados), sin resultados y Escape; completadas de 7 días + "Ver todas"; atajos j/j/p/Escape/e; menú lateral móvil plegado/abierto; deslizar derecha completa, izquierda abre posponer, toque corto abre la tarea. Ajustes hechos durante la prueba: cabecera que partía el subtítulo (buscador a 180 px, título sin encoger) y botón ☰ que quedaba bajo el logo (`flex-direction: row`).
+**No verificado**: con la BD real; deslizar con un dedo real en iPhone (probado con eventos simulados).
+
+### ARCHIVOS A SUBIR (acumulado T1 + T2) — sin migraciones de BD
+`includes/auth.php`, `includes/sidebar.php`, `api/tasks.php`, `api/task-attachments.php`, `api/task-shares.php`, `api/file.php`, `assets/js/tasks.js`, `assets/js/tasks-interactions.js` (NUEVO), `assets/js/sidebar.js`, `assets/js/main.js`, `assets/js/task-parser.js`, `assets/css/tasks.css`, `assets/css/styles.css`, `tasks.php`, `index.php`, `sw.js`, y por el cambio de versión de `styles.css`: `admin.php`, `ai-inbox.php`, `changelog.php`, `login.php`, `manage-apps.php`, `releases.php`, `solicitud.php`. (`tests/` no hace falta subirlo.)
+
+### CHECKLIST DE PRUEBA T2 (además de la de T1)
+1. Marca una tarea como hecha: se tacha y desaparece; sale "Tarea completada · Deshacer" y el "N hechas hoy" sube. Deshacer la devuelve.
+2. Botón de reloj (o pulsar la fecha) en una tarea → Mañana / Próximo lunes / En una semana / Elegir fecha / Quitar fecha. Cambia al instante y se puede deshacer.
+3. Con vencidas: "Pasar todo a hoy" en su cabecera → pasan a Hoy; Deshacer las devuelve.
+4. Doble clic en un título → se edita ahí mismo; Enter guarda, Escape cancela. Un clic normal sigue abriendo el editor.
+5. Pulsar el nombre de la app de una tarea → elegir otra o "Sin aplicación".
+6. Buscador: escribe parte de un título (sin importar tildes); Escape lo vacía.
+7. Atajos en escritorio: `/`, `n`, `j`/`k`, `x`, `p`, `r`, `e`.
+8. "Completadas": muestra solo la última semana; "Ver todas" carga el resto.
+9. En tareas del equipo se ve quién la creó.
+10. En el móvil: el menú lateral sale plegado (☰) en todas las páginas; las tareas se ven sin hacer scroll. Desliza una tarea a la derecha para completarla y a la izquierda para posponerla.
+
+## Executor's Feedback or Assistance Requests (Mis Tareas v2)
+- Aviso al Planner: `includes/auth.php` es central; solo se han AÑADIDO funciones nuevas al final del bloque de capacidades de peticiones, nada existente cambia.
+- Decisión aplicada (mantiene el comportamiento previo de "compartida con todo el equipo" y lo extiende a compartidas individualmente): quien recibe una tarea compartida puede verla, editarla, completarla y adjuntar; solo el dueño puede borrarla o cambiar con quién se comparte. Confirmar si se prefiere otra regla antes de T1.2.
+- Hasta T1.2, el destinatario individual ya puede ABRIR la tarea, pero guardar/completar seguirá fallando (PUT aún usa la regla antigua).
+- Pendiente del usuario: subir los archivos, refrescar la PWA y comprobar (1) con "Completadas" activo, clic en una completada abre el editor; (2) con "Del equipo", clic en una tarea de un compañero abre el editor.
+
+- (17 Oct, T1.2) Decisión conservadora: borrar ADJUNTOS sigue siendo solo del dueño (como antes). Quien recibe la tarea puede subir archivos pero no quitarlos. Confirmar si se quiere permitir.
+- (17 Oct, T1.2) Hasta T1.3, si alguien sin permiso pulsa la papelera de una tarea o adjunto ajeno, o cambia el compartir, el servidor lo rechaza (403) pero la UI no lo explica.
+- Pendiente del usuario (T1.2): con un segundo usuario al que se le haya compartido una tarea individualmente, comprobar que puede marcarla como hecha y guardar cambios; y que NO puede borrarla.
+
+- (17 Oct, T1.3) Pendiente del usuario: con un segundo usuario, abrir una tarea que te hayan compartido y comprobar que no aparece la papelera ni la zona peligrosa, que el compartir sale bloqueado con el aviso, y que puedes completarla y guardar cambios.
+
+- (17 Oct, T2) Aviso al Planner, cambio global: el menú lateral plegable en móvil afecta a todas las páginas (no solo a tareas). En escritorio no cambia nada. Si en alguna página de móvil molesta, se puede limitar.
+- (17 Oct, T2) Decisiones de UX tomadas sin consultar (revisables): un clic en el título de una tarea editable abre el editor con 250 ms de retraso para dejar sitio al doble clic; "Completadas" muestra 7 días por defecto; "hechas hoy" usa la fecha del servidor MySQL; quien recibe una tarea compartida también puede posponerla, renombrarla y cambiarle la app (coherente con la regla aprobada: puede editar).
+
+## Lessons (Mis Tareas v2)
+- No hay MySQL local: la lógica de permisos se prueba con funciones con `$db` inyectable + SQLite en memoria (`tests/task-access-capabilities.php`), como en `tests/request-access-capabilities.php`.
+- Para ver una página PHP con login sin BD: renderizarla con stubs de `require_login/get_logged_user/get_user_apps` a un HTML temporal en la raíz e inyectar un mock de `fetch` en `/api/`. Borrar el HTML temporal al terminar.
+- `.modal-side-section` no fija `display`, así que el atributo `hidden` basta para ocultar secciones del modal; si algún día se le pone `display`, hará falta `[hidden] { display: none; }`.
+- Estilos globales que hay que contrarrestar en controles compactos: `.sidebar-header` tiene `flex-direction: column` de base; `input` lleva `width:100%`, padding, borde y sombra de foco (`input:focus` y `input:hover:not(:focus)`), así que los inputs embebidos (buscador, renombrar, fecha del menú) necesitan reglas con más especificidad.
+- Elementos con `display` propio (`inline-flex`, etc.) necesitan `[hidden] { display: none; }` explícito.
+- Las funciones puras de `task-parser.js` se pueden probar desde PHP con `node -e` (shim `global.window = global`), como hace `tests/tasks-t2.php`.

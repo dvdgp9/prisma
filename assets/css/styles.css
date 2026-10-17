@@ -7845,3 +7845,49 @@ select.ai-pill-assignee.has-assignee {
         width: 100%;
     }
 }
+
+/* ============================================================
+   Menú lateral plegable en móvil
+   En ≤768px el sidebar se apila arriba; plegado solo muestra
+   logo + botón, para que el contenido se vea sin hacer scroll.
+   ============================================================ */
+.sidebar-mobile-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar-header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--sp-12) var(--sp-16);
+    }
+
+    .sidebar-mobile-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--ink-200);
+        border-radius: var(--r-8);
+        background: var(--surface);
+        color: var(--ink-700);
+        font-size: 1.25rem;
+        cursor: pointer;
+    }
+
+    .sidebar.is-mobile-open .sidebar-mobile-toggle {
+        background: var(--ink-100);
+    }
+
+    .sidebar:not(.is-mobile-open) .sidebar-nav,
+    .sidebar:not(.is-mobile-open) .sidebar-user {
+        display: none;
+    }
+
+    .sidebar:not(.is-mobile-open) .sidebar-header {
+        border-bottom: 0;
+    }
+}

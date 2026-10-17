@@ -3,6 +3,8 @@
  */
 
 let currentTaskId = null;
+// Capacidades del usuario sobre la tarea abierta en el modal (vienen de la API).
+let currentTaskCaps = {};
 let teamMembers = [];
 let selectedShareUsers = [];
 let shareWithAll = false;
@@ -11,10 +13,16 @@ let shareWithAll = false;
 // Se mantiene hasta que se crea la tarea o se vacía el input.
 let quickIgnore = { date: false, app: false };
 
+// Texto del buscador (filtra en cliente sobre la última carga).
+let searchQuery = '';
+// Con "Completadas" activo se muestran las de los últimos 7 días salvo que se pida ver todas.
+let showAllCompletedFlag = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     updateViewToggleUI();
     loadTasks();
     setupQuickAdd();
+    setupSearch();
     setupTaskModal();
     loadTeamMembers();
     setupShareDropdown();
@@ -188,11 +196,11 @@ async function createQuickTask() {
             // Focus back to input for continuous adding
             input.focus();
         } else {
-            showToast({ title: 'Error', message: data.error, icon: 'iconoir-warning-circle' }, 'toast-error');
+            showErrorToast(data.error || 'No se pudo completar la acción');
         }
     } catch (error) {
         console.error('Error creating task:', error);
-        showToast({ title: 'Error', message: 'No se pudo crear la tarea', icon: 'iconoir-warning-circle' }, 'toast-error');
+        showErrorToast('No se pudo crear la tarea');
     }
 }
 
@@ -202,20 +210,75 @@ async function loadTasks() {
     const showShared = document.getElementById('show-shared').checked;
     const appId = document.getElementById('app-filter').value;
     
+    if (!showCompleted) showAllCompletedFlag = false;
+
     let url = `/api/tasks.php?completed=${showCompleted ? '1' : '0'}&shared=${showShared ? '1' : '0'}`;
     if (appId) url += `&app_id=${appId}`;
-    
+    if (showCompleted && !showAllCompletedFlag) url += '&completed_days=7';
+
     try {
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (data.success) {
             renderTasks(data.data);
             maybeScrollToBucket();
+            // Mantiene al día el contador del sidebar y el "hechas hoy" tras crear/completar/borrar.
+            if (typeof loadTasksCount === 'function') loadTasksCount();
+            loadTasksSummary();
+        } else {
+            console.error('Error loading tasks', url, response.status, data.error);
+            showErrorToast(data.error || 'No se pudieron cargar las tareas');
         }
     } catch (error) {
         console.error('Error loading tasks:', error);
+        showErrorToast('No se pudieron cargar las tareas');
     }
+}
+
+// "N hechas hoy" junto al título de la página.
+async function loadTasksSummary() {
+    const pill = document.getElementById('done-today');
+    if (!pill) return;
+
+    try {
+        const response = await fetch('/api/tasks.php?summary=1');
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Error loading tasks summary', response.status, data.error);
+            return;
+        }
+        const n = data.data.completed_today;
+        pill.hidden = n === 0;
+        document.getElementById('done-today-text').textContent = `${n} ${n === 1 ? 'hecha' : 'hechas'} hoy`;
+    } catch (error) {
+        console.error('Error loading tasks summary:', error);
+    }
+}
+
+// Carga también las completadas de hace más de 7 días.
+function showAllCompleted() {
+    showAllCompletedFlag = true;
+    loadTasks();
+}
+
+// Buscador: filtra en cliente; Escape lo vacía.
+function setupSearch() {
+    const input = document.getElementById('tasks-search');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+        searchQuery = input.value;
+        renderTasks(lastTasks);
+    });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            input.value = '';
+            searchQuery = '';
+            renderTasks(lastTasks);
+            input.blur();
+        }
+    });
 }
 
 // Si se llega con #overdue / #today / #week (desde el widget del home),
@@ -278,89 +341,95 @@ function getTasksView() {
 
 // Construye el HTML de una tarjeta de tarea.
 function buildTaskCard(task, localToday) {
+    // Sin capacidades (API antigua) se mantiene el comportamiento previo: mostrar todo.
+    const caps = task.capabilities || {};
+    // Fecha, app y título se cambian desde la propia tarjeta si se puede editar y no está hecha.
+    const canEdit = caps.edit !== false && !task.is_completed;
     let dueDateHtml = '';
     let dueDateClass = '';
 
     if (task.due_date && !task.is_completed) {
         const diffDays = diffDaysFromToday(task.due_date, localToday);
+        let icon = 'iconoir-calendar';
+        let title = 'Fecha límite';
 
         if (diffDays < 0) {
             dueDateClass = 'overdue';
-            dueDateHtml = `<span class="task-due-date overdue" title="Vencida">
-                <i class="iconoir-warning-triangle"></i>
-                ${formatDueDate(task.due_date)}
-            </span>`;
+            icon = 'iconoir-warning-triangle';
+            title = 'Vencida';
         } else if (diffDays === 0) {
             dueDateClass = 'today';
-            dueDateHtml = `<span class="task-due-date today" title="Hoy">
-                <i class="iconoir-clock"></i>
-                Hoy
-            </span>`;
+            icon = 'iconoir-clock';
+            title = 'Hoy';
         } else if (diffDays <= 3) {
             dueDateClass = 'soon';
-            dueDateHtml = `<span class="task-due-date soon" title="Próximamente">
-                <i class="iconoir-calendar"></i>
-                ${formatDueDate(task.due_date)}
-            </span>`;
-        } else {
-            dueDateHtml = `<span class="task-due-date" title="Fecha límite">
-                <i class="iconoir-calendar"></i>
-                ${formatDueDate(task.due_date)}
-            </span>`;
+            title = 'Próximamente';
         }
+
+        dueDateHtml = canEdit
+            ? `<button type="button" class="task-due-date ${dueDateClass}" title="${title} · cambiar fecha" onclick="openPostponeMenu(${task.id}, this, event)">
+                <i class="${icon}"></i>${formatDueDate(task.due_date)}
+            </button>`
+            : `<span class="task-due-date ${dueDateClass}" title="${title}">
+                <i class="${icon}"></i>${formatDueDate(task.due_date)}
+            </span>`;
+    }
+
+    const meta = [];
+    if (dueDateHtml) meta.push(dueDateHtml);
+    if (task.app_name) {
+        meta.push(canEdit
+            ? `<button type="button" class="task-meta-item task-meta-btn" title="Cambiar aplicación" onclick="openAppMenu(${task.id}, this, event)">
+                <i class="iconoir-app-window"></i>${escapeHtml(task.app_name)}
+            </button>`
+            : `<span class="task-meta-item"><i class="iconoir-app-window"></i>${escapeHtml(task.app_name)}</span>`);
+    }
+    // En tareas de otras personas, quién la creó.
+    const creator = task.creator_name || task.creator_username;
+    if (caps.share === false && creator) {
+        meta.push(`<span class="task-meta-item task-creator" title="Creada por ${escapeHtml(creator)}"><i class="iconoir-user"></i>${escapeHtml(creator)}</span>`);
+    }
+    if (task.is_shared) {
+        meta.push('<span class="task-badge shared"><i class="iconoir-group"></i>Equipo</span>');
+    } else if (task.share_count > 0) {
+        meta.push(`<span class="task-badge shared"><i class="iconoir-user"></i>${task.share_count}</span>`);
+    }
+    if (task.attachment_count > 0) {
+        meta.push(`<span class="task-meta-item"><i class="iconoir-attachment"></i>${task.attachment_count}</span>`);
+    }
+    if (task.description) {
+        meta.push('<span class="task-meta-item" title="Tiene descripción"><i class="iconoir-notes"></i></span>');
     }
 
     return `
         <div class="task-item ${task.is_completed ? 'completed' : ''} ${dueDateClass}" data-id="${task.id}">
-            <div class="task-checkbox ${task.is_completed ? 'checked' : ''}"
+            <div class="task-checkbox ${task.is_completed ? 'checked' : ''}" role="checkbox" aria-checked="${task.is_completed ? 'true' : 'false'}"
+                 title="${task.is_completed ? 'Marcar como pendiente' : 'Completar'}"
                  onclick="toggleTask(${task.id}, ${task.is_completed ? 'false' : 'true'}, event)">
             </div>
-            <div class="task-content" onclick="openTaskModal(${task.id})">
-                <div class="task-title">${escapeHtml(task.title)}</div>
-                <div class="task-meta">
-                    ${dueDateHtml}
-                    ${task.app_name ? `
-                        <span class="task-meta-item">
-                            <i class="iconoir-app-window"></i>
-                            ${escapeHtml(task.app_name)}
-                        </span>
-                    ` : ''}
-                    ${task.is_shared ? `
-                        <span class="task-badge shared">
-                            <i class="iconoir-group"></i>
-                            Equipo
-                        </span>
-                    ` : task.share_count > 0 ? `
-                        <span class="task-badge shared">
-                            <i class="iconoir-user"></i>
-                            ${task.share_count}
-                        </span>
-                    ` : ''}
-                    ${task.attachment_count > 0 ? `
-                        <span class="task-meta-item">
-                            <i class="iconoir-attachment"></i>
-                            ${task.attachment_count}
-                        </span>
-                    ` : ''}
-                    ${task.description ? `
-                        <span class="task-meta-item">
-                            <i class="iconoir-notes"></i>
-                        </span>
-                    ` : ''}
-                </div>
+            <div class="task-content" onclick="onTaskContentClick(${task.id}, event)">
+                <div class="task-title"${canEdit ? ` ondblclick="startInlineTitleEdit(${task.id}, event)"` : ''}>${escapeHtml(task.title)}</div>
+                ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
             </div>
             <div class="task-actions">
-                <button class="task-action-btn" onclick="openTaskModal(${task.id})" title="Editar">
+                ${canEdit ? `
+                    <button type="button" class="task-action-btn" onclick="openPostponeMenu(${task.id}, this, event)" title="Posponer (p)">
+                        <i class="iconoir-clock-rotate-right"></i>
+                    </button>
+                ` : ''}
+                <button type="button" class="task-action-btn" onclick="openTaskModal(${task.id})" title="Editar (e)">
                     <i class="iconoir-edit"></i>
                 </button>
-                <button class="task-action-btn delete" onclick="deleteTaskDirect(${task.id}, event)" title="Eliminar">
-                    <i class="iconoir-trash"></i>
-                </button>
+                ${caps.delete !== false ? `
+                    <button type="button" class="task-action-btn delete" onclick="deleteTaskDirect(${task.id}, event)" title="Eliminar">
+                        <i class="iconoir-trash"></i>
+                    </button>
+                ` : ''}
             </div>
         </div>`;
 }
 
-// Render principal: guarda los datos y delega según la vista activa.
+// Render principal: guarda los datos, aplica la búsqueda y delega según la vista activa.
 function renderTasks(tasks) {
     lastTasks = tasks || [];
     const container = document.getElementById('tasks-list');
@@ -374,12 +443,29 @@ function renderTasks(tasks) {
 
     emptyState.style.display = 'none';
     const localToday = getLocalToday();
+    const visible = typeof matchesTaskSearch === 'function'
+        ? lastTasks.filter(t => matchesTaskSearch(t, searchQuery))
+        : lastTasks;
 
-    if (getTasksView() === 'list') {
-        container.innerHTML = lastTasks.map(t => buildTaskCard(t, localToday)).join('');
+    if (visible.length === 0) {
+        container.innerHTML = `<div class="tasks-no-results"><i class="iconoir-search"></i>Ninguna tarea coincide con «${escapeHtml(searchQuery.trim())}»</div>`;
+    } else if (getTasksView() === 'list') {
+        container.innerHTML = visible.map(t => buildTaskCard(t, localToday)).join('') + completedFooterHtml();
     } else {
-        renderAgenda(container, lastTasks, localToday);
+        renderAgenda(container, visible, localToday);
+        container.insertAdjacentHTML('beforeend', completedFooterHtml());
     }
+
+    if (typeof onTasksRendered === 'function') onTasksRendered();
+}
+
+// Pie con "Completadas": por defecto solo las de los últimos 7 días.
+function completedFooterHtml() {
+    if (!document.getElementById('show-completed').checked || showAllCompletedFlag) return '';
+    return `<div class="tasks-completed-footer">
+        Completadas de los últimos 7 días ·
+        <button type="button" class="tasks-link-btn" onclick="showAllCompleted()">Ver todas</button>
+    </div>`;
 }
 
 // Render agrupado por buckets temporales.
@@ -394,12 +480,19 @@ function renderAgenda(container, tasks, localToday) {
         .filter(b => groups[b.key] && groups[b.key].length)
         .map(b => {
             const items = groups[b.key].map(t => buildTaskCard(t, localToday)).join('');
+            const canMoveOverdue = b.key === 'overdue'
+                && groups.overdue.some(t => (t.capabilities || {}).edit !== false);
             return `
                 <section class="agenda-section agenda-${b.key}">
                     <header class="agenda-section-header">
                         <i class="${b.icon}"></i>
                         <span class="agenda-section-title">${b.label}</span>
                         <span class="agenda-section-count">${groups[b.key].length}</span>
+                        ${canMoveOverdue ? `
+                            <button type="button" class="agenda-section-action" onclick="moveOverdueToToday()">
+                                <i class="iconoir-sun-light"></i>Pasar todo a hoy
+                            </button>
+                        ` : ''}
                     </header>
                     <div class="agenda-section-items">${items}</div>
                 </section>`;
@@ -426,8 +519,13 @@ function updateViewToggleUI() {
 
 // Toggle task completion
 async function toggleTask(taskId, complete, event) {
-    event.stopPropagation();
-    
+    if (event) event.stopPropagation();
+
+    if (complete) {
+        await completeTaskWithUndo(taskId);
+        return;
+    }
+
     try {
         const response = await fetch('/api/tasks.php', {
             method: 'PUT',
@@ -439,10 +537,69 @@ async function toggleTask(taskId, complete, event) {
         
         if (data.success) {
             await loadTasks();
+        } else {
+            console.error('Error toggling task', taskId, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo actualizar la tarea');
         }
     } catch (error) {
         console.error('Error toggling task:', error);
+        showErrorToast('No se pudo actualizar la tarea');
     }
+}
+
+// Completa con una animación corta y ofrece "Deshacer" durante unos segundos.
+async function completeTaskWithUndo(taskId) {
+    const card = document.querySelector(`.task-item[data-id="${taskId}"]`);
+    if (card && card.classList.contains('is-completing')) return;
+    const task = lastTasks.find(t => t.id == taskId);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (card) card.classList.add('is-completing');
+    const [ok] = await Promise.all([
+        putTask({ id: taskId, is_completed: true }, 'No se pudo completar la tarea'),
+        new Promise(resolve => setTimeout(resolve, card && !reduceMotion ? 320 : 0))
+    ]);
+
+    if (!ok) {
+        if (card) card.classList.remove('is-completing');
+        return;
+    }
+
+    await loadTasks();
+    showToast({
+        title: 'Tarea completada',
+        message: task ? escapeHtml(task.title) : '',
+        icon: 'iconoir-check',
+        duration: 6000,
+        action: {
+            label: 'Deshacer',
+            onClick: async () => {
+                if (await putTask({ id: taskId, is_completed: false }, 'No se pudo deshacer')) {
+                    await loadTasks();
+                }
+            }
+        }
+    }, 'toast-completed');
+}
+
+// PUT a la API de tareas. Devuelve true si fue bien; si no, avisa y deja log de depuración.
+async function putTask(payload, errorMessage) {
+    try {
+        const response = await fetch('/api/tasks.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (data.success) return true;
+
+        console.error('Error updating task', payload, response.status, data.error);
+        showErrorToast(data.error || errorMessage);
+    } catch (error) {
+        console.error('Error updating task:', payload, error);
+        showErrorToast(errorMessage);
+    }
+    return false;
 }
 
 // Delete task directly from list
@@ -463,9 +620,13 @@ async function deleteTaskDirect(taskId, event) {
         if (data.success) {
             await loadTasks();
             showToast({ title: 'Eliminada', message: 'Tarea eliminada', icon: 'iconoir-check' }, 'toast-completed');
+        } else {
+            console.error('Error deleting task', taskId, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo eliminar la tarea');
         }
     } catch (error) {
         console.error('Error deleting task:', error);
+        showErrorToast('No se pudo eliminar la tarea');
     }
 }
 
@@ -517,11 +678,11 @@ async function handleTaskFiles(files) {
                 if (data.success) {
                     await loadTaskAttachments(currentTaskId);
                 } else {
-                    showToast({ title: 'Error', message: data.error, icon: 'iconoir-warning-circle' }, 'toast-error');
+                    showErrorToast(data.error || 'No se pudo completar la acción');
                 }
             } catch (error) {
                 console.error('Error uploading file:', error);
-                showToast({ title: 'Error', message: 'Error de conexión al subir el archivo', icon: 'iconoir-warning-circle' }, 'toast-error');
+                showErrorToast('Error de conexión al subir el archivo');
             }
         }
     } finally {
@@ -534,29 +695,55 @@ async function openTaskModal(taskId) {
     currentTaskId = taskId;
     
     try {
-        const response = await fetch(`/api/tasks.php?`);
+        // Pide la tarea por id: así se abren también completadas y del equipo.
+        const response = await fetch(`/api/tasks.php?id=${taskId}`);
         const data = await response.json();
-        
-        if (data.success) {
-            const task = data.data.find(t => t.id == taskId);
-            
-            if (task) {
-                document.getElementById('task-id').value = task.id;
-                document.getElementById('task-title').value = task.title;
-                document.getElementById('task-description').value = task.description || '';
-                document.getElementById('task-app').value = task.app_id || '';
-                document.getElementById('task-due-date').value = task.due_date || '';
-                
-                // Load share settings
-                await loadTaskShares(taskId, task.is_shared == 1);
-                
-                await loadTaskAttachments(taskId);
-                
-                document.getElementById('task-modal').classList.add('active');
-            }
+
+        if (!data.success) {
+            console.error('Error loading task', taskId, response.status, data.error);
+            currentTaskId = null;
+            showErrorToast(data.error || 'No se pudo abrir la tarea');
+            return;
         }
+
+        const task = data.data;
+        currentTaskCaps = task.capabilities || {};
+        document.getElementById('task-id').value = task.id;
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-description').value = task.description || '';
+        document.getElementById('task-app').value = task.app_id || '';
+        document.getElementById('task-due-date').value = task.due_date || '';
+
+        // Load share settings
+        await loadTaskShares(taskId, task.is_shared == 1);
+
+        await loadTaskAttachments(taskId);
+
+        applyTaskModalPermissions(task);
+
+        document.getElementById('task-modal').classList.add('active');
     } catch (error) {
         console.error('Error loading task:', error);
+        currentTaskId = null;
+        showErrorToast('No se pudo abrir la tarea');
+    }
+}
+
+// Ajusta el modal a lo que el usuario puede hacer con la tarea abierta.
+function applyTaskModalPermissions(task) {
+    const canShare = currentTaskCaps.share !== false;
+    const hint = document.getElementById('share-readonly-hint');
+
+    document.getElementById('share-selector').classList.toggle('is-readonly', !canShare);
+    document.getElementById('task-danger-zone').hidden = currentTaskCaps.delete === false;
+    hint.hidden = canShare;
+
+    if (!canShare) {
+        const creator = task.creator_name || task.creator_username || 'otra persona';
+        hint.textContent = `Creada por ${creator}. Solo esa persona puede cambiar con quién se comparte.`;
+        if (!shareWithAll) {
+            document.getElementById('share-status').textContent = 'Compartida contigo';
+        }
     }
 }
 
@@ -578,9 +765,11 @@ async function loadTaskAttachments(taskId) {
                             <i class="${getFileIcon(att.mime_type)}"></i>
                             <span class="fv-name">${escapeHtml(att.original_filename)}</span>
                         </a>
-                        <button type="button" class="task-action-btn delete" onclick="deleteTaskAttachment(${att.id})">
-                            <i class="iconoir-trash"></i>
-                        </button>
+                        ${currentTaskCaps.delete !== false ? `
+                            <button type="button" class="task-action-btn delete" onclick="deleteTaskAttachment(${att.id})" title="Eliminar archivo">
+                                <i class="iconoir-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 `).join('');
             }
@@ -603,9 +792,13 @@ async function deleteTaskAttachment(attachmentId) {
         
         if (data.success) {
             await loadTaskAttachments(currentTaskId);
+        } else {
+            console.error('Error deleting attachment', attachmentId, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo eliminar el archivo');
         }
     } catch (error) {
         console.error('Error deleting attachment:', error);
+        showErrorToast('No se pudo eliminar el archivo');
     }
 }
 
@@ -633,17 +826,21 @@ async function saveTask(event) {
         const data = await response.json();
         
         if (data.success) {
-            // Save share settings
-            await saveTaskShares(taskId);
+            // Compartir solo lo cambia el dueño; para el resto el selector es de solo lectura.
+            if (currentTaskCaps.share !== false && !(await saveTaskShares(taskId))) {
+                showErrorToast('La tarea se guardó, pero no se pudo cambiar con quién se comparte');
+            }
             
             closeTaskModal();
             await loadTasks();
             showToast({ title: 'Guardado', message: 'Tarea actualizada', icon: 'iconoir-check' }, 'toast-completed');
         } else {
-            showToast({ title: 'Error', message: data.error, icon: 'iconoir-warning-circle' }, 'toast-error');
+            console.error('Error saving task', taskId, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo guardar la tarea');
         }
     } catch (error) {
         console.error('Error saving task:', error);
+        showErrorToast('No se pudo guardar la tarea');
     }
 }
 
@@ -664,9 +861,13 @@ async function deleteTask() {
             closeTaskModal();
             await loadTasks();
             showToast({ title: 'Eliminada', message: 'Tarea eliminada', icon: 'iconoir-check' }, 'toast-completed');
+        } else {
+            console.error('Error deleting task', currentTaskId, response.status, data.error);
+            showErrorToast(data.error || 'No se pudo eliminar la tarea');
         }
     } catch (error) {
         console.error('Error deleting task:', error);
+        showErrorToast('No se pudo eliminar la tarea');
     }
 }
 
@@ -675,6 +876,7 @@ function closeTaskModal() {
     document.getElementById('task-modal').classList.remove('active');
     document.getElementById('share-selector').classList.remove('open');
     currentTaskId = null;
+    currentTaskCaps = {};
     selectedShareUsers = [];
     shareWithAll = false;
 }
@@ -778,6 +980,7 @@ function getInitials(name) {
 // Toggle share dropdown
 function toggleShareDropdown() {
     const selector = document.getElementById('share-selector');
+    if (selector.classList.contains('is-readonly')) return;
     selector.classList.toggle('open');
 }
 
@@ -859,9 +1062,10 @@ async function loadTaskShares(taskId, isSharedWithAll) {
 }
 
 // Save share settings (called from saveTask)
+// Devuelve true si se guardó.
 async function saveTaskShares(taskId) {
     try {
-        await fetch('/api/task-shares.php', {
+        const response = await fetch('/api/task-shares.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -870,11 +1074,18 @@ async function saveTaskShares(taskId) {
                 share_with_all: shareWithAll
             })
         });
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Error saving shares', taskId, response.status, data.error);
+        }
+        return data.success === true;
     } catch (error) {
         console.error('Error saving shares:', error);
+        return false;
     }
 }
 
+// config: { title, message, icon, duration (ms, 3000 por defecto), action: { label, onClick } }
 function showToast(config, className = '') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -887,13 +1098,31 @@ function showToast(config, className = '') {
             <div class="toast-title">${config.title || ''}</div>
             <div class="toast-message">${config.message || ''}</div>
         </div>
+        ${config.action ? `<button type="button" class="toast-action">${escapeHtml(config.action.label)}</button>` : ''}
     `;
     
     container.appendChild(toast);
+
+    let dismissed = false;
+    const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        toast.classList.add('toast-hide');
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    if (config.action) {
+        toast.querySelector('.toast-action').addEventListener('click', () => {
+            dismiss();
+            config.action.onClick();
+        });
+    }
     
     setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    setTimeout(dismiss, config.duration || 3000);
+}
+
+// Aviso de error estándar de la página.
+function showErrorToast(message) {
+    showToast({ title: 'Error', message: escapeHtml(message), icon: 'iconoir-warning-circle' }, 'toast-error');
 }

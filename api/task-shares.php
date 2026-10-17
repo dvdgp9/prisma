@@ -19,7 +19,8 @@ switch ($method) {
         $taskId = $_GET['task_id'] ?? null;
         
         if ($taskId) {
-            // Get users this task is shared with
+            // Get users this task is shared with (only for people who can see the task)
+            require_task_capability($taskId, 'view');
             $stmt = $db->prepare("
                 SELECT u.id, u.username, u.full_name, u.email
                 FROM task_shares ts
@@ -58,15 +59,9 @@ switch ($method) {
         $userIds = $input['user_ids'] ?? [];
         $shareWithAll = $input['share_with_all'] ?? false;
         
-        // Verify task ownership
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND user_id = ?");
-        $stmt->execute([$taskId, $user['id']]);
-        $task = $stmt->fetch();
-        
-        if (!$task) {
-            error_response('Tarea no encontrada o sin permiso', 404);
-        }
-        
+        // Only the owner changes who the task is shared with
+        require_task_capability($taskId, 'share');
+
         // Update is_shared flag
         $stmt = $db->prepare("UPDATE tasks SET is_shared = ? WHERE id = ?");
         $stmt->execute([$shareWithAll ? 1 : 0, $taskId]);
@@ -98,13 +93,9 @@ switch ($method) {
             error_response('task_id y user_id son requeridos');
         }
         
-        // Verify task ownership
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND user_id = ?");
-        $stmt->execute([$input['task_id'], $user['id']]);
-        if (!$stmt->fetch()) {
-            error_response('Tarea no encontrada o sin permiso', 404);
-        }
-        
+        // Only the owner changes who the task is shared with
+        require_task_capability($input['task_id'], 'share');
+
         $stmt = $db->prepare("DELETE FROM task_shares WHERE task_id = ? AND user_id = ?");
         $stmt->execute([$input['task_id'], $input['user_id']]);
         

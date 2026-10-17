@@ -20,8 +20,8 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.4">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=4.9">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.6">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.0">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=2.8">
 </head>
 
 <?php
@@ -40,10 +40,21 @@ $userApps = get_user_apps();
         <main class="main-content">
             <div class="content-header">
                 <div>
-                    <h1 class="page-title">Mis Tareas</h1>
+                    <div class="page-title-row">
+                        <h1 class="page-title">Mis Tareas</h1>
+                        <span class="done-today" id="done-today" hidden>
+                            <i class="iconoir-check"></i>
+                            <span id="done-today-text"></span>
+                        </span>
+                    </div>
                     <p class="text-muted">Apunta rápidamente lo que necesitas recordar</p>
                 </div>
                 <div class="header-actions">
+                    <label class="tasks-search">
+                        <i class="iconoir-search"></i>
+                        <input type="search" id="tasks-search" placeholder="Buscar" autocomplete="off" aria-label="Buscar tareas">
+                        <kbd class="tasks-search-kbd">/</kbd>
+                    </label>
                     <div class="view-toggle" id="view-toggle" role="group" aria-label="Cambiar vista">
                         <button type="button" class="view-toggle-btn" data-view="agenda" onclick="setTasksView('agenda')" title="Vista por fechas">
                             <i class="iconoir-calendar"></i>
@@ -129,6 +140,10 @@ $userApps = get_user_apps();
             <div class="tasks-list" id="tasks-list">
                 <!-- Tasks will be loaded here -->
             </div>
+
+            <p class="tasks-shortcuts-hint">
+                <kbd>/</kbd> buscar · <kbd>n</kbd> nueva · <kbd>j</kbd> <kbd>k</kbd> moverse · <kbd>x</kbd> completar · <kbd>p</kbd> posponer · <kbd>r</kbd> renombrar · <kbd>e</kbd> abrir · doble clic en el título para renombrar
+            </p>
 
             <!-- Empty State -->
             <div class="empty-state" id="empty-state" style="display: none;">
@@ -249,12 +264,13 @@ $userApps = get_user_apps();
                                             </div>
                                         </div>
                                     </div>
+                                    <p class="share-readonly-hint" id="share-readonly-hint" hidden></p>
                                     <input type="hidden" id="task-shared">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="modal-side-section modal-danger-zone">
+                        <div class="modal-side-section modal-danger-zone" id="task-danger-zone">
                             <div class="modal-side-title">
                                 <i class="iconoir-warning-triangle"></i> Zona peligrosa
                             </div>
@@ -284,9 +300,10 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=2"></script>
+    <script src="/assets/js/task-parser.js?v=4"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=5"></script>
+    <script src="/assets/js/tasks.js?v=9"></script>
+    <script src="/assets/js/tasks-interactions.js?v=1"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

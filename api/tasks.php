@@ -15,13 +15,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Get tasks for current user
-        $showCompleted = isset($_GET['completed']) ? $_GET['completed'] === '1' : false;
-        $showShared = isset($_GET['shared']) ? $_GET['shared'] === '1' : false;
-        $appId = $_GET['app_id'] ?? null;
-        
-        $query = "
-            SELECT 
+        $taskSelect = "
+            SELECT
                 t.*,
                 u.username as creator_username,
                 u.full_name as creator_name,
@@ -31,8 +26,34 @@ switch ($method) {
             FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN apps a ON t.app_id = a.id
-            WHERE t.company_id = :company_id
         ";
+
+        // Single task (edit modal): any task the user can see, completed or shared included.
+        if (isset($_GET['id'])) {
+            $access = require_task_capability($_GET['id'], 'view');
+
+            $stmt = $db->prepare($taskSelect . " WHERE t.id = ?");
+            $stmt->execute([$access['task']['id']]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            $task['capabilities'] = $access['capabilities'];
+
+            success_response($task);
+        }
+
+        // Daily summary for the page header: own tasks completed today.
+        if (isset($_GET['summary'])) {
+            $stmt = $db->prepare("SELECT COUNT(*) FROM tasks WHERE user_id = ? AND is_completed = 1 AND completed_at >= CURDATE()");
+            $stmt->execute([$user['id']]);
+
+            success_response(['completed_today' => (int) $stmt->fetchColumn()]);
+        }
+
+        // Get tasks for current user
+        $showCompleted = isset($_GET['completed']) ? $_GET['completed'] === '1' : false;
+        $showShared = isset($_GET['shared']) ? $_GET['shared'] === '1' : false;
+        $appId = $_GET['app_id'] ?? null;
+
+        $query = $taskSelect . " WHERE t.company_id = :company_id";
         
         $params = [':company_id' => $user['company_id']];
         
@@ -45,19 +66,24 @@ switch ($method) {
         }
         $params[':user_id'] = $user['id'];
         
-        // Filter by completion status
+        // Filter by completion status (optionally only the recently completed ones)
         if (!$showCompleted) {
             $query .= " AND t.is_completed = 0";
+        } elseif (!empty($_GET['completed_days'])) {
+            $query .= " AND (t.is_completed = 0 OR t.completed_at >= DATE_SUB(NOW(), INTERVAL :completed_days DAY))";
+            $params[':completed_days'] = max(1, (int) $_GET['completed_days']);
         }
-        
+
         // Filter by app
         if ($appId) {
             $query .= " AND t.app_id = :app_id";
             $params[':app_id'] = $appId;
         }
         
-        // Smart ordering: uncompleted tasks by due_date (nulls last), then by created_at
-        $query .= " ORDER BY t.is_completed ASC, 
+        // Smart ordering: uncompleted tasks by due_date (nulls last), then by created_at;
+        // completed ones, most recently completed first
+        $query .= " ORDER BY t.is_completed ASC,
+                    CASE WHEN t.is_completed = 1 THEN t.completed_at END DESC,
                     CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
                     t.due_date ASC, 
                     t.created_at DESC";
@@ -65,7 +91,14 @@ switch ($method) {
         $stmt = $db->prepare($query);
         $stmt->execute($params);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
+        // The query above only returns tasks the user can see, so anything not owned is shared with them.
+        foreach ($tasks as &$task) {
+            $isOwner = (int) $task['user_id'] === (int) $user['id'];
+            $task['capabilities'] = task_capabilities_for_access($isOwner, !$isOwner);
+        }
+        unset($task);
+
         success_response($tasks);
         break;
         
@@ -105,15 +138,9 @@ switch ($method) {
             error_response('ID de tarea requerido');
         }
         
-        // Verify ownership or shared access
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND (user_id = ? OR (is_shared = 1 AND company_id = ?))");
-        $stmt->execute([$input['id'], $user['id'], $user['company_id']]);
-        $task = $stmt->fetch();
-        
-        if (!$task) {
-            error_response('Tarea no encontrada', 404);
-        }
-        
+        // Owner or shared users can edit/complete; only the owner changes sharing.
+        require_task_capability($input['id'], task_capability_for_update($input));
+
         // Build update query dynamically
         $updates = [];
         $params = [];
@@ -167,15 +194,9 @@ switch ($method) {
             error_response('ID de tarea requerido');
         }
         
-        // Verify ownership
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND user_id = ?");
-        $stmt->execute([$input['id'], $user['id']]);
-        $task = $stmt->fetch();
-        
-        if (!$task) {
-            error_response('Tarea no encontrada o sin permiso', 404);
-        }
-        
+        // Only the owner can delete
+        require_task_capability($input['id'], 'delete');
+
         // Delete attachments files first
         $stmt = $db->prepare("SELECT file_path FROM task_attachments WHERE task_id = ?");
         $stmt->execute([$input['id']]);
