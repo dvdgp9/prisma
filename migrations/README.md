@@ -29,6 +29,27 @@ SHOW TABLES LIKE 'user_app_permissions';
 SELECT * FROM user_app_permissions;
 ```
 
+## 📝 Migración 015: Notas compartidas
+
+**Archivo**: `015_notes.sql`
+
+**Propósito**: Notas de equipo en Markdown que el autor comparte con todo el equipo o con personas concretas (mismo modelo que las tareas).
+
+**Cambios** (solo añade, no toca datos existentes):
+- Nueva tabla `notes`: empresa, autor, app opcional, título, contenido, `is_shared` (todo el equipo), `is_pinned`, `updated_by` (quién la editó por última vez).
+- Nueva tabla `note_shares`: con qué personas se comparte cada nota.
+- Nueva columna `notifications.note_id` (con índice) para el aviso "te han compartido una nota".
+
+**Ejecutar**: igual que la 001 (phpMyAdmin → pestaña "SQL" → pegar el contenido de `015_notes.sql` → "Continuar"). **Una sola vez**: el `ALTER TABLE notifications` da error "Duplicate column name 'note_id'" si se repite. Si pasa, no afecta a nada, porque la columna ya está creada.
+
+**Ojo**: si un superadmin borra un usuario, se borran también sus notas, incluidas las que había compartido (igual que sus notas de app). Las notas que otra persona editó por última vez se conservan.
+
+**Verificación**:
+```sql
+SHOW TABLES LIKE 'note%';
+SHOW COLUMNS FROM notifications LIKE 'note_id';
+```
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

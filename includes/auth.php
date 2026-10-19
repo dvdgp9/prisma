@@ -763,6 +763,99 @@ function require_task_capability($task_id, $capability)
 }
 
 /**
+ * Capabilities over a shared note. The author manages everything; people the
+ * note is shared with (whole team or individually) can read and edit it but
+ * cannot delete it or change who it is shared with.
+ */
+function note_capabilities_for_access($is_owner, $is_shared_with_user)
+{
+    $can_work = $is_owner || $is_shared_with_user;
+
+    return [
+        'view' => (bool) $can_work,
+        'edit' => (bool) $can_work,
+        'delete' => (bool) $is_owner,
+        'share' => (bool) $is_owner
+    ];
+}
+
+/**
+ * Resolve a note and the current user's capabilities over it.
+ *
+ * Returns false when the note does not exist or the user cannot see it, so
+ * callers answer 404 without revealing that the ID exists. An optional PDO
+ * connection keeps authorization tests isolated from the real database.
+ */
+function get_note_access($note_id, $db = null)
+{
+    $note_id = filter_var($note_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $user = get_logged_user();
+    if ($note_id === false || !$user) {
+        return false;
+    }
+
+    $db = $db ?: getDB();
+    $stmt = $db->prepare("
+        SELECT n.*,
+               EXISTS (SELECT 1 FROM note_shares ns WHERE ns.note_id = n.id AND ns.user_id = ?) AS shared_with_user
+        FROM notes n
+        WHERE n.id = ?
+    ");
+    $stmt->execute([$user['id'], $note_id]);
+    $note = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$note) {
+        return false;
+    }
+
+    $is_owner = (int) $note['user_id'] === (int) $user['id'];
+    $is_team_shared = (int) $note['is_shared'] === 1 && (int) $note['company_id'] === (int) $user['company_id'];
+    $is_shared_with_user = $is_team_shared || (int) $note['shared_with_user'] === 1;
+    unset($note['shared_with_user']);
+
+    $capabilities = note_capabilities_for_access($is_owner, $is_shared_with_user);
+    if (!$capabilities['view']) {
+        return false;
+    }
+
+    return ['note' => $note, 'capabilities' => $capabilities];
+}
+
+/**
+ * Capability a note update needs: changing who it is shared with needs
+ * "share"; anything else (title, content, app, pin) needs "edit".
+ */
+function note_capability_for_update($input)
+{
+    if (array_key_exists('is_shared', $input) || array_key_exists('shared_user_ids', $input)) {
+        return 'share';
+    }
+
+    return 'edit';
+}
+
+/**
+ * Require one note capability; returns the resolved note and capabilities.
+ */
+function require_note_capability($note_id, $capability)
+{
+    if (!in_array($capability, ['view', 'edit', 'delete', 'share'], true)) {
+        error_response('Invalid note capability', 500);
+    }
+
+    $access = get_note_access($note_id);
+    if ($access === false) {
+        error_response('Nota no encontrada', 404);
+    }
+
+    if (!$access['capabilities'][$capability]) {
+        error_response('No tienes permiso para esta acción en la nota', 403);
+    }
+
+    return $access;
+}
+
+/**
  * Check if user can access a specific company
  */
 function can_access_company($company_id)

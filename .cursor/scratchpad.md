@@ -2639,3 +2639,75 @@ El usuario quiere añadir "Notas" y pide que interpretemos qué es y cuál es la
 
 ## Project Status Board (Notas)
 - [ ] N0 Decisiones del usuario
+- [x] N0 Decisiones (19 Oct 2026): el usuario acepta las 4 recomendaciones: (1) los compartidos editan, solo el autor borra y cambia con quién se comparte, con aviso si otra persona la cambió mientras editabas; (2) las notas de app se quedan como están; (3) "Nota rápida" → "Crear con IA"; (4) aviso en Notificaciones al compartir.
+- [x] N1 Migración escrita: `migrations/015_notes.sql` + sección en `migrations/README.md` + test `tests/notes-migration.php`.
+- [ ] N1 Ejecutada en producción por el usuario (phpMyAdmin) ← SIGUIENTE PASO, lo hace el usuario.
+- [ ] N2–N7 pendientes (no empezar hasta que el usuario confirme que la migración está ejecutada).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N1)
+- `015_notes.sql`: tablas `notes` (empresa, autor, app opcional con SET NULL, título, contenido MEDIUMTEXT, is_shared, is_pinned, updated_by con SET NULL, created_at/updated_at, índices empresa+updated_at / autor / app) y `note_shares` (UNIQUE note_id+user_id, CASCADE), más `notifications.note_id` con índice.
+- Sin FK en `notifications.note_id`: la tabla de notificaciones no tiene FKs y no sé con qué motor está en producción. Al borrar una nota, la API (N3) borrará sus avisos.
+- No se ha ejecutado en ninguna base de datos (lo hace el usuario). El test solo comprueba el contenido del archivo, no que el SQL sea válido para el servidor.
+- Test nuevo 16/16 archivos OK.
+
+## Executor's Feedback or Assistance Requests (Notas)
+- Decisión tomada por el Executor y comunicada al usuario: `notes.user_id` con ON DELETE CASCADE (igual que las notas de app). Si un superadmin borra un usuario, se borran sus notas, también las compartidas. Si el usuario prefiere conservarlas, hay que cambiarlo ANTES de ejecutar la migración.
+
+## Lessons (Notas)
+- `ADD COLUMN IF NOT EXISTS` solo existe en MariaDB (la 013 lo usa). Para que una migración funcione en MySQL y MariaDB, usar `ALTER TABLE ... ADD COLUMN` normal y avisar de que se ejecuta una sola vez.
+- `api/users.php` borra usuarios con `DELETE FROM users`, así que lo que pase con sus datos depende de las FK de cada tabla.
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N1 ejecutada + N2)
+- [x] N1 ejecutada en producción por el usuario (19 Oct 2026), sin errores.
+- [x] N2 IMPLEMENTADO, pendiente de que el usuario lo dé por bueno. En `includes/auth.php`, junto a los helpers de tareas:
+  - `note_capabilities_for_access($is_owner, $is_shared_with_user)` → `view`, `edit`, `delete`, `share`. Autor: todo. Compartida (equipo o persona): ver + editar. Resto: nada.
+  - `get_note_access($note_id, $db = null)` → `['note' => ..., 'capabilities' => ...]` o `false` (404 sin revelar que existe). Equipo = `is_shared = 1` y misma empresa que la sesión; persona = fila en `note_shares`; el autor siempre (también si la creó en otra de sus empresas, como en tareas).
+  - `note_capability_for_update($input)` → `share` si cambia `is_shared` o `shared_user_ids`; si no, `edit` (título, contenido, app, fijar).
+  - `require_note_capability($note_id, $capability)` → responde 404/403 con mensajes en español. Lo usará la API en N3.
+- Test NUEVO `tests/note-access-capabilities.php` (SQLite en memoria, 7 notas: propia, de equipo, compartida conmigo, privada ajena, de equipo de otra empresa, compartida con otro, propia en otra empresa). Primero falló y ahora pasa. 17/17 archivos de test OK.
+- Nada que subir todavía: `includes/auth.php` solo tiene funciones nuevas que nadie llama hasta N3 (subirlo ya no rompe nada).
+- Para N3: la API debe usar las claves `is_shared` / `shared_user_ids` en las actualizaciones de compartir (así lo espera `note_capability_for_update`), borrar los avisos de la nota (`notifications.note_id`) al borrarla y filtrar el listado por `company_id`.
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N3)
+- [x] N3 IMPLEMENTADO, pendiente de que el usuario lo dé por bueno.
+- `includes/notes.php` (NUEVO): toda la lógica de datos, con funciones que reciben `$db` (se prueban con SQLite):
+  - `list_notes($db, $user, $filters)`: propias + compartidas conmigo (todo el equipo o por nombre) de la empresa actual. Filtros `filter` (all | mine | shared), `app_id`, `q` (título o contenido) y `limit` (máx. 200). Orden: fijadas primero, luego última edición. No envía el contenido completo, solo `excerpt` (240 caracteres). Cada fila lleva `capabilities`, `author_name`, `app_name` y `share_count`.
+  - `get_note_detail($db, $id)`: nota completa + `author_name`, `updated_by_name`, `app_name`, `shared_users` y `revision`.
+  - `normalize_note_fields($input, $is_create)`: título obligatorio (máx. 255 caracteres), contenido máx. 200.000 caracteres (vacío → NULL), `app_id` y `is_pinned`. Ignora claves desconocidas.
+  - `create_note`, `update_note_fields`: cambiar título o contenido registra `updated_by` y `updated_at`. Fijar o cambiar de app no cuenta como edición (`updated_at = updated_at` frena el ON UPDATE de MySQL).
+  - `replace_note_shares($db, $user, $id, $is_shared, $user_ids)`: con todo el equipo se vacía la lista de personas. Si no, solo guarda compañeros activos de la empresa, sin el autor ni duplicados. **Devuelve las personas añadidas** (para los avisos de N6).
+  - `note_revision($note)` + `note_edit_conflict($note, $input)`: aviso de conflicto con `expected_revision`.
+  - `delete_note`: borra la nota, sus comparticiones y sus avisos (`notifications.note_id`), en una transacción.
+- `api/notes.php` (NUEVO): GET `?id=` / listado, POST, PUT y DELETE. Cada acción pasa por `require_note_capability`; `app_id` se comprueba con `can_access_app`. Un conflicto responde 409 con `{error: "Ana ha cambiado esta nota mientras la editabas", conflict: true, data: <versión actual>}`.
+- Tests: NUEVO `tests/notes-api.php` (listado/filtros/búsqueda/límite, detalle, validación, crear, compartir, editar, conflicto, borrar y contrato de guardas del endpoint). 18/18 archivos OK.
+- Prueba HTTP real del `api/notes.php` (router temporal fuera del repo, SQLite + sesión simulada; MariaDB local sin tocar): 19 escenarios OK. Por ejemplo, una nota de otra empresa o no compartida devuelve 404; quien la recibe puede editar y fijar, pero recibe 403 al compartir o borrar; app de otra empresa → 403; título vacío → 400; sin sesión → login; versión vieja → 409.
+- **Bug encontrado y corregido en la prueba HTTP**: comparar solo `updated_at` (TIMESTAMP, precisión de segundos) no detectaba un cambio guardado en el mismo segundo. Ahora la "revisión" es un hash de updated_at + título + contenido. No ha hecho falta otra migración.
+- No probado contra MySQL/MariaDB real: SQL escrito para funcionar en ambos (SUBSTRING, `LIKE ... ESCAPE '!'`, placeholders sin repetir, LIMIT entero).
+- Archivos a subir cuando haya interfaz (N4): `api/notes.php`, `includes/notes.php`, `includes/auth.php`. Subirlos antes no rompe nada (nada los llama todavía).
+
+## Lessons (Notas N3)
+- La columna TIMESTAMP solo guarda segundos: para detectar ediciones simultáneas hay que comparar también el contenido (revisión con hash) o usar un contador de versión.
+- `LIKE ... ESCAPE '\\'` no es portable entre MySQL y SQLite; `ESCAPE '!'` sí.
+- Para probar un endpoint real sin BD: router de `php -S` fuera del repo que carga `includes/auth.php`, sustituye la conexión del singleton `Database` por SQLite (Reflection: `newInstanceWithoutConstructor` + propiedades `connection` e `instance`) y rellena `$_SESSION` desde una cabecera.
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N4)
+- [x] N4 IMPLEMENTADO, pendiente de verificación del usuario en producción.
+- Diseño (skill /taste aplicada solo en lo que sirve para una pantalla de producto; la skill excluye dashboards y UI densa): se mantiene el lenguaje de Prisma (Geist, tokens.css, iconoir, tema claro como el resto de la app). Diales: variación 3 / movimiento 3 / densidad 5. Un acento (brand azul); radios: contenedor 12, filas/botones/campos 8, chips y selector de app redondos. Sin rayas largas ni etiquetas decorativas.
+- `notes.php` (NUEVA): cabecera con buscador (`/`) y "Nueva nota" (`N`); filtros Todas / Mías / Compartidas conmigo + filtro por app; espacio de trabajo a dos paneles (lista con extracto, hora relativa, autor, app e icono de compartida; fijadas arriba). Apps del usuario en `<script type="application/json">`. Sin estilos en línea.
+- `assets/js/notes.js` (NUEVO): lector (Markdown con marked + DOMPurify, enlaces en pestaña nueva), editor (título + texto que crece, pestaña Vista previa, ⌘/Ctrl+Enter o ⌘/Ctrl+S para guardar, Esc cancela, aviso "Cambios sin guardar", confirmación al salir con cambios), compartir (menú Solo yo / Todo el equipo / personas; en nota nueva se guarda al crearla), fijar, eliminar (con confirmación), aviso de conflicto con "Ver su versión" / "Guardar la mía", estados de carga (esqueletos), vacío, sin resultados, error y nota no disponible. Enlace directo `notes.php?id=N` (lo usarán los avisos de N6). Móvil: lista o nota, con botón "Notas" para volver y salto hasta la nota.
+- `assets/js/notes-helpers.js` (NUEVO): funciones puras (extracto sin Markdown, "Hace X", fecha completa, resumen de compartir) probadas con Node.
+- `assets/css/notes.css` (NUEVO): incluye `prefers-reduced-motion` y foco visible con teclado.
+- Barra lateral: "Notas" (icono `iconoir-page`) entre "Mejoras" y "Nota rápida". Lo adelanto de N5 porque sin esto la página no se encuentra; el cambio de nombre de "Nota rápida" y el bloque de la Vista global siguen en N5.
+- **Arreglos encontrados al verificar**:
+  1. `.visually-hidden` no existe en styles.css (solo en tasks.css): definido en notes.css.
+  2. "Hace X" calculado con el reloj del navegador salía desfasado si la BD está en otra zona horaria. Ahora la API devuelve `server_now` (CURRENT_TIMESTAMP de la BD) en listado y detalle, y el cálculo se hace contra ese reloj. Test añadido en tests/notes-api.php.
+  3. Listas de casillas con viñeta y casilla a la vez: `li:has(> input[type=checkbox])` sin viñeta.
+  4. En móvil, al abrir una nota la página no bajaba (panel demasiado corto mientras carga): altura mínima de pantalla en modo lectura.
+- Tests: NUEVO `tests/notes-page.php` (helpers con Node + contrato de página, JS, CSS y barra lateral; sin rayas largas). 19/19 archivos OK.
+- Verificación en navegador con router temporal fuera del repo (notes.php + api/notes.php reales, SQLite, sesión simulada; MariaDB sin tocar), a 1440 px y 375 px: lista, lector, compartir (se guarda y Esc devuelve el foco), editar, conflicto (las dos opciones), nueva nota con validación de título, compartida con Luis antes de crearla, vista previa, fijar, eliminar, nota ajena (sin borrar ni compartir), filtros, búsqueda, sin resultados, nota inexistente. Sin errores de JS en consola (solo los 409/404 provocados).
+- **Archivos a subir (N1–N4)**: `notes.php`, `api/notes.php`, `includes/notes.php`, `includes/auth.php`, `includes/sidebar.php`, `assets/js/notes.js`, `assets/js/notes-helpers.js`, `assets/css/notes.css`. La migración 015 ya está ejecutada. No hace falta subir `sw.js` (los archivos nuevos tienen `?v=1` y el resto de assets no cambia).
+
+## Lessons (Notas N4)
+- `.visually-hidden` no está en styles.css: cualquier página fuera de Tareas que lo use debe definirlo.
+- Las horas de MySQL llegan sin zona horaria: para "Hace X" en el navegador, compararlas con la hora de la propia BD (`CURRENT_TIMESTAMP AS server_now`), no con `new Date()`.
+- Capturas del panel del navegador tomadas justo después de un cambio pueden salir a mitad de animación o antiguas: confirmar con `getAnimations()` / estado del DOM antes de dar algo por roto.

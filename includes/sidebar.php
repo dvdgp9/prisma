@@ -73,6 +73,11 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
                 </a>
             <?php endif; ?>
 
+            <a href="/notes.php" class="nav-item <?php echo $current_page === 'notes' ? 'active' : ''; ?>" data-nav="notes">
+                <i class="iconoir-page"></i>
+                <span>Notas</span>
+            </a>
+
             <a href="/ai-inbox.php" class="nav-item <?php echo $current_page === 'ai-inbox' ? 'active' : ''; ?>" data-nav="ai-inbox">
                 <i class="iconoir-sparks"></i>
                 <span>Nota rápida</span>
