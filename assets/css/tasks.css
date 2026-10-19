@@ -417,6 +417,12 @@
     color: var(--primary-color);
 }
 
+/* "Tú": tus tareas privadas en gris, para que las que tienen otras personas (azul) destaquen */
+.task-badge.shared.task-badge--me {
+    background: var(--ink-100);
+    color: var(--ink-700);
+}
+
 /* Con quién se comparte: nombres en ordenador, solo el número en móvil */
 .task-badge-names {
     max-width: 240px;

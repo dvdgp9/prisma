@@ -395,21 +395,14 @@ function buildTaskCard(task, localToday) {
     if (caps.share === false && creator) {
         meta.push(`<span class="task-meta-item task-creator" title="Creada por ${escapeHtml(creator)}"><i class="iconoir-user"></i>${escapeHtml(creator)}</span>`);
     }
-    // Con quién se comparte: el dueño lo cambia pulsando la etiqueta (o el botón de compartir si es privada).
+    // Para quién es (siempre). Si es tuya, al pulsar la etiqueta se cambia con quién se comparte.
     const canShare = caps.share !== false && !task.is_completed;
-    if (task.is_shared || task.share_count > 0) {
-        const icon = task.is_shared ? 'iconoir-group' : 'iconoir-user';
-        const countLabel = `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}`;
-        const summary = task.is_shared ? null : taskShareSummary(task.shared_user_ids || [], teamMembers, CURRENT_USER_ID);
-        // En ordenador, los nombres; en móvil, solo el número (lo decide tasks.css).
-        const names = task.is_shared ? 'Equipo' : (summary.label || countLabel);
-        const count = task.is_shared ? 'Equipo' : String(task.share_count);
-        const who = task.is_shared ? 'Compartida con todo el equipo' : `Compartida ${summary.phrase || `con ${countLabel}`}`;
-        const inner = `<i class="${icon}"></i><span class="task-badge-names">${escapeHtml(names)}</span><span class="task-badge-count">${escapeHtml(count)}</span>`;
-        meta.push(canShare
-            ? `<button type="button" class="task-badge shared task-badge-btn" title="${escapeHtml(who)} · cambiar" onclick="openShareMenu(${task.id}, this, event)">${inner}</button>`
-            : `<span class="task-badge shared" title="${escapeHtml(who)}">${inner}</span>`);
-    }
+    const forWhom = taskForWhom(task, teamMembers, CURRENT_USER_ID);
+    const forWhomInner = `<i class="${forWhom.icon}"></i><span class="task-badge-names">${escapeHtml(forWhom.label)}</span><span class="task-badge-count">${escapeHtml(forWhom.count)}</span>`;
+    const forWhomClass = `task-badge shared task-badge--${forWhom.kind}`;
+    meta.push(canShare
+        ? `<button type="button" class="${forWhomClass} task-badge-btn" title="${escapeHtml(forWhom.title)} · cambiar (s)" onclick="openShareMenu(${task.id}, this, event)">${forWhomInner}</button>`
+        : `<span class="${forWhomClass}" title="${escapeHtml(forWhom.title)}">${forWhomInner}</span>`);
     if (task.attachment_count > 0) {
         meta.push(`<span class="task-meta-item"><i class="iconoir-attachment"></i>${task.attachment_count}</span>`);
     }
@@ -431,11 +424,6 @@ function buildTaskCard(task, localToday) {
                 ${canEdit ? `
                     <button type="button" class="task-action-btn" onclick="openPostponeMenu(${task.id}, this, event)" title="${task.due_date ? 'Posponer' : 'Poner fecha'} (p)">
                         <i class="iconoir-alarm"></i>
-                    </button>
-                ` : ''}
-                ${canShare && !task.is_shared && !(task.share_count > 0) ? `
-                    <button type="button" class="task-action-btn" onclick="openShareMenu(${task.id}, this, event)" title="Compartir (s)">
-                        <i class="iconoir-user-plus"></i>
                     </button>
                 ` : ''}
                 <button type="button" class="task-action-btn" onclick="openTaskModal(${task.id})" title="Editar (e)">

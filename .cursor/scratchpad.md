@@ -2978,3 +2978,138 @@ Además, el grupo 3 y el contador de "Sin fecha" enseñan lo que está sin plani
   - Corregido al probar: el title decía "Compartida con Tú" → ahora "Compartida contigo".
 - **Archivos a subir (MT7)**: `api/tasks.php`, `tasks.php`, `index.php`, `assets/js/task-parser.js`, `assets/js/tasks.js`, `assets/js/tasks-interactions.js`, `assets/css/tasks.css`, `sw.js`.
 - Siguiente: MT8 (cierre: lista final de archivos de MT1–MT7).
+
+## Project Status Board (Mi trabajo) — CIERRE MT8 (19 Oct 2026)
+- [x] MT0–MT7 hechos y verificados por el usuario paso a paso. Todo commiteado por el usuario en 6467106 "Mejoras generales" (árbol limpio).
+- [x] MT8: comprobaciones finales sobre lo commiteado: 28/28 archivos de test OK, `php -l` y `node --check` sin errores. Cada asset cambiado tiene su `?v=` subido en todas las páginas que lo cargan: main.js 5.1→5.4, task-parser.js 5→6 (index y tasks), tasks.js 11→13, tasks-interactions.js 3→4, tasks.css 3.0→3.1, nuevos my-work.js v2, work-helpers.js v3 y work.css v3. `sw.js` prisma-v38→v42. No quedan restos de las pruebas (`launch.json` con sus 2 configuraciones, sin `preview-*.php`).
+- Migración 016 ya ejecutada por el usuario.
+
+### Archivos a subir (MT1–MT7), en este orden
+1. `includes/auth.php` (primero: `api/requests.php` usa sus funciones nuevas)
+2. `api/requests.php`, `api/tasks.php`
+3. `assets/js/work-helpers.js` (nuevo), `assets/js/my-work.js` (nuevo), `assets/js/main.js`, `assets/js/task-parser.js`, `assets/js/tasks.js`, `assets/js/tasks-interactions.js`, `assets/css/work.css` (nuevo), `assets/css/tasks.css`
+4. `index.php`, `tasks.php`
+5. `sw.js` (el último)
+Motivo del orden: si una página sube antes que sus JS/CSS, alguien que entre en ese momento puede quedarse con el archivo viejo guardado bajo la versión nueva (caché de la PWA).
+No se suben: `tests/`, `.cursor/`, `migrations/` (la 016 ya está ejecutada) ni los `preview-*.html`.
+
+### Checklist de prueba en producción
+- [ ] Programadora: la Vista global muestra "Mi trabajo" con sus tareas y sus mejoras por grupos; el filtro Todo/Tareas/Mejoras se recuerda.
+- [ ] Completar una tarea desde la lista → "Deshacer" la devuelve.
+- [ ] Poner o cambiar la fecha de una mejora desde la fila y desde su detalle; la crítica sin fecha sale en "Urgente sin fecha".
+- [ ] Superadmin: ve todas las mejoras activas, con "Sin asignar" donde toque.
+- [ ] Rol usuario: no puede cambiar ni el estado ni la fecha de una mejora.
+- [ ] Tareas: la tarjeta muestra los nombres de con quién se comparte; "Compartir con" enseña "Solo para mí" y "Tú (es tuya)".
+- [ ] Clic en una tarea desde "Mi trabajo" → se abre esa tarea en Tareas.
+- [ ] Si en la PWA se ve algo antiguo: cerrar y volver a abrir la app (la caché pasa a v42).
+
+---
+
+# PLAN: VISTA GLOBAL "PARA MÍ | TODO" + "PARA QUIÉN" EN TAREAS + URGENCIA PULSABLE (Planner, 19 Octubre 2026)
+
+## Background and Motivation (Para mí | Todo)
+Tras subir "Mi trabajo", el usuario (con captura de Tareas) señala:
+1. **Tareas**: sale "Rebecca Ruiz" cuando la tarea es para ella, pero no sale nada cuando es para él.
+2. **Vista global**: le aparecen tareas asignadas a Rebecca y no se ve que son de ella. No se ven las personas asignadas.
+3. **Vista global**: pulsar la fecha abre opciones, pulsar la urgencia no hace nada (confuso; deberían hacerlo las dos).
+4. **Vista global**: está bien una vista "para mí" sin personas, pero quiere también una vista donde aparezca **todo**, para gestionarlo todo a la vez.
+
+**Decisiones ya tomadas por el usuario (19 Oct 2026)**
+- Primero Planner.
+- Las tareas que creas para otra persona (delegadas) salen **solo en "Todo"**, no en "Para mí".
+- "Todo" lo ven **programador, admin y superadmin**. El rol usuario solo tiene "Para mí".
+- En "Para mí", también el superadmin ve **solo sus mejoras** (asignadas a él). Todas las mejoras, en "Todo". (Sustituye a la decisión de MT4/MT5 de que el superadmin viera todas en la Vista global.)
+
+## Key Challenges and Analysis (Para mí | Todo)
+**Por qué hoy salen tareas de Rebecca en "Mi trabajo"**: la Vista global carga las tareas con `/api/tasks.php?completed=0&shared=0`. Eso devuelve las que creas tú (también las que has pasado a Rebecca) y las que te comparten. Las delegadas parecen tuyas y, además, la fila de tarea no enseña personas.
+
+**De quién es una tarea** (con `user_id`, `is_shared` y `share_user_ids`, este último añadido en MT7):
+- Tuya y privada (sin personas ni equipo): **para ti**.
+- Compartida contigo por nombre: **para ti** (también si va con más gente).
+- Creada por ti y compartida con otras personas: **delegada**, es de ellas.
+- Compartida con todo el equipo: **del equipo**.
+
+**Qué sale en cada vista**
+- **Para mí** (todos los roles): tareas para ti + mejoras activas asignadas a ti. Sin nombres (todo es tuyo), salvo "De David" en las tareas que te ha pasado otra persona.
+- **Todo** (programador, admin y superadmin): tareas de `/api/tasks.php?completed=0&shared=1` (tuyas, delegadas, compartidas contigo y del equipo) + todas las mejoras activas que la API te deja ver (superadmin: todas; resto: las de sus apps).
+  - Cada fila lleva para quién es: nombres, "Tú", "Equipo" o "Sin asignar".
+  - Filtro por persona: Todas / Sin asignar / cada persona. Una tarea o mejora con varias personas sale al filtrar por cualquiera de ellas.
+  - El filtro Todo/Tareas/Mejoras sigue funcionando dentro de cada vista. La vista elegida se recuerda.
+- **Nombres**: la lista del equipo de `/api/task-shares.php` (la misma que usa Tareas, sirve para todos los roles) + "Tú" para quien mira. Las mejoras ya traen sus asignados.
+
+**Tareas: "para quién" en todas las tarjetas**
+- Tuya y privada: chip "Tú". Si es tuya, al pulsarlo se abre "Compartir con" y sustituye al botón de compartir de la tarjeta, para no tener dos controles para lo mismo.
+- Compartida: nombres (como ahora).
+- Del equipo: "Equipo".
+- En "Del equipo", la tarea privada de otra persona no se ve (no cambia).
+
+**Urgencia pulsable**
+- El chip de prioridad sale en **todas** las mejoras: crítica y alta con color; media y baja en gris discreto (hoy solo salen crítica y alta). Así siempre se puede cambiar.
+- Si puedes editar la mejora (programador/admin/superadmin), al pulsarlo se abre un menú Crítica / Alta / Media / Baja, igual que el de la fecha. Guarda con `PUT /api/requests.php {id, priority}` (exige `edit`, ya está así). La fila se reordena sin recargar. Sin permiso, el chip no se puede pulsar.
+
+**Riesgos**
+- `my-work.js` y `work-helpers.js` cambian de reglas: hay que actualizar sin romper los tests de MT4 (superadmin = todas las mejoras pasa a ser solo en "Todo").
+- Volumen en "Todo" para superadmin: lo cubren los grupos con "Ver más" y el filtro por persona.
+
+## High-level Task Breakdown (Para mí | Todo) — PROPUESTA, pendiente de que el usuario la revise
+- [ ] PT0. Decisiones pendientes (abajo).
+- [ ] PT1. **Tareas: "para quién" en todas las tarjetas** ("Tú" en las privadas propias; el chip abre "Compartir con" y sustituye al botón de compartir). Test (Node + contrato). ✅ Éxito: en la página de Tareas cada tarjeta dice para quién es; a 768 px o menos se ve compacto.
+- [ ] PT2. **Lógica pura (TDD con Node)** en work-helpers.js: alcance `mine | all` en `buildWorkItems`, con las reglas de arriba (delegadas solo en "all", "De X" en tareas de otras personas, superadmin = solo las suyas en "mine"); `workPeople(items)` para el filtro por persona; filtro por persona en el agrupado. ✅ Éxito: tests de Ana/David/Rebecca (privada, delegada, compartida conmigo, del equipo, mejoras asignadas, sin asignar) en las dos vistas.
+- [ ] PT3. **Vista global: selector "Para mí | Todo"** (solo programador+, recordado). "Todo" carga las tareas con `shared=1`, enseña para quién es cada fila y añade el filtro por persona. "Para mí" enseña "De X" en tareas que te han pasado. ✅ Éxito: en el navegador las delegadas solo salen en "Todo" con el nombre; el filtro por persona funciona; el rol usuario no ve el selector; móvil sin scroll horizontal.
+- [ ] PT4. **Urgencia pulsable**: chip en todas las mejoras y menú de prioridad con permiso; la fila se reordena. ✅ Éxito: cambiar una media a crítica la sube de grupo u orden al momento; el rol usuario no puede.
+- [ ] PT5. Verificación final, versiones (`?v=` y `sw.js`) y lista de archivos a subir.
+
+### Decisiones a confirmar con el usuario (Para mí | Todo)
+1. **Tareas "de todo el equipo" en "Para mí"**: recomendado que no (salen en "Todo" con "Equipo"); alternativa: que salgan también en "Para mí".
+2. **"Para ti y para Rebecca" a la vez**: hoy, si compartes una tarea tuya con alguien, pasa a ser suya. Recomendado dejarlo así por ahora (la sigues desde "Todo"). Alternativa: que "Tú" en "Compartir con" se pueda marcar para que siga también en tu "Para mí" (hay que guardarte a ti en `task_shares`; algo más de trabajo).
+3. **Chip "Tú" en Tareas**: recomendado que sustituya al botón de compartir de la tarjeta (el atajo `s` sigue funcionando). Alternativa: dejar los dos.
+4. **Orden de los pasos**: recomendado PT1 → PT4 (lo pequeño y visible primero) → PT2 → PT3 → PT5. Alternativa: el orden numérico.
+
+## Project Status Board (Para mí | Todo)
+- [ ] PT0 Decisiones del usuario
+- [x] PT0 Decisiones del usuario (19 oct 2026): delegadas solo en "Todo"; "Todo" para programador, admin y superadmin; en "Para mí" el superadmin ve solo sus mejoras; aceptadas las 4 recomendaciones (equipo fuera de "Para mí", sin "para mí y para otra" a la vez, el chip sustituye al botón de compartir, orden PT1 → PT4 → PT2 → PT3 → PT5).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Para mí | Todo, PT1–PT5 seguidos)
+El usuario pidió hacer las 5 tareas seguidas y comprobar al final.
+- **PT1** Tareas: `taskForWhom` (task-parser.js) y etiqueta "para quién" en todas las tarjetas ("Tú" en gris, nombres o "Equipo" en azul). En las tuyas la etiqueta abre "Compartir con"; se quitó el botón de compartir de la tarjeta (el atajo `s` sigue). Test: `tests/tasks-for-whom.php`.
+- **PT4** Urgencia pulsable en la Vista global: chip en todas las mejoras (media y baja en gris, sin el latido de "Crítica" dentro de la lista). Con `capabilities.edit` es un botón que abre el menú Crítica/Alta/Media/Baja (`workPriorityMenuOptions`), guarda con `PUT /api/requests.php {id, priority}` y la fila se reordena sin recargar; el foco vuelve al chip. El menú de fecha y el de urgencia comparten `mountMyWorkMenu`. Test: `tests/my-work-priority.php`.
+- **PT2** work-helpers.js: `buildWorkItems(tasks, requests, viewer, scope)` con `scope` 'mine' (por defecto) o 'all'; cada item lleva `forWhom`, `personIds` y `from` ("De X"). `workPeople(items, viewer)` y `filterWorkItemsByPerson(items, person)`. Test nuevo: `tests/work-scope.php`; `tests/work-grouping.php` adaptado (superadmin ve todas las mejoras solo en "Todo").
+- **PT3** Vista global: selector "Para mí | De todos" (solo programador, admin y superadmin; recordado en `prisma_mywork_scope`). "De todos" cambia el título a "Trabajo del equipo", carga `/api/tasks.php?completed=0&shared=1` y el equipo (`/api/task-shares.php`), enseña para quién es cada fila y añade el filtro por persona (Todas / Tú / cada persona / Sin asignar) con estado vacío propio y botón "Ver todas las personas". Test: `tests/my-work-scope-ui.php`.
+  - Nombre: el plan decía "Todo", pero justo debajo está el filtro "Todo · Tareas · Mejoras" y dos "Todo" seguidos se confunden. Se usa **"De todos"** (y no "Todo el equipo", que en Tareas ya significa "compartida con todo el equipo"). Si el usuario prefiere otro nombre, es cambiar el texto en index.php y `MY_WORK_SCOPE_TEXT`.
+- **Navegador** (arnés con SQLite en el scratchpad de la sesión, entrada temporal en launch.json ya quitada):
+  - David (superadmin) en "Para mí": sus tareas privadas, las que le pasan Ana y Rebecca ("De Ana Ruiz", "De Rebecca Soler") y solo su mejora; ni delegadas ni de equipo.
+  - "De todos": 14 elementos (delegadas con el nombre, "Equipo", "Sin asignar"); la tarea privada de Rebecca no sale. Filtro por persona: Rebecca 2, "Sin asignar" 1, "Tú" = lo mismo que "Para mí".
+  - Urgencia: Alta → Crítica guardada en la base, aviso "Urgencia cambiada"; una Baja sin fecha pasa a "Urgente sin fecha" al ponerla Crítica.
+  - Luis (rol usuario) con "De todos" guardado en el navegador: sin selector ni filtro por persona, en "Para mí", urgencia como etiqueta fija.
+  - Ana (programadora): chips de urgencia pulsables. Completar y deshacer sin errores.
+  - Móvil 375 px: sin scroll horizontal; selector, tipo y persona a todo el ancho.
+  - Tareas (PT1): "Tú", "Ana Ruiz", "Rebecca Soler", "Equipo"; botón en las tuyas, etiqueta fija en las de otras personas.
+- **PT5**: work.css v4, work-helpers.js v4, my-work.js v3, sw.js `prisma-v43` (task-parser v7, tasks.js v14 y tasks.css v3.2 ya subidos en PT1). 32 archivos de test en verde; `php -l` y `node --check` sin errores.
+
+### Archivos a subir (Para mí | Todo), en este orden
+No hay migraciones ni cambios en `includes/` o `api/`.
+1. `assets/js/task-parser.js`
+2. `assets/js/work-helpers.js`
+3. `assets/js/tasks.js`
+4. `assets/js/my-work.js`
+5. `assets/css/tasks.css`
+6. `assets/css/work.css`
+7. `tasks.php`
+8. `index.php`
+9. `sw.js` (el último)
+Tests (no hacen falta en producción): `tests/tasks-for-whom.php`, `tests/my-work-priority.php`, `tests/work-scope.php`, `tests/my-work-scope-ui.php` (nuevos) y los adaptados `tests/work-grouping.php`, `tests/my-work-actions.php`, `tests/my-work-view.php`, `tests/request-due-date-ui.php`, `tests/sidebar-mejoras.php`, `tests/tasks-share-names.php`, `tests/tasks-t2.php`.
+
+## Executor's Feedback or Assistance Requests (Para mí | Todo)
+- Pendiente de que el usuario lo compruebe en producción (Planner cierra). Revisar sobre todo el nombre "De todos" y que en "De todos" solo salen las tareas que la API deja ver (las tuyas, las compartidas contigo y las de equipo): las privadas de otra persona o lo que Rebecca pase a Ana sin incluirte no aparecen.
+
+## Lessons (Para mí | Todo)
+- `buildWorkItems` usa `taskForWhom`, `taskShareSummary` y `parseShareIds` de task-parser.js: cualquier test o página que cargue work-helpers.js tiene que cargar antes task-parser.js.
+- La lista de tareas abiertas se pide dos veces al cargar la Vista global: una es "Mi trabajo" y la otra el contador de la barra lateral (`sidebar.js`). No es un fallo nuevo.
+
+## Project Status Board (Para mí | Todo) — actualizado por el Executor
+- [x] PT1 Tareas: para quién en todas las tarjetas
+- [x] PT4 Urgencia pulsable
+- [x] PT2 Alcance mine/all + filtro por persona (lógica)
+- [x] PT3 Selector "Para mí | De todos" en la Vista global
+- [x] PT5 Versiones, tests y lista de archivos
+- [ ] Verificación del usuario en producción (cierra el Planner)

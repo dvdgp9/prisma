@@ -41,9 +41,8 @@ assert_file_contains('index.php', [
     'id="work-count-all"',
     'id="work-count-task"',
     'id="work-count-request"',
-    'Tus tareas y todas las mejoras activas',
-    'Tus tareas y las mejoras que tienes asignadas',
-    '/assets/js/my-work.js?v=2',
+    'Tus tareas y las mejoras que tienes asignadas', // "Para mí"; "De todos" cambia el texto desde my-work.js (plan PT3)
+    '/assets/js/my-work.js?v=3',
 ], 'overview has the unified work list with its filter');
 
 $index = read_project_file('index.php');
@@ -60,7 +59,8 @@ assert_file_contains('assets/js/my-work.js', [
     'function loadMyWork(',
     'function renderMyWork(',
     'function setMyWorkFilter(',
-    "fetch('/api/tasks.php?completed=0&shared=0')",
+    '/api/tasks.php?completed=0&shared=${scope === \'all\' ? 1 : 0}', // "Para mí" shared=0, "De todos" shared=1
+    'Todas las tareas que ves y todas las mejoras activas',
     'buildWorkItems(',
     'groupWorkItems(',
     'countWorkItems(',

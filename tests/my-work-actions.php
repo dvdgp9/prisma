@@ -100,10 +100,10 @@ assert_file_contains('assets/js/main.js', ['config.action', 'toast-action', 'con
 
 // Tareas: enlace directo tasks.php?task=ID.
 assert_file_contains('assets/js/tasks.js', ["new URLSearchParams(window.location.search).get('task')", 'openTaskModal(linkedTaskId)'], 'tasks.php opens a task from ?task=ID');
-assert_file_contains('tasks.php', ['/assets/js/tasks.js?v=13'], 'tasks page loads the new tasks.js');
+assert_file_contains('tasks.php', ['/assets/js/tasks.js?v=14'], 'tasks page loads the new tasks.js');
 
 assert_file_contains('assets/css/work.css', ['.my-work-check', '.my-work-date-btn', '.work-menu', '.work-menu-item'], 'work.css styles the check, the date button and its menu');
-assert_file_contains('index.php', ['/assets/js/my-work.js?v=2', '/assets/js/task-parser.js'], 'index loads the new my-work.js and the date shortcuts');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v42';"], 'service worker cache is bumped');
+assert_file_contains('index.php', ['/assets/js/my-work.js?v=3', '/assets/js/task-parser.js'], 'index loads the new my-work.js and the date shortcuts');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v43';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "My work actions completed successfully.\n");

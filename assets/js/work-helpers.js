@@ -60,49 +60,141 @@
         { key: 'nodate', label: 'Sin fecha' }
     ];
 
+    // Ids de las personas con las que se comparte una tarea: la API los da como "6,8".
+    function taskShareIdList(task) {
+        if (Array.isArray(task.shared_user_ids)) return task.shared_user_ids.map(Number);
+        return global.parseShareIds(task.share_user_ids);
+    }
+
     /**
-     * Tareas (ya filtradas por la API para quien mira) + mejoras activas, en un
-     * formato común. Superadmin ve todas las mejoras activas; el resto, las suyas.
-     * viewer: { id, role }
+     * "Para mí": no es de equipo y, si se comparte con personas, tú estás entre ellas;
+     * si no se comparte, es tuya. Sin ids (API antigua) pero compartida: es para ti
+     * si te la ha pasado otra persona, y delegada si es tuya.
      */
-    function buildWorkItems(tasks, requests, viewer) {
+    function isTaskForViewer(task, viewerId) {
+        if (Number(task.is_shared) === 1) return false;
+        const ids = taskShareIdList(task);
+        if (ids.length) return ids.includes(viewerId);
+        if (Number(task.share_count || 0) > 0) return Number(task.user_id) !== viewerId;
+        return Number(task.user_id) === viewerId;
+    }
+
+    /**
+     * Tareas (ya filtradas por la API para quien mira) + mejoras activas, en un formato común.
+     * viewer: { id, role, members } (members = equipo de /api/task-shares.php, para los nombres).
+     * scope:
+     *   'mine' (por defecto): tus tareas y las que te han pasado; mejoras asignadas a ti (también superadmin).
+     *   'all': todas las tareas que llegan (delegadas y de equipo incluidas) y todas las mejoras activas.
+     * Cada item dice para quién es (forWhom), sus personas (personIds) y quién te la pasó (from).
+     */
+    function buildWorkItems(tasks, requests, viewer, scope) {
         const viewerId = Number(viewer && viewer.id);
-        const seeAll = viewer && viewer.role === 'superadmin';
+        const members = (viewer && viewer.members) || [];
+        const all = scope === 'all';
 
         const taskItems = (tasks || [])
             .filter(task => Number(task.is_completed) !== 1)
-            .map(task => ({
-                key: `task-${task.id}`,
-                type: 'task',
-                id: Number(task.id),
-                title: task.title || '',
-                dueDate: parseDueDate(task.due_date) ? String(task.due_date).slice(0, 10) : null,
-                priority: null,
-                status: null,
-                appName: task.app_name || null,
-                assignees: [],
-                createdAt: task.created_at || '',
-                raw: task
-            }));
+            .filter(task => all || isTaskForViewer(task, viewerId))
+            .map(task => {
+                const ids = taskShareIdList(task);
+                const forWhom = global.taskForWhom(Object.assign({}, task, { shared_user_ids: ids }), members, viewerId);
+                let personIds = [];
+                if (forWhom.kind === 'me' || forWhom.kind === 'owner') personIds = [Number(task.user_id)];
+                if (forWhom.kind === 'people') personIds = ids;
+                const fromOther = Number(task.user_id) !== viewerId;
+                return {
+                    key: `task-${task.id}`,
+                    type: 'task',
+                    id: Number(task.id),
+                    title: task.title || '',
+                    dueDate: parseDueDate(task.due_date) ? String(task.due_date).slice(0, 10) : null,
+                    priority: null,
+                    status: null,
+                    appName: task.app_name || null,
+                    assignees: [],
+                    forWhom: { kind: forWhom.kind, label: forWhom.label, title: forWhom.title },
+                    personIds,
+                    from: fromOther ? (task.creator_name || task.creator_username || null) : null,
+                    createdAt: task.created_at || '',
+                    raw: task
+                };
+            });
 
         const requestItems = (requests || [])
             .filter(request => request.status === 'pending' || request.status === 'in_progress')
-            .filter(request => seeAll || (request.assignments || []).some(a => Number(a.id) === viewerId))
-            .map(request => ({
-                key: `request-${request.id}`,
-                type: 'request',
-                id: Number(request.id),
-                title: request.title || '',
-                dueDate: parseDueDate(request.due_date) ? String(request.due_date).slice(0, 10) : null,
-                priority: request.priority || 'medium',
-                status: request.status,
-                appName: request.app_name || null,
-                assignees: (request.assignments || []).map(a => a.full_name || a.username || ''),
-                createdAt: request.created_at || '',
-                raw: request
-            }));
+            .filter(request => all || (request.assignments || []).some(a => Number(a.id) === viewerId))
+            .map(request => {
+                const assignments = request.assignments || [];
+                const personIds = assignments.map(a => Number(a.id));
+                const summary = global.taskShareSummary(personIds, assignments, viewerId);
+                return {
+                    key: `request-${request.id}`,
+                    type: 'request',
+                    id: Number(request.id),
+                    title: request.title || '',
+                    dueDate: parseDueDate(request.due_date) ? String(request.due_date).slice(0, 10) : null,
+                    priority: request.priority || 'medium',
+                    status: request.status,
+                    appName: request.app_name || null,
+                    assignees: assignments.map(a => a.full_name || a.username || ''),
+                    forWhom: personIds.length
+                        ? { kind: 'people', label: summary.label, title: `Asignada a ${summary.title}` }
+                        : { kind: 'unassigned', label: 'Sin asignar', title: 'Nadie la tiene asignada' },
+                    personIds,
+                    from: null,
+                    createdAt: request.created_at || '',
+                    raw: request
+                };
+            });
 
         return taskItems.concat(requestItems);
+    }
+
+    /**
+     * Personas para el filtro de "Todo": tú primero ("Tú") y el resto por nombre, cada una
+     * con cuántos items tiene; unassigned = mejoras sin nadie. Las tareas de equipo no
+     * cuentan para nadie en concreto (solo salen en "Todas").
+     */
+    function workPeople(items, viewer) {
+        const viewerId = Number(viewer && viewer.id);
+        const names = {};
+        ((viewer && viewer.members) || []).forEach(m => { names[Number(m.id)] = m.full_name || m.username; });
+        (items || []).forEach(item => {
+            if (item.type === 'request') {
+                (item.raw.assignments || []).forEach(a => { names[Number(a.id)] = names[Number(a.id)] || a.full_name || a.username; });
+            }
+            if (item.type === 'task' && item.forWhom && item.forWhom.kind === 'owner') {
+                names[Number(item.raw.user_id)] = names[Number(item.raw.user_id)] || item.forWhom.label;
+            }
+        });
+
+        const counts = {};
+        let unassigned = 0;
+        (items || []).forEach(item => {
+            if (item.type === 'request' && !item.personIds.length) unassigned++;
+            item.personIds.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+        });
+
+        const people = Object.keys(counts).map(id => ({
+            key: String(id),
+            label: Number(id) === viewerId ? 'Tú' : (names[id] || `Persona ${id}`),
+            count: counts[id]
+        }));
+        people.sort((a, b) => {
+            if (a.key === String(viewerId)) return -1;
+            if (b.key === String(viewerId)) return 1;
+            return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
+        });
+
+        return { people, unassigned };
+    }
+
+    // person: 'all' | 'none' (mejoras sin asignar) | id de la persona como texto.
+    function filterWorkItemsByPerson(items, person) {
+        if (!person || person === 'all') return (items || []).slice();
+        if (person === 'none') return (items || []).filter(item => item.type === 'request' && !item.personIds.length);
+        const id = Number(person);
+        return (items || []).filter(item => item.personIds.includes(id));
     }
 
     function workGroupKey(item, today) {
@@ -191,10 +283,27 @@
         return options;
     }
 
+    // ===== Menú de urgencia de cada mejora =====
+
+    const PRIORITY_OPTIONS = [
+        { key: 'critical', label: 'Crítica' },
+        { key: 'high', label: 'Alta' },
+        { key: 'medium', label: 'Media' },
+        { key: 'low', label: 'Baja' }
+    ];
+
+    // Las cuatro urgencias, de más a menos, con la actual marcada.
+    function workPriorityMenuOptions(current) {
+        return PRIORITY_OPTIONS.map(option => Object.assign({}, option, { active: option.key === current }));
+    }
+
     global.parseDueDate = parseDueDate;
     global.workDateMenuOptions = workDateMenuOptions;
+    global.workPriorityMenuOptions = workPriorityMenuOptions;
     global.requestDueInfo = requestDueInfo;
     global.buildWorkItems = buildWorkItems;
+    global.workPeople = workPeople;
+    global.filterWorkItemsByPerson = filterWorkItemsByPerson;
     global.groupWorkItems = groupWorkItems;
     global.countWorkItems = countWorkItems;
 })(window);

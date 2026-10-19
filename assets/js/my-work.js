@@ -1,33 +1,99 @@
 /**
  * Vista global "Mi trabajo": tareas y mejoras en una sola lista, agrupadas por
- * cuándo hay que hacerlas. La agrupación y el orden viven en work-helpers.js
- * (probados con Node). De main.js usa: currentView, requests, unreadRequestIds,
- * escapeHtml, getPriorityLabel y openRequestDetailModal.
+ * cuándo hay que hacerlas. "Para mí" enseña lo tuyo; "De todos" (programador,
+ * admin y superadmin) todo lo que ves, con para quién es y filtro por persona.
+ * El alcance, la agrupación y el orden viven en work-helpers.js (probados con
+ * Node). De main.js usa: currentView, requests, unreadRequestIds, escapeHtml,
+ * getPriorityLabel, showToast y openRequestDetailModal.
  */
 
 const MY_WORK_FILTERS = ['all', 'task', 'request'];
+const MY_WORK_SCOPES = ['mine', 'all'];
+const MY_WORK_SCOPE_ROLES = ['programador', 'admin', 'superadmin']; // ven "De todos" (el resto, solo "Para mí")
 const MY_WORK_GROUP_LIMIT = 8; // filas visibles por grupo antes de "Ver N más"
 
+const MY_WORK_SCOPE_TEXT = {
+    mine: { title: 'Mi trabajo', sub: 'Tus tareas y las mejoras que tienes asignadas' },
+    all: { title: 'Trabajo del equipo', sub: 'Todas las tareas que ves y todas las mejoras activas' }
+};
+
 const myWork = {
-    tasks: null,           // null = todavía sin cargar
-    tasksLoading: false,
-    tasksError: false,
+    // Tareas de cada alcance: "Para mí" pide shared=0 y "De todos" shared=1 (incluye las de equipo).
+    lists: {
+        mine: { data: null, loading: false, error: false }, // data null = todavía sin cargar
+        all: { data: null, loading: false, error: false }
+    },
+    members: null,         // equipo (/api/task-shares.php) para los nombres en "De todos"
+    membersLoading: false,
     requests: [],          // copia de las mejoras cargadas en la Vista global
     requestsLoaded: false,
     requestsError: false,
+    scope: readMyWorkScope(),
     filter: readMyWorkFilter(),
+    person: 'all',         // filtro por persona de "De todos": 'all' | 'none' | id
+    personNames: {},       // nombres vistos, para no perder la opción elegida si se queda sin nada
     expanded: new Set(),   // grupos con "Ver más" abierto
     items: [],             // items pintados ahora (para las acciones de cada fila)
-    menu: null             // menú de fecha abierto
+    menu: null             // menú de fecha o urgencia abierto
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.work-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => setMyWorkFilter(btn.dataset.workFilter));
     });
+    document.querySelectorAll('.work-scope-btn').forEach(btn => {
+        btn.addEventListener('click', () => setMyWorkScope(btn.dataset.workScope));
+    });
+    document.getElementById('work-person')?.addEventListener('change', e => {
+        myWork.person = e.target.value;
+        renderMyWork();
+    });
     document.getElementById('my-work-body')?.addEventListener('click', handleMyWorkClick);
     syncMyWorkFilterButtons();
+    syncMyWorkScope();
 });
+
+// ========== Para mí | De todos (solo programador, admin y superadmin), recordado en el navegador ==========
+
+function canSeeTeamWork() {
+    return MY_WORK_SCOPE_ROLES.includes(document.body.dataset.userRole);
+}
+
+function readMyWorkScope() {
+    if (!canSeeTeamWork()) return 'mine';
+    try {
+        return localStorage.getItem('prisma_mywork_scope') === 'all' ? 'all' : 'mine';
+    } catch (error) {
+        console.warn('Mi trabajo: no se pudo leer la vista guardada', error);
+        return 'mine';
+    }
+}
+
+function setMyWorkScope(scope) {
+    if (!MY_WORK_SCOPES.includes(scope) || scope === myWork.scope || !canSeeTeamWork()) return;
+    myWork.scope = scope;
+    try {
+        localStorage.setItem('prisma_mywork_scope', scope);
+    } catch (error) {
+        console.warn('Mi trabajo: no se pudo recordar la vista', error);
+    }
+    closeMyWorkMenu();
+    syncMyWorkScope();
+    loadMyWork();
+}
+
+function syncMyWorkScope() {
+    const text = MY_WORK_SCOPE_TEXT[myWork.scope];
+    const title = document.getElementById('my-work-title');
+    const sub = document.getElementById('my-work-sub');
+    if (title) title.textContent = text.title;
+    if (sub) sub.textContent = text.sub;
+    document.querySelectorAll('.work-scope-btn').forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.dataset.workScope === myWork.scope ? 'true' : 'false');
+    });
+    const personWrap = document.getElementById('work-person-wrap');
+    if (personWrap) personWrap.hidden = myWork.scope !== 'all';
+}
 
 // ========== Filtro (Todo / Tareas / Mejoras), recordado en el navegador ==========
 
@@ -63,28 +129,60 @@ function syncMyWorkFilterButtons() {
 
 // ========== Datos ==========
 
-// Al abrir la Vista global; force = true tras crear una tarea desde esta página.
+// Al abrir la Vista global o cambiar de alcance; force = true tras crear una tarea desde esta página.
 function loadMyWork(forceTasks) {
-    if (forceTasks || myWork.tasksError || (myWork.tasks === null && !myWork.tasksLoading)) {
-        loadMyWorkTasks();
+    const scope = myWork.scope;
+    if (forceTasks) {
+        // La lista del otro alcance se vuelve a pedir cuando se abra.
+        MY_WORK_SCOPES.filter(s => s !== scope && !myWork.lists[s].loading).forEach(s => { myWork.lists[s].data = null; });
     }
+    const list = myWork.lists[scope];
+    if (forceTasks || list.error || (list.data === null && !list.loading)) {
+        loadMyWorkTasks(scope);
+    }
+    if (scope === 'all') loadMyWorkMembers();
     renderMyWork();
 }
 
-async function loadMyWorkTasks() {
-    myWork.tasksLoading = true;
-    myWork.tasksError = false;
+async function loadMyWorkTasks(scope) {
+    const list = myWork.lists[scope];
+    list.loading = true;
+    list.error = false;
     try {
-        const res = await fetch('/api/tasks.php?completed=0&shared=0');
+        const res = await fetch(`/api/tasks.php?completed=0&shared=${scope === 'all' ? 1 : 0}`);
         const data = await res.json();
         if (!data.success) throw new Error(`${res.status} ${data.error}`);
-        myWork.tasks = data.data;
+        list.data = data.data;
     } catch (error) {
-        console.error('Mi trabajo: error cargando tareas', error);
-        myWork.tasksError = true;
+        console.error('Mi trabajo: error cargando tareas', scope, error);
+        list.error = true;
     }
-    myWork.tasksLoading = false;
+    list.loading = false;
     renderMyWork();
+}
+
+// Nombres del equipo para "De todos". Si falla, se ve "1 persona" en vez del nombre (no bloquea).
+async function loadMyWorkMembers() {
+    if (myWork.members !== null || myWork.membersLoading) return;
+    myWork.membersLoading = true;
+    try {
+        const res = await fetch('/api/task-shares.php');
+        const data = await res.json();
+        if (!data.success) throw new Error(`${res.status} ${data.error}`);
+        myWork.members = data.data;
+    } catch (error) {
+        console.warn('Mi trabajo: no se pudo cargar el equipo; se verá el número de personas', error);
+        myWork.members = [];
+    }
+    myWork.membersLoading = false;
+    renderMyWork();
+}
+
+// La misma tarea puede estar en las dos listas: los cambios se aplican en ambas.
+function myWorkTaskRecords(id) {
+    return MY_WORK_SCOPES
+        .map(scope => (myWork.lists[scope].data || []).find(t => Number(t.id) === Number(id)))
+        .filter(Boolean);
 }
 
 // ========== Pintado ==========
@@ -108,22 +206,28 @@ function renderMyWork(update) {
     const body = document.getElementById('my-work-body');
     if (!body || typeof currentView === 'undefined' || currentView !== 'home') return;
 
-    if (myWork.tasksError || myWork.requestsError) {
+    const scope = myWork.scope;
+    const list = myWork.lists[scope];
+    if (list.error || myWork.requestsError) {
         body.removeAttribute('aria-busy');
-        body.innerHTML = myWorkMessageHtml('iconoir-warning-circle', 'No se pudo cargar tu trabajo',
+        body.innerHTML = myWorkMessageHtml('iconoir-warning-circle', scope === 'all' ? 'No se pudo cargar el trabajo del equipo' : 'No se pudo cargar tu trabajo',
             'Comprueba la conexión e inténtalo de nuevo.', '<button type="button" class="btn btn-secondary btn-sm" data-action="retry">Reintentar</button>');
         return;
     }
 
-    if (myWork.tasks === null || !myWork.requestsLoaded) {
+    if (list.data === null || !myWork.requestsLoaded || (scope === 'all' && myWork.members === null)) {
         body.setAttribute('aria-busy', 'true');
         body.innerHTML = myWorkSkeletonHtml();
         return;
     }
     body.removeAttribute('aria-busy');
 
-    const viewer = { id: Number(document.body.dataset.userId), role: document.body.dataset.userRole };
-    const items = buildWorkItems(myWork.tasks, myWork.requests, viewer);
+    const viewer = { id: Number(document.body.dataset.userId), role: document.body.dataset.userRole, members: myWork.members || [] };
+    let items = buildWorkItems(list.data, myWork.requests, viewer, scope);
+    if (scope === 'all') {
+        renderMyWorkPeople(workPeople(items, viewer));
+        items = filterWorkItemsByPerson(items, myWork.person);
+    }
     myWork.items = items;
     const counts = countWorkItems(items);
     MY_WORK_FILTERS.forEach(key => {
@@ -133,11 +237,36 @@ function renderMyWork(update) {
 
     const groups = groupWorkItems(items, new Date(), myWork.filter);
     body.innerHTML = groups.length
-        ? groups.map(group => myWorkGroupHtml(group, viewer)).join('')
-        : myWorkEmptyHtml(viewer);
+        ? groups.map(group => myWorkGroupHtml(group)).join('')
+        : myWorkEmptyHtml();
 }
 
-function myWorkGroupHtml(group, viewer) {
+/**
+ * Opciones del filtro por persona ("De todos"): todas, tú, el resto por nombre y "Sin asignar".
+ * Si la persona elegida se queda sin nada, su opción sigue (con 0) para que el filtro no salte.
+ */
+function renderMyWorkPeople({ people, unassigned }) {
+    const select = document.getElementById('work-person');
+    if (!select) return;
+
+    people.forEach(person => { myWork.personNames[person.key] = person.label; });
+    const options = [{ value: 'all', label: 'Todas las personas' }]
+        .concat(people.map(person => ({ value: person.key, label: `${person.label} (${person.count})` })));
+    if (unassigned > 0 || myWork.person === 'none') options.push({ value: 'none', label: `Sin asignar (${unassigned})` });
+    if (!options.some(option => option.value === myWork.person)) {
+        options.push({ value: myWork.person, label: `${myWork.personNames[myWork.person] || 'Persona'} (0)` });
+    }
+
+    const html = options.map(option => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`).join('');
+    if (select.dataset.options !== html) { // sin cambios no se toca (el desplegable puede estar abierto)
+        select.innerHTML = html;
+        select.dataset.options = html;
+    }
+    select.value = myWork.person;
+    select.closest('.work-person')?.classList.toggle('is-filtered', myWork.person !== 'all');
+}
+
+function myWorkGroupHtml(group) {
     const expanded = myWork.expanded.has(group.key);
     const visible = expanded ? group.items : group.items.slice(0, MY_WORK_GROUP_LIMIT);
     const hiddenCount = group.items.length - visible.length;
@@ -150,36 +279,52 @@ function myWorkGroupHtml(group, viewer) {
                 ${group.hint ? `<span class="my-work-group-hint">${group.hint}</span>` : ''}
             </div>
             <ul class="my-work-list">
-                ${visible.map(item => myWorkRowHtml(item, group.key, viewer)).join('')}
+                ${visible.map(item => myWorkRowHtml(item, group.key)).join('')}
             </ul>
             ${hiddenCount > 0 ? `<button type="button" class="my-work-more" data-action="expand" data-group="${group.key}">Ver ${hiddenCount} más</button>` : ''}
             ${expanded && group.items.length > MY_WORK_GROUP_LIMIT ? `<button type="button" class="my-work-more" data-action="collapse" data-group="${group.key}">Ver menos</button>` : ''}
         </section>`;
 }
 
-function myWorkRowHtml(item, groupKey, viewer) {
+function myWorkRowHtml(item, groupKey) {
     const isTask = item.type === 'task';
     const caps = item.raw.capabilities || {};
     const canComplete = isTask && caps.complete !== false;
     // Fecha: tareas con permiso de editar; mejoras con el mismo permiso que el estado.
     const canPlan = isTask ? caps.edit !== false : item.raw.capabilities?.update_status === true;
+    // Urgencia: la API pide permiso de editar la mejora (programador, admin y superadmin).
+    const canSetPriority = !isTask && item.raw.capabilities?.edit === true;
     const due = requestDueInfo(item.dueDate);
-    const showPriority = !isTask && (item.priority === 'critical' || item.priority === 'high');
     const unread = !isTask && typeof unreadRequestIds !== 'undefined' && unreadRequestIds.has(item.id);
 
     const meta = [`<span class="my-work-kind">${isTask ? 'Tarea' : 'Mejora'}</span>`];
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
     if (!isTask && item.status === 'in_progress') meta.push('<span class="my-work-progress">En curso</span>');
-    if (!isTask && viewer.role === 'superadmin') {
-        meta.push(item.assignees.length
-            ? `<span>${escapeHtml(item.assignees.join(', '))}</span>`
-            : '<span class="my-work-unassigned">Sin asignar</span>');
+    // "De todos": para quién es (tú, nombres, equipo o sin asignar). En "Para mí" todo es tuyo.
+    if (myWork.scope === 'all' && item.forWhom) {
+        meta.push(item.forWhom.kind === 'unassigned'
+            ? '<span class="my-work-unassigned">Sin asignar</span>'
+            : `<span class="my-work-whom" title="${escapeHtml(item.forWhom.title)}"><i class="${item.forWhom.kind === 'team' ? 'iconoir-group' : 'iconoir-user'}" aria-hidden="true"></i>${escapeHtml(item.forWhom.label)}</span>`);
     }
+    // Tareas que te ha pasado otra persona (o de equipo creadas por otra persona).
+    if (item.from) meta.push(`<span class="my-work-from">De ${escapeHtml(item.from)}</span>`);
     if (unread) meta.push('<span class="my-work-activity"><i class="iconoir-chat-bubble" aria-hidden="true"></i>Actividad nueva</span>');
 
     const lead = canComplete
         ? `<button type="button" class="my-work-check" data-action="complete" title="Completar" aria-label="Completar: ${escapeHtml(item.title)}"><i class="iconoir-check" aria-hidden="true"></i></button>`
         : `<span class="my-work-icon" aria-hidden="true"><i class="${isTask ? 'iconoir-task-list' : 'iconoir-light-bulb'}"></i></span>`;
+
+    // Urgencia en todas las mejoras; media y baja en gris para que destaquen crítica y alta.
+    let priorityControl = '';
+    if (!isTask) {
+        const label = escapeHtml(getPriorityLabel(item.priority));
+        const quiet = item.priority === 'medium' || item.priority === 'low' ? ' is-quiet' : '';
+        const priorityClass = `priority-badge priority-${item.priority} my-work-priority${quiet}`;
+        priorityControl = canSetPriority
+            ? `<button type="button" class="${priorityClass}" data-action="priority" aria-haspopup="menu" aria-expanded="false"
+                       title="Cambiar la urgencia" aria-label="Urgencia: ${label}. Cambiar">${label}</button>`
+            : `<span class="${priorityClass}" title="Urgencia">${label}</span>`;
+    }
 
     let dateControl = '';
     if (canPlan) {
@@ -202,22 +347,38 @@ function myWorkRowHtml(item, groupKey, viewer) {
                     <span class="my-work-meta">${meta.join('')}</span>
                 </a>
                 <span class="my-work-side">
-                    ${showPriority ? `<span class="priority-badge priority-${item.priority}">${escapeHtml(getPriorityLabel(item.priority))}</span>` : ''}
+                    ${priorityControl}
                     ${dateControl}
                 </span>
             </div>
         </li>`;
 }
 
-function myWorkEmptyHtml(viewer) {
-    const seeAll = viewer.role === 'superadmin';
-    const messages = {
-        all: ['Todo al día', seeAll ? 'No hay tareas pendientes ni mejoras activas.' : 'No tienes tareas pendientes ni mejoras asignadas.'],
-        task: ['Sin tareas pendientes', 'Usa el botón + para apuntar una.'],
-        request: seeAll
-            ? ['No hay mejoras activas', 'Las nuevas aparecerán aquí.']
-            : ['No tienes mejoras asignadas', 'Aparecerán aquí en cuanto te asignen una.']
-    };
+function myWorkEmptyHtml() {
+    const kinds = { all: 'trabajo pendiente', task: 'tareas pendientes', request: 'mejoras activas' };
+
+    // "De todos" con una persona elegida: se dice de quién y se ofrece volver a todas.
+    if (myWork.scope === 'all' && myWork.person !== 'all') {
+        const showAll = '<button type="button" class="btn btn-secondary btn-sm" data-action="person-all">Ver todas las personas</button>';
+        if (myWork.person === 'none') {
+            return myWorkMessageHtml('iconoir-check-circle', 'No hay mejoras sin asignar', 'Todas las mejoras activas tienen a alguien.', showAll);
+        }
+        const isMe = Number(myWork.person) === Number(document.body.dataset.userId);
+        const who = isMe ? 'ti' : escapeHtml(myWork.personNames[myWork.person] || 'esta persona');
+        return myWorkMessageHtml('iconoir-check-circle', `Nada pendiente para ${who}`, `No hay ${kinds[myWork.filter] || kinds.all} con este filtro.`, showAll);
+    }
+
+    const messages = myWork.scope === 'all'
+        ? {
+            all: ['Todo al día', 'No hay tareas pendientes ni mejoras activas.'],
+            task: ['Sin tareas pendientes', 'No hay tareas abiertas que puedas ver.'],
+            request: ['No hay mejoras activas', 'Las nuevas aparecerán aquí.']
+        }
+        : {
+            all: ['Todo al día', 'No tienes tareas pendientes ni mejoras asignadas.'],
+            task: ['Sin tareas pendientes', 'Usa el botón + para apuntar una.'],
+            request: ['No tienes mejoras asignadas', 'Aparecerán aquí en cuanto te asignen una.']
+        };
     const [title, text] = messages[myWork.filter] || messages.all;
     return myWorkMessageHtml('iconoir-check-circle', title, text, '');
 }
@@ -267,14 +428,20 @@ function handleMyWorkClick(e) {
             case 'date':
                 if (item) openMyWorkDateMenu(action, item);
                 return;
+            case 'priority':
+                if (item) openMyWorkPriorityMenu(action, item);
+                return;
             case 'expand':
                 myWork.expanded.add(group);
                 break;
             case 'collapse':
                 myWork.expanded.delete(group);
                 break;
+            case 'person-all':
+                myWork.person = 'all';
+                break;
             case 'retry':
-                if (myWork.tasksError) loadMyWorkTasks();
+                if (myWork.lists[myWork.scope].error) loadMyWorkTasks(myWork.scope);
                 if (myWork.requestsError) {
                     myWork.requestsError = false;
                     if (typeof loadRequests === 'function') loadRequests();
@@ -296,10 +463,10 @@ function handleMyWorkClick(e) {
 // ========== Completar tarea (con deshacer) ==========
 
 async function completeMyWorkTask(item) {
-    const task = (myWork.tasks || []).find(t => Number(t.id) === item.id);
-    if (!task || Number(task.is_completed) === 1) return;
+    const records = myWorkTaskRecords(item.id);
+    if (!records.length || Number(records[0].is_completed) === 1) return;
 
-    task.is_completed = 1; // sale de la lista al momento; si falla, vuelve
+    records.forEach(task => { task.is_completed = 1; }); // sale de la lista al momento; si falla, vuelve
     renderMyWork();
 
     try {
@@ -321,7 +488,7 @@ async function completeMyWorkTask(item) {
         if (typeof loadTasksCount === 'function') loadTasksCount();
     } catch (error) {
         console.error('Mi trabajo: no se pudo completar la tarea', item.id, error);
-        task.is_completed = 0;
+        records.forEach(task => { task.is_completed = 0; });
         renderMyWork();
         showMyWorkError('No se pudo completar la tarea');
     }
@@ -337,14 +504,13 @@ async function undoCompleteMyWorkTask(id) {
         const data = await res.json();
         if (!data.success) throw new Error(`${res.status} ${data.error}`);
 
-        const task = (myWork.tasks || []).find(t => Number(t.id) === id);
-        if (task) task.is_completed = 0;
+        myWorkTaskRecords(id).forEach(task => { task.is_completed = 0; });
         renderMyWork();
         if (typeof loadTasksCount === 'function') loadTasksCount();
     } catch (error) {
         console.error('Mi trabajo: no se pudo deshacer', id, error);
         showMyWorkError('No se pudo deshacer');
-        loadMyWorkTasks();
+        loadMyWork(true);
     }
 }
 
@@ -364,23 +530,12 @@ function openMyWorkDateMenu(anchor, item) {
             ${option.active ? '<i class="iconoir-check" aria-hidden="true"></i>' : ''}
         </button>`;
 
-    const menu = document.createElement('div');
-    menu.className = 'work-menu';
-    menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', item.type === 'task' ? 'Fecha de la tarea' : 'Fecha objetivo de la mejora');
-    menu.innerHTML = `
+    const menu = createMyWorkMenu(item.type === 'task' ? 'Fecha de la tarea' : 'Fecha objetivo de la mejora', `
         <p class="work-menu-title">${item.type === 'task' ? 'Fecha de la tarea' : 'Fecha objetivo'}</p>
         ${options.filter(o => o.key !== 'pick' && o.key !== 'clear').map(itemHtml).join('')}
         <div class="work-menu-sep" role="separator"></div>
         ${options.filter(o => o.key === 'pick' || o.key === 'clear').map(itemHtml).join('')}
-        <input type="date" class="work-menu-input" tabindex="-1" aria-label="Elegir fecha" value="${item.dueDate || ''}">`;
-    document.body.appendChild(menu);
-
-    const rect = anchor.getBoundingClientRect();
-    const left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12));
-    const below = window.innerHeight - rect.bottom >= menu.offsetHeight + 12 || rect.top < menu.offsetHeight + 12;
-    menu.style.left = `${left}px`;
-    menu.style.top = below ? `${rect.bottom + 6}px` : `${rect.top - menu.offsetHeight - 6}px`;
+        <input type="date" class="work-menu-input" tabindex="-1" aria-label="Elegir fecha" value="${item.dueDate || ''}">`);
 
     const input = menu.querySelector('.work-menu-input');
     input.addEventListener('change', () => {
@@ -408,6 +563,27 @@ function openMyWorkDateMenu(anchor, item) {
         saveMyWorkDate(item, btn.dataset.value);
     });
 
+    mountMyWorkMenu(anchor, menu);
+}
+
+function createMyWorkMenu(ariaLabel, html) {
+    const menu = document.createElement('div');
+    menu.className = 'work-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', ariaLabel);
+    menu.innerHTML = html;
+    document.body.appendChild(menu);
+    return menu;
+}
+
+// Común a los menús de la fila: posición junto al chip, flechas, Escape, Tab y clic fuera.
+function mountMyWorkMenu(anchor, menu) {
+    const rect = anchor.getBoundingClientRect();
+    const left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12));
+    const below = window.innerHeight - rect.bottom >= menu.offsetHeight + 12 || rect.top < menu.offsetHeight + 12;
+    menu.style.left = `${left}px`;
+    menu.style.top = below ? `${rect.bottom + 6}px` : `${rect.top - menu.offsetHeight - 6}px`;
+
     menu.addEventListener('keydown', e => {
         const buttons = Array.from(menu.querySelectorAll('[data-key]'));
         const index = buttons.indexOf(document.activeElement);
@@ -431,7 +607,70 @@ function openMyWorkDateMenu(anchor, item) {
 
     myWork.menu = { menu, anchor, onOutside };
     anchor.setAttribute('aria-expanded', 'true');
-    menu.querySelector('[data-key]').focus();
+    (menu.querySelector('.is-active[data-key]') || menu.querySelector('[data-key]')).focus();
+}
+
+// Tras guardar, la fila puede cambiar de grupo: el foco vuelve a su control (sin saltar de scroll).
+function focusMyWorkControl(item, action) {
+    const row = document.querySelector(`#my-work-body .my-work-row[data-type="${item.type}"][data-id="${item.id}"]`);
+    row?.querySelector(`[data-action="${action}"]`)?.focus({ preventScroll: true });
+}
+
+// ========== Urgencia desde la fila (mejoras) ==========
+
+function openMyWorkPriorityMenu(anchor, item) {
+    const wasOpenHere = myWork.menu && myWork.menu.anchor === anchor;
+    closeMyWorkMenu();
+    if (wasOpenHere) return;
+
+    const menu = createMyWorkMenu('Urgencia de la mejora', `
+        <p class="work-menu-title">Urgencia</p>
+        ${workPriorityMenuOptions(item.priority).map(option => `
+            <button type="button" class="work-menu-item${option.active ? ' is-active' : ''}" role="menuitem" data-key="${option.key}">
+                <span class="work-menu-dot work-menu-dot--${option.key}" aria-hidden="true"></span>
+                <span class="work-menu-label">${option.label}</span>
+                ${option.active ? '<i class="iconoir-check" aria-hidden="true"></i>' : ''}
+            </button>`).join('')}`);
+
+    menu.addEventListener('click', e => {
+        const btn = e.target.closest('[data-key]');
+        if (!btn) return;
+        closeMyWorkMenu(true);
+        saveMyWorkPriority(item, btn.dataset.key);
+    });
+
+    mountMyWorkMenu(anchor, menu);
+}
+
+async function saveMyWorkPriority(item, priority) {
+    if (!priority || priority === item.priority) return;
+
+    try {
+        const res = await fetch('/api/requests.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: item.id, priority })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(`${res.status} ${data.error}`);
+
+        // Copias locales: la fila se reordena (o pasa a "Urgente sin fecha") sin recargar.
+        [myWork.requests, typeof requests !== 'undefined' ? requests : []].forEach(list => {
+            const record = list.find(r => Number(r.id) === item.id);
+            if (record) record.priority = priority;
+        });
+        renderMyWork();
+        focusMyWorkControl(item, 'priority');
+
+        showToast({
+            title: 'Urgencia cambiada',
+            message: `${escapeHtml(item.title)}: ${getPriorityLabel(priority).toLowerCase()}`,
+            icon: 'iconoir-flash'
+        });
+    } catch (error) {
+        console.error('Mi trabajo: no se pudo cambiar la urgencia', item.id, priority, error);
+        showMyWorkError('No se pudo cambiar la urgencia');
+    }
 }
 
 function closeMyWorkMenu(returnFocus) {
@@ -460,14 +699,12 @@ async function saveMyWorkDate(item, value) {
         if (!data.success) throw new Error(`${res.status} ${data.error}`);
 
         // Se actualizan las copias locales y la fila cambia de grupo sin recargar.
-        const source = (isTask ? myWork.tasks : myWork.requests) || [];
-        const record = source.find(r => Number(r.id) === item.id);
-        if (record) record.due_date = dueDate;
-        if (!isTask && typeof requests !== 'undefined') {
-            const shared = requests.find(r => Number(r.id) === item.id);
-            if (shared) shared.due_date = dueDate;
-        }
+        const records = isTask
+            ? myWorkTaskRecords(item.id)
+            : [myWork.requests, typeof requests !== 'undefined' ? requests : []].map(list => list.find(r => Number(r.id) === item.id));
+        records.filter(Boolean).forEach(record => { record.due_date = dueDate; });
         renderMyWork();
+        focusMyWorkControl(item, 'date');
 
         showToast({
             title: dueDate ? 'Fecha guardada' : 'Fecha quitada',

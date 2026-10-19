@@ -83,12 +83,12 @@ assert_file_contains('api/tasks.php', ['GROUP_CONCAT(ts_ids.user_id)', 'as share
 // --- Tarjeta: nombres en ordenador, número en móvil.
 assert_file_contains('assets/js/tasks.js', [
     'taskShareSummary(',
-    'Compartida ${summary.phrase ||',
     'parseShareIds(',
     'class="task-badge-names"',
     'class="task-badge-count"',
     'document.body.dataset.userId',
 ], 'task card shows who the task is shared with');
+assert_file_contains('assets/js/task-parser.js', ['Compartida ${summary.phrase ||'], 'badge title reads naturally ("Compartida contigo")');
 assert_file_contains('assets/css/tasks.css', ['.task-badge-names', '.task-badge-count', '.task-menu-fixed'], 'tasks.css styles names, count and the fixed owner row');
 
 // --- "Compartir con": "Solo para mí" y la persona creadora fija arriba.
@@ -100,12 +100,12 @@ foreach (['assets/js/tasks.js', 'assets/js/tasks-interactions.js'] as $file) {
 assert_file_contains('tasks.php', [
     'data-user-id="<?php echo (int) $user[\'id\']; ?>"',
     'data-user-name=',
-    '/assets/js/task-parser.js?v=6',
-    '/assets/js/tasks.js?v=13',
+    '/assets/js/task-parser.js?v=7',
+    '/assets/js/tasks.js?v=14',
     '/assets/js/tasks-interactions.js?v=4',
-    '/assets/css/tasks.css?v=3.1',
+    '/assets/css/tasks.css?v=3.2',
 ], 'tasks page exposes the current user and loads the new assets');
-assert_file_contains('index.php', ['/assets/js/task-parser.js?v=6'], 'index loads the new task-parser.js');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v42';"], 'service worker cache is bumped');
+assert_file_contains('index.php', ['/assets/js/task-parser.js?v=7'], 'index loads the new task-parser.js');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v43';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Task share names completed successfully.\n");

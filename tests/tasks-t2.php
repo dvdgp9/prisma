@@ -120,8 +120,8 @@ assert_file_contains('assets/js/tasks-interactions.js', [
 assert_file_contains('assets/js/tasks.js', [
     'openShareMenu(${task.id}, this, event)',
     'iconoir-alarm',
-    'iconoir-user-plus',
-], 'card opens the share menu from the badge or a hover action, and postpone uses the alarm icon');
+    'task-badge-btn',
+], 'card opens the share menu from its "para quién" badge (plan PT1) and postpone uses the alarm icon');
 assert_file_contains('assets/css/tasks.css', ['.task-menu-title', '.task-badge-btn'], 'styles for menu titles and clickable share badges');
 assert_file_contains('tasks.php', ['<kbd>s</kbd> compartir'], 'shortcut hint lists the share key');
 

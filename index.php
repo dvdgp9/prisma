@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/work.css?v=3">
+    <link rel="stylesheet" href="/assets/css/work.css?v=4">
 </head>
 
 <?php
@@ -59,14 +59,26 @@ $company_name = $user['company_name'] ?? '';
             <!-- Vista global: "Mi trabajo" (tareas + mejoras agrupadas por cuándo) y notas recientes.
                  El listado completo de mejoras vive en "Mejoras". -->
             <div class="home-overview" id="home-overview" hidden>
+                <?php // "Para mí | De todos": solo para quien gestiona el trabajo (decisión del usuario, 19 oct 2026)
+                $canSeeTeamWork = in_array($user['role'], ['programador', 'admin', 'superadmin'], true); ?>
                 <section class="my-work" id="my-work" aria-labelledby="my-work-title">
                     <div class="my-work-head">
                         <div>
                             <h2 class="my-work-title" id="my-work-title">Mi trabajo</h2>
-                            <p class="my-work-sub"><?php echo $user['role'] === 'superadmin'
-                                ? 'Tus tareas y todas las mejoras activas'
-                                : 'Tus tareas y las mejoras que tienes asignadas'; ?></p>
+                            <p class="my-work-sub" id="my-work-sub">Tus tareas y las mejoras que tienes asignadas</p>
                         </div>
+                        <?php if ($canSeeTeamWork): ?>
+                        <div class="work-scope" id="work-scope" role="group" aria-label="De quién es el trabajo">
+                            <button type="button" class="work-scope-btn" data-work-scope="mine" aria-pressed="true">
+                                <i class="iconoir-user" aria-hidden="true"></i>Para mí
+                            </button>
+                            <button type="button" class="work-scope-btn" data-work-scope="all" aria-pressed="false">
+                                <i class="iconoir-group" aria-hidden="true"></i>De todos
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="my-work-toolbar">
                         <div class="work-filter" role="tablist" aria-label="Qué ver">
                             <button type="button" class="work-filter-btn" data-work-filter="all" role="tab" aria-selected="false">
                                 Todo <span class="work-filter-count" id="work-count-all"></span>
@@ -78,6 +90,15 @@ $company_name = $user['company_name'] ?? '';
                                 Mejoras <span class="work-filter-count" id="work-count-request"></span>
                             </button>
                         </div>
+                        <?php if ($canSeeTeamWork): ?>
+                        <label class="work-person" id="work-person-wrap" hidden>
+                            <i class="iconoir-user" aria-hidden="true"></i>
+                            <select id="work-person" aria-label="Ver el trabajo de">
+                                <option value="all">Todas las personas</option>
+                            </select>
+                            <i class="iconoir-nav-arrow-down work-person-arrow" aria-hidden="true"></i>
+                        </label>
+                        <?php endif; ?>
                     </div>
                     <div class="my-work-body" id="my-work-body">
                         <!-- Rellenado por my-work.js -->
@@ -1026,12 +1047,12 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/task-parser.js?v=6"></script>
+    <script src="/assets/js/task-parser.js?v=7"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
-    <script src="/assets/js/work-helpers.js?v=3"></script>
+    <script src="/assets/js/work-helpers.js?v=4"></script>
     <script src="/assets/js/main.js?v=5.4"></script>
-    <script src="/assets/js/my-work.js?v=2"></script>
+    <script src="/assets/js/my-work.js?v=3"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

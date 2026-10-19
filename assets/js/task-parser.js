@@ -327,6 +327,37 @@
         return { label, title, phrase };
     }
 
+    // Para quién es una tarea: etiqueta de la tarjeta (y de la vista "Todo" de la Vista global).
+    // kind: me (tuya y privada) | people (compartida con personas) | team | owner (privada de otra persona).
+    function taskForWhom(task, members, meId) {
+        if (Number(task.is_shared) === 1) {
+            return { kind: 'team', label: 'Equipo', count: 'Equipo', title: 'Compartida con todo el equipo', icon: 'iconoir-group' };
+        }
+
+        const ids = Array.isArray(task.shared_user_ids) ? task.shared_user_ids : null;
+        const shareCount = Number(task.share_count || 0);
+        if ((ids && ids.length) || shareCount > 0) {
+            const summary = taskShareSummary(ids || [], members, meId);
+            const total = ids && ids.length ? ids.length : shareCount;
+            const countLabel = `${total} ${total === 1 ? 'persona' : 'personas'}`;
+            return {
+                kind: 'people',
+                label: summary.label || countLabel,
+                count: String(total),
+                title: `Compartida ${summary.phrase || `con ${countLabel}`}`,
+                icon: 'iconoir-user'
+            };
+        }
+
+        if (Number(task.user_id) === Number(meId)) {
+            return { kind: 'me', label: 'Tú', count: 'Tú', title: 'Solo para ti', icon: 'iconoir-user' };
+        }
+
+        const owner = task.creator_name || task.creator_username || 'Otra persona';
+        return { kind: 'owner', label: owner, count: owner, title: `De ${owner}`, icon: 'iconoir-user' };
+    }
+
+    global.taskForWhom = taskForWhom;
     global.parseShareIds = parseShareIds;
     global.taskShareSummary = taskShareSummary;
     global.stripQuickMatch = stripMatch;

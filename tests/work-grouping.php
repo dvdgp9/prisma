@@ -16,18 +16,20 @@ function assert_same($expected, $actual, $message)
 // Reglas del plan v2 (decisiones del usuario, 19 oct 2026):
 //   Atrasado / Hoy / Urgente sin fecha (solo críticas) / Próximos 7 días / Más adelante / Sin fecha.
 //   Dentro de cada grupo: fecha, prioridad (las tareas cuentan como media) y antigüedad.
-//   Superadmin ve todas las mejoras activas; el resto, las que tiene asignadas.
+//   Plan "Para mí | Todo" (PT2): en "Para mí" cada cual ve las mejoras que tiene asignadas (también
+//   superadmin); en "Todo", todas las activas.
 $node = <<<'JS'
 global.window = global;
 require(process.argv[1]);
+require(process.argv[2]);
 const today = new Date(2026, 9, 19); // lunes 19 oct 2026
 
 const tasks = [
-    { id: 1, title: 'Llamar al proveedor', due_date: '2026-10-18', is_completed: 0, created_at: '2026-10-01 09:00:00', app_name: null },
-    { id: 2, title: 'Revisar facturas', due_date: '2026-10-19', is_completed: '0', created_at: '2026-10-10 09:00:00', app_name: 'Puri' },
-    { id: 3, title: 'Preparar demo', due_date: '2026-10-22', is_completed: 0, created_at: '2026-10-11 09:00:00' },
-    { id: 4, title: 'Ordenar carpeta', due_date: null, is_completed: 0, created_at: '2026-10-12 09:00:00' },
-    { id: 5, title: 'Ya hecha', due_date: '2026-10-19', is_completed: 1, created_at: '2026-10-12 09:00:00' }
+    { id: 1, title: 'Llamar al proveedor', due_date: '2026-10-18', is_completed: 0, created_at: '2026-10-01 09:00:00', app_name: null, user_id: 8 },
+    { id: 2, title: 'Revisar facturas', due_date: '2026-10-19', is_completed: '0', created_at: '2026-10-10 09:00:00', app_name: 'Puri', user_id: 8 },
+    { id: 3, title: 'Preparar demo', due_date: '2026-10-22', is_completed: 0, created_at: '2026-10-11 09:00:00', user_id: 8 },
+    { id: 4, title: 'Ordenar carpeta', due_date: null, is_completed: 0, created_at: '2026-10-12 09:00:00', user_id: 8 },
+    { id: 5, title: 'Ya hecha', due_date: '2026-10-19', is_completed: 1, created_at: '2026-10-12 09:00:00', user_id: 8 }
 ];
 const ana = { id: 8, full_name: 'Ana Ruiz' };
 const david = { id: 7, full_name: 'David Gutiérrez' };
@@ -49,7 +51,8 @@ const requests = [
 
 const shape = groups => groups.map(g => ({ key: g.key, label: g.label, items: g.items.map(i => i.key) }));
 const anaItems = buildWorkItems(tasks, requests, { id: 8, role: 'programador' });
-const davidItems = buildWorkItems(tasks, requests, { id: 7, role: 'superadmin' });
+const davidItems = buildWorkItems(tasks, requests, { id: 7, role: 'superadmin' }, 'all');
+const davidMine = buildWorkItems(tasks, requests, { id: 7, role: 'superadmin' }, 'mine');
 const urgent = groupWorkItems(anaItems, today).find(g => g.key === 'urgent');
 const sample = anaItems.find(i => i.key === 'request-5');
 
@@ -60,6 +63,7 @@ console.log(JSON.stringify({
     anaCounts: countWorkItems(anaItems),
     david: shape(groupWorkItems(davidItems, today, 'request')),
     davidCounts: countWorkItems(davidItems),
+    davidMine: davidMine.map(i => i.key),
     urgentHint: urgent.hint,
     sample: { type: sample.type, id: sample.id, title: sample.title, dueDate: sample.dueDate, priority: sample.priority, status: sample.status, appName: sample.appName, assignees: sample.assignees },
     task: (({ type, id, priority, status, assignees }) => ({ type, id, priority, status, assignees }))(anaItems.find(i => i.key === 'task-2')),
@@ -68,8 +72,9 @@ console.log(JSON.stringify({
 }));
 JS;
 
-$helpers = __DIR__ . '/../assets/js/work-helpers.js';
-$output = shell_exec('node -e ' . escapeshellarg($node) . ' ' . escapeshellarg($helpers) . ' 2>&1');
+$output = shell_exec('node -e ' . escapeshellarg($node) . ' '
+    . escapeshellarg(__DIR__ . '/../assets/js/task-parser.js') . ' '
+    . escapeshellarg(__DIR__ . '/../assets/js/work-helpers.js') . ' 2>&1');
 $r = json_decode((string) $output, true);
 if (!is_array($r)) {
     fwrite(STDERR, "FAIL: could not run work-helpers.js grouping with node:\n{$output}\n");
@@ -105,15 +110,16 @@ assert_same([
 ], $r['anaRequests'], 'filter "request" keeps only requests');
 assert_same(['all' => 10, 'task' => 4, 'request' => 6], $r['anaCounts'], 'counts per filter (completed and discarded excluded)');
 
-// Superadmin: todas las mejoras activas, también sin asignar o de otras personas.
+// Superadmin en "Todo": todas las mejoras activas, también sin asignar o de otras personas.
 assert_same([
     ['key' => 'today', 'label' => 'Hoy', 'items' => ['request-9', 'request-4']],
     ['key' => 'urgent', 'label' => 'Urgente sin fecha', 'items' => ['request-1', 'request-6']],
     ['key' => 'week', 'label' => 'Próximos 7 días', 'items' => ['request-2']],
     ['key' => 'later', 'label' => 'Más adelante', 'items' => ['request-5']],
     ['key' => 'nodate', 'label' => 'Sin fecha', 'items' => ['request-3', 'request-8']],
-], $r['david'], 'superadmin sees every active request');
-assert_same(['all' => 12, 'task' => 4, 'request' => 8], $r['davidCounts'], 'superadmin counts');
+], $r['david'], 'superadmin in "Todo" sees every active request');
+assert_same(['all' => 12, 'task' => 4, 'request' => 8], $r['davidCounts'], 'superadmin counts in "Todo"');
+assert_same(['request-5', 'request-8'], $r['davidMine'], 'superadmin in "Para mí" sees only requests assigned to them (and none of Ana\'s tasks)');
 assert_same([], $r['unassigned'], 'unassigned request has no assignees');
 
 assert_same(['type' => 'request', 'id' => 5, 'title' => 'Migrar servidor', 'dueDate' => '2026-11-10', 'priority' => 'critical', 'status' => 'pending', 'appName' => 'Puri', 'assignees' => ['Ana Ruiz', 'David Gutiérrez']], $r['sample'], 'request item shape');

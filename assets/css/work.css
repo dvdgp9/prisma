@@ -157,6 +157,137 @@ button.request-due.is-interactive:focus-visible,
     font-size: var(--fs-13);
 }
 
+/* Para mí | De todos: el control principal de la sección, con el acento de marca */
+.work-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+}
+
+.work-scope-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-6);
+    height: 30px;
+    padding: 0 var(--sp-12);
+    border: 0;
+    border-radius: var(--r-6);
+    background: transparent;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.work-scope-btn > i {
+    font-size: var(--fs-15);
+}
+
+.work-scope-btn:hover {
+    color: var(--ink-950);
+    background: var(--ink-50);
+}
+
+.work-scope-btn[aria-pressed="true"] {
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+    font-weight: var(--fw-semibold);
+}
+
+.work-scope-btn:active {
+    transform: scale(0.98);
+}
+
+.work-scope-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Debajo del título: qué ver (Todo / Tareas / Mejoras) y, en "De todos", de quién */
+.my-work-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-8) var(--sp-12);
+    margin-top: var(--sp-12);
+}
+
+.work-person {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 260px;
+    color: var(--ink-500);
+}
+
+.work-person[hidden] {
+    display: none;
+}
+
+.work-person > i:first-child {
+    position: absolute;
+    left: var(--sp-10);
+    font-size: var(--fs-15);
+    pointer-events: none;
+}
+
+.work-person-arrow {
+    position: absolute;
+    right: var(--sp-8);
+    font-size: var(--fs-14);
+    pointer-events: none;
+}
+
+.work-person select {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 0 calc(var(--sp-8) + 22px) 0 calc(var(--sp-10) + 22px);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+    color: var(--ink-800);
+    font-family: var(--font-sans);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    text-overflow: ellipsis;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.work-person select:hover {
+    border-color: var(--ink-300);
+}
+
+.work-person select:focus-visible {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: var(--shadow-focus);
+}
+
+/* Con una persona elegida, el filtro se marca para que no pase desapercibido */
+.work-person.is-filtered {
+    color: var(--brand-ink);
+}
+
+.work-person.is-filtered select {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+}
+
 /* Filtro Todo / Tareas / Mejoras */
 .work-filter {
     display: inline-flex;
@@ -331,6 +462,20 @@ button.request-due.is-interactive:focus-visible,
     color: #8A540F;
 }
 
+/* "De todos": para quién es la fila */
+.my-work-whom {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+    color: var(--ink-700);
+    font-weight: var(--fw-medium);
+}
+
+.my-work-whom > i {
+    font-size: var(--fs-13);
+    color: var(--ink-500);
+}
+
 .my-work-side {
     display: flex;
     flex-shrink: 0;
@@ -417,7 +562,51 @@ button.my-work-date-btn[aria-expanded="true"] {
     box-shadow: var(--shadow-focus);
 }
 
-/* Menú de fecha */
+/* Urgencia en la fila: mismo alto que el chip de fecha y sin el latido (en una lista distrae) */
+.my-work-priority {
+    height: 24px;
+    padding: 0 var(--sp-10);
+    white-space: nowrap;
+}
+
+.my-work-priority.priority-critical::after {
+    content: none;
+}
+
+/* Media y baja en gris: así crítica y alta destacan */
+.priority-badge.my-work-priority.is-quiet {
+    background: var(--ink-100);
+    color: var(--ink-600);
+}
+
+span.my-work-priority {
+    cursor: default;
+}
+
+span.my-work-priority:hover,
+button.my-work-priority:hover {
+    transform: none;
+}
+
+button.my-work-priority {
+    transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+button.my-work-priority:hover {
+    border-color: var(--ink-300);
+}
+
+button.my-work-priority:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+button.my-work-priority[aria-expanded="true"] {
+    border-color: var(--brand);
+    box-shadow: var(--shadow-focus);
+}
+
+/* Menús de fecha y urgencia */
 .work-menu {
     position: fixed;
     z-index: var(--z-dropdown);
@@ -475,6 +664,23 @@ button.my-work-date-btn[aria-expanded="true"] {
     margin-left: auto;
     color: var(--ink-500);
     font-size: var(--fs-12);
+}
+
+/* Punto de color de cada urgencia, como el del chip */
+.work-menu-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--r-full);
+    background: var(--ink-400);
+}
+
+.work-menu-dot--critical { background: var(--prio-critical); }
+.work-menu-dot--high { background: var(--prio-high); }
+
+/* En el menú de urgencia el texto ocupa el hueco y el check queda a la derecha */
+.work-menu-dot + .work-menu-label {
+    flex: 1;
 }
 
 .work-menu-sep {
@@ -611,13 +817,24 @@ button.my-work-date-btn[aria-expanded="true"] {
         align-items: stretch;
     }
 
-    .work-filter {
+    .work-filter,
+    .work-scope {
         display: flex;
     }
 
-    .work-filter-btn {
+    .work-filter-btn,
+    .work-scope-btn {
         flex: 1;
         padding: 0 var(--sp-8);
+    }
+
+    .my-work-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .work-person {
+        max-width: none;
     }
 
     .my-work-row {
@@ -642,12 +859,16 @@ button.my-work-date-btn[aria-expanded="true"] {
 @media (prefers-reduced-motion: reduce) {
     .my-work-row,
     .work-filter-btn,
+    .work-scope-btn,
+    .work-person select,
     .my-work-check,
-    button.my-work-date-btn {
+    button.my-work-date-btn,
+    button.my-work-priority {
         transition: none;
     }
 
-    .my-work-check:active {
+    .my-work-check:active,
+    .work-scope-btn:active {
         transform: none;
     }
 }
