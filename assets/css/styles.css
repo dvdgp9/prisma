@@ -3374,6 +3374,12 @@ nav {
     color: var(--text-secondary);
 }
 
+/* Aviso de nota compartida */
+.inbox-item-icon.note {
+    background: rgba(31, 95, 132, 0.10);
+    color: var(--brand-ink);
+}
+
 .inbox-item-content {
     flex: 1;
     min-width: 0;
@@ -7201,6 +7207,81 @@ select.ai-pill-assignee.has-assignee {
 /* Exportar solo aplica al listado: se oculta en la Vista global */
 .content-header .btn[hidden] {
     display: none;
+}
+
+/* Widget "Notas recientes" de la Vista global: 2 columnas, 1 en móvil */
+.notes-widget-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+}
+
+.notes-widget-item {
+    display: grid;
+    align-content: start;
+    gap: var(--sp-4);
+    min-width: 0;
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    text-decoration: none;
+    transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.notes-widget-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.notes-widget-item:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+.notes-widget-title,
+.notes-widget-excerpt {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.notes-widget-title {
+    color: var(--text-primary);
+    font-size: var(--fs-14);
+    font-weight: var(--fw-semibold);
+}
+
+.notes-widget-excerpt {
+    color: var(--ink-600);
+    font-size: var(--fs-13);
+}
+
+.notes-widget-meta {
+    display: flex;
+    gap: var(--sp-8);
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+}
+
+.tasks-widget.is-clear .notes-widget-list {
+    display: block;
+}
+
+.notes-widget-clear i {
+    color: var(--ink-500);
+}
+
+@media (max-width: 600px) {
+    .notes-widget-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notes-widget-item:hover {
+        transform: none;
+    }
 }
 
 /* ==========================================================================

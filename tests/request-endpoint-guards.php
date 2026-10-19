@@ -43,7 +43,7 @@ assert_file_contains('api/requests.php', [
     'sanitize_request_for_capabilities',
     'create_request_status_change_notifications',
 ]);
-assert_file_contains('api/notifications.php', ['get_user_apps()', '$scopeSql']);
+assert_file_contains('api/notifications.php', ['get_user_apps()', 'fetch_user_notifications(']);
 assert_file_contains('api/request-checklist.php', [
     "require_request_capability(\$requestId, 'view')",
     "require_request_capability(\$requestId, 'checklist')",

@@ -79,6 +79,8 @@ assert_same([300], ids(list_notes($db, $me, ['app_id' => 1])), 'app filter');
 assert_same([300], ids(list_notes($db, $me, ['q' => 'despliegue de la'])), 'search matches content, case-insensitive');
 assert_same([301], ids(list_notes($db, $me, ['q' => 'acta'])), 'search matches title');
 assert_same([305, 301], ids(list_notes($db, $me, ['limit' => 2])), 'limit keeps the first rows');
+assert_same([301, 302, 300, 305], ids(list_notes($db, $me, ['order' => 'recent'])), 'order=recent sorts by last edit, ignoring pins');
+assert_same([301], ids(list_notes($db, $me, ['filter' => 'shared', 'order' => 'recent', 'limit' => 1])), 'Vista global widget query: latest note shared with me');
 
 $rows = list_notes($db, $me, []);
 $byId = array_column($rows, null, 'id');
@@ -151,6 +153,16 @@ assert_same(false, get_note_detail($db, 302), 'deleted note is gone');
 assert_same([], share_ids($db, 302), 'its shares are gone');
 assert_same(1, (int) $db->query('SELECT COUNT(*) FROM notifications')->fetchColumn(), 'its notifications are gone, others stay');
 
+// --- Aviso al compartir: una notificación por persona añadida, con quién la compartió.
+$db->exec('DELETE FROM notifications');
+assert_same(2, create_note_share_notifications($db, 300, [6, 8, 7], $me), 'one notice per person added, never to the author');
+$notices = $db->query("SELECT user_id, type, note_id, request_id, triggered_by, message, is_read FROM notifications ORDER BY user_id")->fetchAll();
+assert_same([
+    ['user_id' => 6, 'type' => 'note_share', 'note_id' => 300, 'request_id' => null, 'triggered_by' => 7, 'message' => 'Yo Mismo te ha compartido una nota', 'is_read' => 0],
+    ['user_id' => 8, 'type' => 'note_share', 'note_id' => 300, 'request_id' => null, 'triggered_by' => 7, 'message' => 'Yo Mismo te ha compartido una nota', 'is_read' => 0],
+], $notices, 'notice rows point to the note and say who shared it');
+assert_same(0, create_note_share_notifications($db, 300, [], $me), 'nobody new, no notices');
+
 // --- Endpoint: guardas de permisos y comprobaciones de entrada.
 assert_file_contains('api/notes.php', [
     "require_once __DIR__ . '/../includes/notes.php';",
@@ -163,5 +175,6 @@ assert_file_contains('api/notes.php', [
     "'conflict' => true",
     'list_notes($db, $user, $_GET)',
 ], 'notes API guards every action');
+assert_same(2, substr_count(file_get_contents(__DIR__ . '/../api/notes.php'), 'create_note_share_notifications($db, $noteId, $added, $user)'), 'notes API notifies new people on create and on share changes');
 
 fwrite(STDOUT, "Notes API completed successfully.\n");

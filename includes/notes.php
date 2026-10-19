@@ -16,7 +16,8 @@ const NOTE_EXCERPT_LENGTH = 240;
  * Notes the user can see in their current company: own ones plus those shared
  * with the whole team or with them by name. Pinned first, then last edited.
  *
- * Filters: filter (all | mine | shared), app_id, q (title/content), limit.
+ * Filters: filter (all | mine | shared), app_id, q (title/content), limit,
+ * order (recent: by last edit only, pinned notes not first).
  */
 function list_notes($db, $user, $filters)
 {
@@ -64,7 +65,9 @@ function list_notes($db, $user, $filters)
 
     $limit = (int) ($filters['limit'] ?? NOTE_LIST_MAX);
     $limit = $limit > 0 ? min($limit, NOTE_LIST_MAX) : NOTE_LIST_MAX;
-    $sql .= " ORDER BY n.is_pinned DESC, n.updated_at DESC, n.id DESC LIMIT " . $limit;
+    // order=recent (Vista global): solo por última edición, sin subir las fijadas.
+    $order = ($filters['order'] ?? '') === 'recent' ? '' : 'n.is_pinned DESC, ';
+    $sql .= " ORDER BY {$order}n.updated_at DESC, n.id DESC LIMIT " . $limit;
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
@@ -288,6 +291,32 @@ function replace_note_shares($db, $user, $note_id, $is_shared, $user_ids)
     }
 
     return array_values(array_diff($valid, $before));
+}
+
+/**
+ * In-app notice for each person a note was just shared with by name
+ * (sharing with the whole team does not notify). Returns how many were created.
+ */
+function create_note_share_notifications($db, $note_id, $recipient_ids, $actor)
+{
+    $recipients = array_values(array_unique(array_filter(
+        array_map('intval', (array) $recipient_ids),
+        fn($id) => $id > 0 && $id !== (int) $actor['id']
+    )));
+    if (!$recipients) {
+        return 0;
+    }
+
+    $name = trim((string) ($actor['full_name'] ?? '')) ?: ($actor['username'] ?? 'Alguien');
+    $stmt = $db->prepare("
+        INSERT INTO notifications (user_id, type, note_id, triggered_by, message)
+        VALUES (?, 'note_share', ?, ?, ?)
+    ");
+    foreach ($recipients as $userId) {
+        $stmt->execute([$userId, (int) $note_id, (int) $actor['id'], "{$name} te ha compartido una nota"]);
+    }
+
+    return count($recipients);
 }
 
 /**

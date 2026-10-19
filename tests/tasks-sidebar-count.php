@@ -14,7 +14,7 @@ function assert_file_contains($relativePath, $needles, $message)
     fwrite(STDOUT, "PASS: {$message}\n");
 }
 
-assert_file_contains('includes/sidebar.php', ['id="tasks-count"', '/assets/js/sidebar.js?v=1.7'], 'sidebar has the tasks badge and loads the new sidebar.js');
+assert_file_contains('includes/sidebar.php', ['id="tasks-count"', '/assets/js/sidebar.js?v=1.8'], 'sidebar has the tasks badge and loads the new sidebar.js');
 assert_file_contains('assets/js/sidebar.js', [
     'function countTasksDue(tasks, localToday)',
     'async function loadTasksCount()',

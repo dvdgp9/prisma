@@ -2711,3 +2711,31 @@ El usuario quiere añadir "Notas" y pide que interpretemos qué es y cuál es la
 - `.visually-hidden` no está en styles.css: cualquier página fuera de Tareas que lo use debe definirlo.
 - Las horas de MySQL llegan sin zona horaria: para "Hace X" en el navegador, compararlas con la hora de la propia BD (`CURRENT_TIMESTAMP AS server_now`), no con `new Date()`.
 - Capturas del panel del navegador tomadas justo después de un cambio pueden salir a mitad de animación o antiguas: confirmar con `getAnimations()` / estado del DOM antes de dar algo por roto.
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N5)
+- N1–N4 commiteados por el usuario ("Añadir notas", 4e7b620).
+- [x] N5 IMPLEMENTADO, pendiente de verificación del usuario en producción.
+  - "Nota rápida" → **"Crear con IA"**: barra lateral y título/encabezado de `ai-inbox.php` (y el comentario de cabecera de ai-inbox.js). Orden del menú: Vista global, Tareas, Mejoras, Notas, Crear con IA, Notificaciones.
+  - Vista global: bloque **"Notas recientes"** (`#notes-widget`, después de "Mejoras"): hasta 4 notas compartidas conmigo, por última edición, con título, extracto, autor y "Hace X" (contra `server_now`); cada una abre `notes.php?id=N`; enlace "Ir a Notas". Estado vacío compacto ("Nadie te ha compartido notas todavía.") y de error ("No se pudieron cargar las notas."). 2 columnas; 1 en móvil.
+  - API: `list_notes` admite `order=recent` (solo por última edición, sin subir las fijadas). Test en notes-api.php.
+  - index.php carga `notes-helpers.js?v=1` antes de `main.js` (se reutilizan extracto y horas).
+- Versiones: `styles.css?v=5.3` (10 páginas, incluida notes.php), `main.js?v=5.1`, `sw.js` → `prisma-v37`.
+- Tests: NUEVO `tests/home-notes-widget.php`; actualizados sidebar-mejoras.php (orden y versiones), notes-page.php (nombre nuevo) y notes-api.php (order=recent). 20/20 archivos OK.
+- Verificación en navegador (router temporal fuera del repo, index.php real + SQLite + sesión simulada, resto de API vacía): menú con el nombre nuevo, bloque con 2 notas compartidas y sus enlaces, estados vacío y error, móvil 375 px sin scroll horizontal, clic en una nota → se abre en Notas con "Notas" marcado. Sin peticiones fallidas en la página.
+- **Archivos a subir (N5)**: `includes/sidebar.php`, `ai-inbox.php`, `index.php`, `includes/notes.php`, `api/notes.php` (solo comentario), `assets/js/main.js`, `assets/js/ai-inbox.js` (solo comentario), `assets/css/styles.css`, `sw.js` y las páginas con el nuevo `styles.css?v=5.3`: `tasks.php`, `notes.php`, `changelog.php`, `admin.php`, `manage-apps.php`, `login.php`, `solicitud.php`, `releases.php`.
+- Siguiente: N6 (aviso en Notificaciones al compartir una nota) y N7 (cierre).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Notas N6)
+- N5 lo commitea el usuario.
+- [x] N6 IMPLEMENTADO, pendiente de verificación del usuario en producción.
+  - **Crear el aviso**: `create_note_share_notifications($db, $noteId, $added, $user)` en includes/notes.php. Una notificación `type = 'note_share'` con `note_id` y el mensaje "{Nombre} te ha compartido una nota" por cada persona **añadida** (lo que devuelve `replace_note_shares`). Compartir con todo el equipo no avisa; volver a guardar la misma lista no repite avisos; nunca al autor. Se llama al crear la nota (POST) y al cambiar con quién se comparte (PUT).
+  - **API de notificaciones**: antes hacía `INNER JOIN requests`, así que cualquier aviso sin mejora quedaba fuera. La consulta pasa a `includes/notifications.php` (`notification_visibility_sql`, `fetch_user_notifications`, `count_unread_notifications`). Los avisos de mejoras siguen limitados a las apps del usuario (superadmin: todas). Los de notas solo se ven si la persona aún puede abrir la nota: autora, equipo de la misma empresa o compartida por nombre. Las notas borradas o que ya no se comparten no aparecen. Antes, sin apps asignadas se devolvía la lista vacía; ahora siguen llegando los avisos de notas. El contador usa el mismo filtro.
+  - **Panel**: icono propio (`iconoir-page`, clase `.inbox-item-icon.note`), título de la nota en lugar del de la mejora, filtro "Notas" en el desplegable de tipo, mensaje vacío propio. Al pulsar: marca como leída y abre `/notes.php?id=N`; si ya estás en Notas, abre la nota sin recargar.
+- Versiones: `sidebar.js?v=1.8`, `styles.css?v=5.4` (10 páginas), `sw.js` → `prisma-v38`.
+- Tests: NUEVO `tests/notifications-scope.php` (SQLite: apps permitidas / sin apps / superadmin, nota compartida, ya no compartida, borrada, equipo de otra empresa, de otra persona, mejora borrada, contador y límite + contrato de API, panel y CSS). notes-api.php: creación del aviso. Actualizados request-endpoint-guards.php (contrato de la API), tasks-sidebar-count.php (sidebar.js 1.8) y sidebar-mejoras.php (styles 5.4, sw v38). 21/21 archivos OK.
+- Verificación en navegador (router temporal fuera del repo; notes.php, api/notes.php y api/notifications.php reales + SQLite + sesión simulada): David comparte desde la interfaz → Ana ve "1" en Notificaciones y el aviso con el título de la nota → al pulsarlo se abre la nota y queda leído (contador a 0). Filtro "Notas" correcto. Aviso pulsado estando en Notas: abre la nota sin recargar. Aviso de una mejora de su app: visible; de una app sin acceso: oculto.
+- **Archivos a subir (N6)**: `includes/notifications.php` (nuevo), `api/notifications.php`, `includes/notes.php`, `api/notes.php`, `includes/sidebar.php`, `assets/js/sidebar.js`, `assets/css/styles.css`, `sw.js` y las páginas con `styles.css?v=5.4`: `index.php`, `tasks.php`, `notes.php`, `ai-inbox.php`, `changelog.php`, `admin.php`, `manage-apps.php`, `login.php`, `solicitud.php`, `releases.php`. Sin migraciones (la columna `notifications.note_id` es de la 015).
+- Siguiente: N7 (cierre: lista final de archivos y prueba del usuario en producción).
+
+## Lessons (Notas N6)
+- `api/notifications.php` hacía INNER JOIN con requests: cualquier notificación sin `request_id` era invisible. Revisar este punto antes de añadir otros tipos de aviso.

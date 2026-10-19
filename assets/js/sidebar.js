@@ -233,7 +233,8 @@ const INBOX_PRESENTATION = {
     assignment: { iconClass: 'assignment', iconName: 'iconoir-user-badge-check' },
     completion: { iconClass: 'completion', iconName: 'iconoir-check-circle' },
     status_change: { iconClass: 'status', iconName: 'iconoir-refresh-double' },
-    comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' }
+    comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' },
+    note_share: { iconClass: 'note', iconName: 'iconoir-page' }
 };
 
 const INBOX_EMPTY_MESSAGES = {
@@ -241,7 +242,8 @@ const INBOX_EMPTY_MESSAGES = {
     mention: 'Nadie te ha mencionado todavía',
     assignment: 'No tienes asignaciones nuevas',
     comment: 'No hay comentarios nuevos',
-    status: 'Sin cambios de estado recientes'
+    status: 'Sin cambios de estado recientes',
+    note_share: 'Nadie te ha compartido notas'
 };
 
 function isUnreadNotification(n) {
@@ -380,15 +382,15 @@ function renderNotifications() {
 
         html += `
             <div class="inbox-item ${unread ? 'unread' : ''}" role="button" tabindex="0"
-                 onclick="handleNotificationClick(${n.id}, ${n.request_id})"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleNotificationClick(${n.id}, ${n.request_id});}">
+                 onclick="handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'})"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'});}">
                 <div class="inbox-item-icon ${presentation.iconClass}">
                     <i class="${presentation.iconName}"></i>
                 </div>
                 <div class="inbox-item-content">
                     <div class="inbox-item-text">${escapeHtml(n.message)}</div>
                     <div class="inbox-item-meta">
-                        <span class="inbox-item-request">${escapeHtml(n.request_title)}</span>
+                        <span class="inbox-item-request">${escapeHtml(n.note_id ? n.note_title : n.request_title)}</span>
                         <time title="${escapeHtml(formatInboxFullDate(createdAt))}">${formatInboxTime(createdAt)}</time>
                     </div>
                 </div>
@@ -470,7 +472,7 @@ async function setNotificationRead(notificationId, isRead) {
     }
 }
 
-async function handleNotificationClick(notificationId, requestId) {
+async function handleNotificationClick(notificationId, requestId, noteId) {
     await fetch('/api/notifications.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -478,6 +480,17 @@ async function handleNotificationClick(notificationId, requestId) {
     });
 
     toggleInbox();
+
+    // Aviso de nota compartida: se abre en Notas (en la misma página si ya estamos ahí).
+    if (noteId) {
+        if (typeof selectNote === 'function' && window.location.pathname.includes('notes.php')) {
+            selectNote(Number(noteId));
+            loadNotifications();
+        } else {
+            window.location.href = `/notes.php?id=${noteId}`;
+        }
+        return;
+    }
 
     // Navigate to index with the request if not already on index
     const isIndexPage = window.location.pathname === '/' ||

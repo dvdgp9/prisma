@@ -3,7 +3,7 @@
  * Notes API - Shared team notes (data access in includes/notes.php)
  *
  * GET    ?id=N                              one note (with who it is shared with)
- * GET    ?filter=all|mine|shared&app_id&q&limit   list
+ * GET    ?filter=all|mine|shared&app_id&q&limit&order=recent   list
  * POST   {title, content, app_id, is_pinned, is_shared, shared_user_ids}
  * PUT    {id, title?, content?, app_id?, is_pinned?, expected_revision?}
  *        {id, is_shared?, shared_user_ids?}   (author only)
@@ -50,7 +50,8 @@ switch ($method) {
         $noteId = create_note($db, $user, $fields);
 
         if (!empty($input['is_shared']) || !empty($input['shared_user_ids'])) {
-            replace_note_shares($db, $user, $noteId, !empty($input['is_shared']), $input['shared_user_ids'] ?? []);
+            $added = replace_note_shares($db, $user, $noteId, !empty($input['is_shared']), $input['shared_user_ids'] ?? []);
+            create_note_share_notifications($db, $noteId, $added, $user);
         }
 
         $note = get_note_detail($db, $noteId);
@@ -108,7 +109,9 @@ switch ($method) {
                 ? (array) $input['shared_user_ids']
                 : array_column(get_note_detail($db, $noteId)['shared_users'], 'id');
 
-            replace_note_shares($db, $user, $noteId, $isShared, $userIds);
+            // Aviso en Notificaciones solo a quien se añade ahora (no a quien ya la tenía).
+            $added = replace_note_shares($db, $user, $noteId, $isShared, $userIds);
+            create_note_share_notifications($db, $noteId, $added, $user);
         }
 
         $note = get_note_detail($db, $noteId);

@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
 </head>
 
 <?php
@@ -79,6 +79,19 @@ $company_name = $user['company_name'] ?? '';
                         <a class="tasks-widget-link" href="/index.php?view=mejoras" onclick="return goToMejoras('all', event)">Ir a Mejoras <i class="iconoir-arrow-right"></i></a>
                     </div>
                     <div class="tasks-widget-stats tasks-widget-stats--4" id="requests-widget-stats">
+                        <!-- Rellenado por JS -->
+                    </div>
+                </div>
+
+                <!-- Notas recientes: lo último que el equipo me ha compartido -->
+                <div class="tasks-widget" id="notes-widget">
+                    <div class="tasks-widget-head">
+                        <span class="tasks-widget-title">
+                            <i class="iconoir-page"></i> Notas recientes
+                        </span>
+                        <a class="tasks-widget-link" href="/notes.php">Ir a Notas <i class="iconoir-arrow-right"></i></a>
+                    </div>
+                    <div class="notes-widget-list" id="notes-widget-list">
                         <!-- Rellenado por JS -->
                     </div>
                 </div>
@@ -1010,7 +1023,8 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=5"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=5.0"></script>
+    <script src="/assets/js/notes-helpers.js?v=1"></script>
+    <script src="/assets/js/main.js?v=5.1"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

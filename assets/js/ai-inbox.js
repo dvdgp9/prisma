@@ -1,4 +1,4 @@
-// Prisma AI Inbox - Nota rápida con IA
+// Prisma AI Inbox - Crear con IA (notas de reunión a mejoras y tareas)
 
 let aiItems = []; // items propuestos por la IA (estado editable)
 let aiUsers = []; // usuarios asignables (cargados de /api/users-list.php)

@@ -1314,7 +1314,59 @@ function updateViewLayout() {
     if (isHome) {
         if (!tasksWidgetData) loadTasksWidget();
         if (requests.length > 0) renderRequestsWidget();
+        if (notesWidgetData === null) loadNotesWidget();
     }
+}
+
+// ===== Widget "Notas recientes" (Vista global): lo último que me han compartido =====
+// Usa noteExcerpt / formatNoteTime / parseNoteDate de notes-helpers.js.
+let notesWidgetData = null; // null = sin cargar; array = notas; 'error' = falló
+
+async function loadNotesWidget() {
+    try {
+        const res = await fetch('/api/notes.php?filter=shared&order=recent&limit=4');
+        const data = await res.json();
+        if (!data.success) throw new Error(`${res.status} ${data.error}`);
+        notesWidgetData = data.data;
+    } catch (e) {
+        console.error('Error loading notes widget:', e);
+        notesWidgetData = 'error';
+    }
+    renderNotesWidget();
+}
+
+function renderNotesWidget() {
+    const container = document.getElementById('notes-widget-list');
+    const widget = document.getElementById('notes-widget');
+    if (!container || !widget || notesWidgetData === null) return;
+
+    const notes = Array.isArray(notesWidgetData) ? notesWidgetData : [];
+    widget.classList.toggle('is-clear', notes.length === 0);
+
+    if (!notes.length) {
+        const failed = notesWidgetData === 'error';
+        container.innerHTML = `
+            <a class="tasks-widget-clear notes-widget-clear" href="/notes.php">
+                <i class="${failed ? 'iconoir-warning-circle' : 'iconoir-page'}"></i>
+                <span>${failed ? 'No se pudieron cargar las notas.' : 'Nadie te ha compartido notas todavía.'}</span>
+            </a>`;
+        return;
+    }
+
+    container.innerHTML = notes.map(note => {
+        // "Hace X" contra el reloj de la base de datos (server_now), no el del navegador.
+        const now = parseNoteDate(note.server_now) || new Date();
+        const excerpt = noteExcerpt(note.excerpt, 90);
+        return `
+            <a class="notes-widget-item" href="/notes.php?id=${parseInt(note.id, 10)}">
+                <span class="notes-widget-title">${escapeHtml(note.title)}</span>
+                ${excerpt ? `<span class="notes-widget-excerpt">${escapeHtml(excerpt)}</span>` : ''}
+                <span class="notes-widget-meta">
+                    <span>${escapeHtml(note.author_name || '')}</span>
+                    <span title="${formatNoteDateTime(note.updated_at)}">${formatNoteTime(note.updated_at, now)}</span>
+                </span>
+            </a>`;
+    }).join('');
 }
 
 // ===== Widget de mejoras de la Vista global: cada contador abre Mejoras con su filtro =====

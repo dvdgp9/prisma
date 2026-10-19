@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nota rápida - Prisma</title>
+    <title>Crear con IA - Prisma</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="icon" type="image/png" href="/favicon.png?v=2">
 
@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
 </head>
 
 <?php
@@ -39,7 +39,7 @@ $userApps = get_user_apps();
         <main class="main-content">
             <div class="content-header">
                 <div>
-                    <h1 class="page-title">Nota rápida</h1>
+                    <h1 class="page-title">Crear con IA</h1>
                     <p class="text-muted">Pega tus apuntes de reunión y la IA propondrá mejoras y tareas. Tú revisas y decides.</p>
                 </div>
             </div>

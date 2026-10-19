@@ -80,7 +80,7 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
 
             <a href="/ai-inbox.php" class="nav-item <?php echo $current_page === 'ai-inbox' ? 'active' : ''; ?>" data-nav="ai-inbox">
                 <i class="iconoir-sparks"></i>
-                <span>Nota rápida</span>
+                <span>Crear con IA</span>
             </a>
 
             <a href="javascript:void(0)" class="nav-item" onclick="toggleInbox()" id="inbox-nav-btn" data-nav="inbox">
@@ -196,6 +196,7 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
                 <option value="assignment">Asignaciones</option>
                 <option value="comment">Comentarios</option>
                 <option value="status">Estado</option>
+                <option value="note_share">Notas</option>
             </select>
             <i class="iconoir-nav-arrow-down" aria-hidden="true"></i>
         </div>
@@ -205,4 +206,4 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=1.7"></script>
+<script src="/assets/js/sidebar.js?v=1.8"></script>

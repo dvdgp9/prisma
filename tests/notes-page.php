@@ -156,7 +156,7 @@ $sidebar = read_project_file('includes/sidebar.php');
 assert_file_contains('includes/sidebar.php', ['href="/notes.php"', 'data-nav="notes"', '<span>Notas</span>'], 'sidebar links to Notas');
 $mejoras = strpos($sidebar, '<span>Mejoras</span>');
 $notas = strpos($sidebar, '<span>Notas</span>');
-$quick = strpos($sidebar, '<span>Nota rápida</span>');
-assert_same(true, $mejoras !== false && $notas !== false && $quick !== false && $mejoras < $notas && $notas < $quick, 'Notas sits between Mejoras and Nota rápida');
+$quick = strpos($sidebar, '<span>Crear con IA</span>');
+assert_same(true, $mejoras !== false && $notas !== false && $quick !== false && $mejoras < $notas && $notas < $quick, 'Notas sits between Mejoras and Crear con IA');
 
 fwrite(STDOUT, "Notes page contract completed successfully.\n");

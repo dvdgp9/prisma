@@ -31,7 +31,7 @@ function assert_file_contains($relativePath, $needles, $message)
 
 $sidebar = read_project_file('includes/sidebar.php');
 
-// Barra lateral: Vista global, Tareas, Mejoras (en ese orden) y después Nota rápida.
+// Barra lateral: Vista global, Tareas, Mejoras, Notas y Crear con IA (antes "Nota rápida").
 assert_file_contains('includes/sidebar.php', [
     '<span>Tareas</span>',
     '<span>Mejoras</span>',
@@ -42,12 +42,12 @@ assert_file_contains('includes/sidebar.php', [
 ], 'sidebar has Vista global, Tareas and Mejoras entries');
 assert_true(strpos($sidebar, '<span>Mis tareas</span>') === false, 'sidebar no longer says "Mis tareas"');
 
-$positions = array_map(fn($label) => strpos($sidebar, "<span>{$label}</span>"), ['Vista global', 'Tareas', 'Mejoras', 'Nota rápida']);
+$positions = array_map(fn($label) => strpos($sidebar, "<span>{$label}</span>"), ['Vista global', 'Tareas', 'Mejoras', 'Notas', 'Crear con IA']);
 $inOrder = !in_array(false, $positions, true);
 for ($i = 1; $inOrder && $i < count($positions); $i++) {
     $inOrder = $positions[$i - 1] < $positions[$i];
 }
-assert_true($inOrder, 'sidebar order is Vista global, Tareas, Mejoras, Nota rápida');
+assert_true($inOrder, 'sidebar order is Vista global, Tareas, Mejoras, Notas, Crear con IA');
 
 // Vista global = resumen (Qué toca + Mejoras); Mejoras = listado con filtros.
 assert_file_contains('index.php', [
@@ -55,7 +55,7 @@ assert_file_contains('index.php', [
     'id="requests-widget-stats"',
     'id="requests-area"',
     'id="export-btn"',
-    '/assets/js/main.js?v=5.0',
+    '/assets/js/main.js?v=5.1',
 ], 'index has the overview and the requests list as separate areas');
 assert_file_contains('assets/js/main.js', [
     "let currentView = 'home';",
@@ -73,9 +73,9 @@ assert_file_contains('tasks.php', ['<title>Tareas - Prisma</title>', '<h1 class=
 assert_file_contains('index.php', ['Ir a Tareas'], 'overview links to Tareas');
 
 // Caché PWA: assets versionados en todas las páginas.
-foreach (['index.php', 'tasks.php', 'ai-inbox.php', 'changelog.php', 'admin.php', 'manage-apps.php', 'login.php', 'solicitud.php', 'releases.php'] as $page) {
-    assert_file_contains($page, ['/assets/css/styles.css?v=5.2'], "{$page} loads the new styles.css");
+foreach (['index.php', 'tasks.php', 'notes.php', 'ai-inbox.php', 'changelog.php', 'admin.php', 'manage-apps.php', 'login.php', 'solicitud.php', 'releases.php'] as $page) {
+    assert_file_contains($page, ['/assets/css/styles.css?v=5.4'], "{$page} loads the new styles.css");
 }
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v36';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v38';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Sidebar Mejoras contract completed successfully.\n");
