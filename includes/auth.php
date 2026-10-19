@@ -714,6 +714,21 @@ function get_task_access($task_id, $db = null)
 }
 
 /**
+ * WHERE fragment for the task list: own tasks and those shared with the user by
+ * name always; tasks shared with the whole team only when $include_team is set.
+ * Binds :user_id and :user_id2 (native prepares cannot reuse a placeholder).
+ */
+function task_list_visibility_sql($include_team)
+{
+    $sql = "t.user_id = :user_id OR EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = :user_id2)";
+    if ($include_team) {
+        $sql .= " OR t.is_shared = 1";
+    }
+
+    return "($sql)";
+}
+
+/**
  * Capability a task update needs, based on which fields it changes.
  */
 function task_capability_for_update($input)

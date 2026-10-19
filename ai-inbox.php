@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
 </head>
 
 <?php
@@ -119,7 +119,7 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name'], 'company' => $a['company_name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/ai-inbox.js?v=ai5"></script>
+    <script src="/assets/js/ai-inbox.js?v=ai6"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

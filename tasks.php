@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Tareas - Prisma</title>
+    <title>Tareas - Prisma</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="icon" type="image/png" href="/favicon.png?v=2">
 
@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
     <link rel="stylesheet" href="/assets/css/tasks.css?v=3.0">
 </head>
 
@@ -41,7 +41,7 @@ $userApps = get_user_apps();
             <div class="content-header">
                 <div>
                     <div class="page-title-row">
-                        <h1 class="page-title">Mis Tareas</h1>
+                        <h1 class="page-title">Tareas</h1>
                         <span class="done-today" id="done-today" hidden>
                             <i class="iconoir-check"></i>
                             <span id="done-today-text"></span>

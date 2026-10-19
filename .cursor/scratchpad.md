@@ -2542,3 +2542,100 @@ Todo en `releases.php` (sin tocar CSS compartido):
 - Verificación local (página real con stubs + 3 lanzamientos): 375 px → abre Lista, sin scroll horizontal de página, formulario/pestañas/tarjetas caben, calendario desplazable (616 px en 311), modal cabe (325/325); 768 px y 1366 px → igual que antes (calendario por defecto, 7 columnas sin scroll, formulario y pestañas en una fila).
 - Nota: en el mock la fecha del modal salía vacía porque usé "AAAA-MM-DD HH:MM:SS"; en la BD `announce_at` es DATE ("AAAA-MM-DD") y funciona.
 - Archivos a subir: `releases.php`, `sw.js` (además de lo pendiente sin commitear).
+
+---
+
+# TAREAS ASIGNADAS VISIBLES SIN "DEL EQUIPO" (19 Octubre 2026)
+
+## Background and Motivation (tareas asignadas)
+Una compañera tiene que activar el chip "Del equipo" para ver las tareas que le asigna el usuario. Deberían aparecerle directamente.
+
+## Key Challenges and Analysis (tareas asignadas)
+- En Mis Tareas, "asignar" = compartir con personas concretas (`task_shares`). Compartir con todo el equipo = `tasks.is_shared = 1`.
+- `api/tasks.php` con `shared=0` solo devolvía `t.user_id = yo`. Esa misma llamada la usan la lista, el contador de la barra lateral (`sidebar.js`) y el widget "Qué toca" de la portada (`main.js`), así que las tareas asignadas tampoco contaban ahí.
+- Solución: la vista por defecto incluye las tareas compartidas con la persona por nombre; "Del equipo" solo añade las compartidas con todo el equipo. Sin cambios de JS ni de BD.
+
+## Project Status Board (tareas asignadas)
+- [x] Test NUEVO `tests/tasks-assigned-visible.php` (SQLite en memoria: por defecto → propias + asignadas; con equipo → + las de todo el equipo).
+- [x] Helper `task_list_visibility_sql($include_team)` en `includes/auth.php`; `api/tasks.php` lo usa.
+- [ ] Verificación del usuario en producción (la compañera ve sus tareas sin activar "Del equipo").
+
+## Current Status / Progress Tracking (19 Oct 2026 — tareas asignadas)
+- 14/14 archivos de test OK. `php -l` OK en los dos archivos tocados.
+- No se ha probado contra MySQL real (no hay BD local): la consulta es la misma que ya usaba "Del equipo", solo cambia qué partes del OR entran.
+- Archivos a subir: `api/tasks.php`, `includes/auth.php`. Sin migraciones, sin cambios de assets → no hace falta versionar `sw.js`.
+- Efecto colateral buscado: el contador de vencidas/hoy de la barra lateral y el widget "Qué toca" ahora también cuentan las tareas asignadas.
+
+## Lessons (tareas asignadas)
+- `config/database.php` usa `PDO::ATTR_EMULATE_PREPARES => false`: en MySQL no se puede repetir un placeholder con nombre, de ahí `:user_id` y `:user_id2`.
+
+---
+
+# BARRA LATERAL: VISTA GLOBAL, TAREAS, MEJORAS (19 Octubre 2026)
+
+## Background and Motivation (barra lateral Mejoras)
+El usuario pide que la barra lateral tenga "Vista global", "Tareas" y "Mejoras" (antes "Vista global" y "Mis tareas"). Al preguntarle, eligió: Vista global = portada con resumen; Mejoras = el listado actual con filtros. "Nota rápida" se queda (no es lo mismo que Notas); habrá que cambiarle el nombre (va en el plan de Notas).
+
+## Project Status Board (barra lateral Mejoras)
+- [x] Test NUEVO `tests/sidebar-mejoras.php` (orden del menú, áreas separadas en index, versiones de assets).
+- [x] Barra lateral: Vista global, Tareas (antes "Mis tareas"), Mejoras, Nota rápida, Notificaciones.
+- [x] Vista global = "Qué toca" + widget "Mejoras" con 4 contadores que abren Mejoras con su filtro rápido.
+- [x] Mejoras = listado de siempre (`/index.php?view=mejoras`).
+- [ ] Verificación del usuario en producción.
+
+## Current Status / Progress Tracking (19 Oct 2026 — barra lateral Mejoras)
+- `includes/sidebar.php`: nueva entrada "Mejoras" (`data-nav="mejoras"`, icono `iconoir-light-bulb`); la entrada activa la calcula PHP (`$index_view`): `?view=mejoras` u `open_request` → Mejoras; sin parámetros → Vista global.
+- `index.php`: `#home-overview` (Qué toca + widget Mejoras) y `#requests-area` (barra de filtros, resumen, tarjetas y tabla). En la Vista global se oculta el botón Exportar (`#export-btn`).
+- `main.js`: `currentView` pasa a ser `home` (Vista global) o `mejoras` (listado de todas las apps); `app`, `company` y `pending` no cambian. Funciones nuevas: `updateViewLayout()` (sustituye a `updateTasksWidgetVisibility`), `computeRequestsSummary()` (la usan la barra de resumen y el widget), `renderRequestsWidget()` y `goToMejoras(quick)`. En la Vista global se cargan las mejoras sin los filtros del listado.
+- Contadores del widget: rol `user` → Asignadas a mí, Con actividad nueva (abre Notificaciones), En curso, Completadas recientes. Resto de roles → Asignadas a mí, En curso, Pendientes, Sin asignar.
+- "Mis Tareas" → "Tareas" también en el título de tasks.php, en el enlace del widget, en la ayuda del modal "crear tarea" y en ai-inbox.js. El atajo del manifest ya tenía `short_name: "Tareas"` (no se toca).
+- Versiones: `styles.css?v=5.2` (9 páginas), `main.js?v=5.0`, `ai-inbox.js?v=ai6`, `sw.js` → `prisma-v36`.
+- Verificación local con un harness temporal (index.php real + sesión simulada solo en `php -S` + API falsa; borrado después): Vista global (admin y user), clic en contador → Mejoras con filtro y entrada activa, vuelta a Vista global, `?view=mejoras` al cargar, vista de app, "Por aprobar", móvil 375 px sin scroll horizontal, sin errores de consola. 15/15 archivos de test OK.
+- Archivos a subir (esta ronda): `includes/sidebar.php`, `index.php`, `tasks.php`, `ai-inbox.php`, `changelog.php`, `admin.php`, `manage-apps.php`, `login.php`, `solicitud.php`, `releases.php`, `assets/js/main.js`, `assets/js/ai-inbox.js`, `assets/css/styles.css`, `sw.js`. Sin migraciones.
+
+## Lessons (barra lateral Mejoras)
+- Para ver index.php real en local sin BD: un PHP que solo responda con `PHP_SAPI === 'cli-server'`, rellene `$_SESSION`, haga `include index.php` dentro de `ob_start()`, vacíe `$_SESSION` al terminar e inyecte tras `<head>` un `fetch` falso para `/api/`. Borrarlo al acabar (si llegara a producción daría acceso).
+- `.tasks-widget` tiene `display: block`, así que el atributo `hidden` no lo oculta: se oculta el contenedor (`#home-overview`), que no tiene `display` en CSS.
+
+---
+
+# PLAN: NOTAS (Planner, 19 Octubre 2026)
+
+## Background and Motivation (Notas)
+El usuario quiere añadir "Notas" y pide que interpretemos qué es y cuál es la mejor opción para Prisma. Pista suya: "Notas es para compartir" y es distinto de "Nota rápida" (texto libre que la IA convierte en tareas/mejoras y luego se descarta), a la que habrá que cambiar el nombre.
+
+## Key Challenges and Analysis (Notas)
+**Interpretación**: un espacio de notas de equipo. Notas que se guardan, se escriben en Markdown y se comparten con todo el equipo o con personas concretas, con app opcional. Ejemplos: actas de reunión, procedimientos ("cómo se despliega X"), decisiones, datos de un cliente, información para pasar a un compañero. Es la pieza que falta entre Tareas (qué hacer) y Mejoras (qué construir): el conocimiento compartido.
+
+**Lo que ya existe y se puede reutilizar**
+- Modelo de compartir de Tareas: dueño + `is_shared` (todo el equipo) + `task_shares` (personas). Helpers de capacidades en `includes/auth.php` con tests en SQLite. Copiar ese patrón da coherencia y poco riesgo.
+- Markdown seguro: `marked` + `DOMPurify` ya cargados en index.php para las notas de app.
+- Notas de app (`app_resources` type `note`, con fijado): son por app, visibles para quien tiene la app. No sirven tal cual: `app_id` es NOT NULL y no tienen forma de compartir.
+- Notificaciones: la tabla gira en torno a `request_id`. Avisar de una nota compartida necesita una columna `note_id`.
+
+**Opciones**
+- A) Ampliar `app_resources` (app opcional + compartir). Menos tablas, pero mezcla dos conceptos y cambia la seguridad de las notas de app. No recomendado.
+- B) **Recomendado**: tablas nuevas `notes` + `note_shares` copiando el modelo de Tareas, con página propia `notes.php`. Las notas de app se quedan como están en la v1; más adelante se puede decidir si se unifican.
+
+**Riesgos**
+- Dos personas editando la misma nota a la vez: si los compartidos pueden editar, hace falta control de versión optimista (`updated_at`; si cambió, aviso en vez de sobrescribir).
+- Multiempresa: filtrar siempre por `company_id`, como en tareas.
+
+## High-level Task Breakdown (Notas) — PROPUESTA, pendiente de que el usuario confirme decisiones
+- [ ] N0. Confirmar decisiones (abajo).
+- [ ] N1. Migración `015_notes.sql`: `notes` (id, company_id, user_id, app_id NULL, title, content MEDIUMTEXT, is_shared, is_pinned, created_at, updated_at) + `note_shares` (note_id, user_id). La ejecuta el usuario. ✅ Éxito: las tablas existen en producción.
+- [ ] N2. Capacidades: `note_capabilities_for_access()` + `get_note_access()` en auth.php, con test en SQLite (dueño / compartida con equipo / con persona / ajena / otra empresa). ✅ Éxito: test en verde.
+- [ ] N3. `api/notes.php`: listar (mías, compartidas conmigo, por app, búsqueda), ver, crear, editar (con control de `updated_at`), borrar, compartir. Test de contrato de guardas. ✅ Éxito: test en verde; una nota ajena devuelve 404.
+- [ ] N4. Página `notes.php` + `notes.js`: lista (fijadas arriba, luego por última edición) y lector/editor Markdown. Escritorio a dos columnas; móvil lista → detalle. Menú de compartir igual que el de Tareas. Guardar con Cmd/Ctrl+Enter. ✅ Éxito: crear, editar, fijar, compartir y borrar desde el navegador; móvil sin scroll horizontal.
+- [ ] N5. Barra lateral: "Notas" después de "Mejoras" y el nuevo nombre para "Nota rápida". Vista global: bloque "Notas recientes" (últimas compartidas contigo). ✅ Éxito: contrato de la barra lateral actualizado.
+- [ ] N6. Aviso al compartir: columna `notifications.note_id` (en la misma migración) + enlace que abre la nota desde Notificaciones. ✅ Éxito: compartir con una persona le crea un aviso que abre la nota.
+- [ ] N7. Verificación local con harness, versionado de assets y `sw.js`, lista de archivos a subir.
+
+### Decisiones a confirmar con el usuario
+1. **Quién edita una nota compartida.** Recomendado: como en Tareas (los compartidos editan; solo el autor borra y cambia con quién se comparte), con aviso si otra persona la ha cambiado mientras editabas. Alternativa: solo el autor edita y el resto lee.
+2. **Notas de cada app (las de la vista de app).** Recomendado: dejarlas como están en la v1. Alternativa: migrarlas a Notas con su app y compartidas con el equipo.
+3. **Nuevo nombre para "Nota rápida".** Recomendado: "Crear con IA" (dice lo que hace: pegas texto y propone tareas y mejoras). Alternativas: "Captura IA", "Asistente IA".
+4. **Aviso al compartir una nota** (requiere la columna `note_id` en notificaciones). Recomendado: sí.
+
+## Project Status Board (Notas)
+- [ ] N0 Decisiones del usuario

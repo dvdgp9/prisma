@@ -3,7 +3,7 @@
 let apps = [];
 let requests = [];
 let appCounterRequests = [];
-let currentView = 'global';
+let currentView = 'home'; // home (Vista global) | mejoras | app | company | pending
 let currentAppId = null;
 let currentCompanyId = null;
 let selectedFiles = [];
@@ -34,6 +34,7 @@ window.addEventListener('prisma:notifications-updated', (event) => {
 
     if (requests.length > 0) {
         updateRequestsSummary(getFilteredRequests());
+        renderRequestsWidget();
     }
 });
 
@@ -56,7 +57,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     } else if (appIdParam) {
         currentView = 'app';
         currentAppId = parseInt(appIdParam);
+    } else if (urlParams.get('view') === 'mejoras' || openRequestId) {
+        currentView = 'mejoras';
+        document.getElementById('page-title').textContent = 'Mejoras';
     }
+    updateViewLayout();
 
     // Load apps first, then update UI
     await loadApps();
@@ -94,9 +99,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupAppFilesUpload();
     setupEditModalFileUpload();
     syncRequestsViewModeUI();
-
-    // Widget "Qué toca": cargar y mostrar si arrancamos en vista global
-    updateTasksWidgetVisibility();
 
     // Cmd/Ctrl + Enter to submit new request form
     const newRequestForm = document.getElementById('new-request-form');
@@ -229,6 +231,7 @@ function openPendingApprovalsView(event = null) {
         pendingBtn.classList.add('active');
     }
 
+    updateViewLayout();
     loadPendingApprovals();
 }
 
@@ -721,43 +724,49 @@ function getFilteredRequests() {
     });
 }
 
-function updateRequestsSummary(filteredRequests) {
+// Contadores de mejoras: los usan la barra de resumen del listado y el widget de la Vista global.
+function computeRequestsSummary(list) {
     const currentUserId = parseInt(document.body.dataset.userId, 10);
-    const assignedEl = document.getElementById('summary-assigned-count');
-    const activityEl = document.getElementById('summary-activity-count');
-    const recentCompletedEl = document.getElementById('summary-recent-completed-count');
-    const visibleEl = document.getElementById('summary-visible-count');
-    const inProgressEl = document.getElementById('summary-in-progress-count');
-    const pendingEl = document.getElementById('summary-pending-count');
-    const unassignedEl = document.getElementById('summary-unassigned-count');
-    const commentedEl = document.getElementById('summary-commented-count');
-    const activeRequests = filteredRequests.filter(r => r.status !== 'completed' && r.status !== 'discarded');
+    const activeRequests = list.filter(r => r.status !== 'completed' && r.status !== 'discarded');
+    const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
 
-    if (userRole === 'user') {
-        const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
-        const assignedToUser = activeRequests.filter(request =>
+    return {
+        assigned: activeRequests.filter(request =>
             (request.assignments || []).some(assignment => parseInt(assignment.id, 10) === currentUserId)
-        );
-        const requestsWithActivity = filteredRequests.filter(request =>
-            unreadRequestIds.has(parseInt(request.id, 10))
-        );
-        const recentlyCompleted = filteredRequests.filter(request => {
+        ).length,
+        activity: list.filter(request => unreadRequestIds.has(parseInt(request.id, 10))).length,
+        recentCompleted: list.filter(request => {
             if (request.status !== 'completed' || !request.completed_at) return false;
             return new Date(request.completed_at).getTime() >= recentThreshold;
-        });
+        }).length,
+        visible: activeRequests.length,
+        inProgress: activeRequests.filter(r => r.status === 'in_progress').length,
+        pending: activeRequests.filter(r => r.status === 'pending').length,
+        unassigned: activeRequests.filter(r => !r.assignments || r.assignments.length === 0).length,
+        commented: activeRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length
+    };
+}
 
-        if (assignedEl) assignedEl.textContent = assignedToUser.length;
-        if (activityEl) activityEl.textContent = requestsWithActivity.length;
-        if (inProgressEl) inProgressEl.textContent = activeRequests.filter(r => r.status === 'in_progress').length;
-        if (recentCompletedEl) recentCompletedEl.textContent = recentlyCompleted.length;
+function updateRequestsSummary(filteredRequests) {
+    const summary = computeRequestsSummary(filteredRequests);
+    const setCount = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    setCount('summary-in-progress-count', summary.inProgress);
+
+    if (userRole === 'user') {
+        setCount('summary-assigned-count', summary.assigned);
+        setCount('summary-activity-count', summary.activity);
+        setCount('summary-recent-completed-count', summary.recentCompleted);
         return;
     }
 
-    if (visibleEl) visibleEl.textContent = activeRequests.length;
-    if (inProgressEl) inProgressEl.textContent = activeRequests.filter(r => r.status === 'in_progress').length;
-    if (pendingEl) pendingEl.textContent = activeRequests.filter(r => r.status === 'pending').length;
-    if (unassignedEl) unassignedEl.textContent = activeRequests.filter(r => !r.assignments || r.assignments.length === 0).length;
-    if (commentedEl) commentedEl.textContent = activeRequests.filter(r => parseInt(r.comment_count || 0, 10) > 0).length;
+    setCount('summary-visible-count', summary.visible);
+    setCount('summary-pending-count', summary.pending);
+    setCount('summary-unassigned-count', summary.unassigned);
+    setCount('summary-commented-count', summary.commented);
 }
 
 function getRelativeAge(dateString) {
@@ -1150,7 +1159,7 @@ function populateAppSelects() {
     });
 }
 
-// Switch view (global, company or specific app)
+// Switch view (home = Vista global, mejoras, company or specific app)
 function loadView(type, entityId = null, sourceEvent = null) {
     currentView = type;
     currentAppId = type === 'app' ? entityId : null;
@@ -1158,10 +1167,13 @@ function loadView(type, entityId = null, sourceEvent = null) {
 
     // Update page title
     const pageTitle = document.getElementById('page-title');
-    if (type === 'global') {
-        pageTitle.textContent = 'Vista Global';
+    if (type === 'home') {
+        pageTitle.textContent = 'Vista global';
         // Update URL without reload
-        history.pushState({view: 'global'}, '', '/index.php');
+        history.pushState({view: 'home'}, '', '/index.php');
+    } else if (type === 'mejoras') {
+        pageTitle.textContent = 'Mejoras';
+        history.pushState({view: 'mejoras'}, '', '/index.php?view=mejoras');
     } else if (type === 'company') {
         const company = appsGrouped.find(g => g.id == entityId);
         pageTitle.textContent = company ? company.name : 'Empresa';
@@ -1186,16 +1198,16 @@ function loadView(type, entityId = null, sourceEvent = null) {
     
     // Add active to the clicked element or find it by data attribute
     const evt = sourceEvent || window.event;
-    if (evt && evt.target) {
-        const clickedElement = evt.target.closest('.nav-item, .quick-action-btn, .company-nav-item');
-        if (clickedElement) {
-            clickedElement.classList.add('active');
-        }
-    } else if (type === 'global') {
-        // Activate global view button
-        const globalBtn = document.querySelector('.quick-action-btn[title="Vista Global"]');
-        if (globalBtn) {
-            globalBtn.classList.add('active');
+    const clickedElement = evt && evt.target && evt.target.closest
+        ? evt.target.closest('.nav-item, .quick-action-btn, .company-nav-item')
+        : null;
+    if (clickedElement) {
+        clickedElement.classList.add('active');
+    } else if (type === 'home' || type === 'mejoras') {
+        // Vista global / Mejoras abiertas desde fuera de la barra (p. ej. el widget del resumen)
+        const navBtn = document.querySelector(`.nav-item[data-nav="${type === 'home' ? 'global' : 'mejoras'}"]`);
+        if (navBtn) {
+            navBtn.classList.add('active');
         }
     } else if (type === 'app' && currentAppId) {
         updateActiveNavItem(currentAppId, null);
@@ -1222,11 +1234,10 @@ function loadView(type, entityId = null, sourceEvent = null) {
     // Reload requests
     loadRequests();
 
-    // El widget de tareas solo se muestra en la vista global
-    updateTasksWidgetVisibility();
+    updateViewLayout();
 }
 
-// ===== Widget "Qué toca" (resumen de tareas propias, solo en Vista Global) =====
+// ===== Widget "Qué toca" (resumen de tareas propias, solo en la Vista global) =====
 let tasksWidgetData = null;
 
 async function loadTasksWidget() {
@@ -1289,15 +1300,61 @@ function renderTasksWidget() {
         </a>`).join('');
 }
 
-function updateTasksWidgetVisibility() {
-    const widget = document.getElementById('tasks-widget');
-    if (!widget) return;
-    if (currentView === 'global') {
-        widget.style.display = 'block';
+// Vista global = resumen (tareas + mejoras); el resto de vistas = listado de mejoras.
+function updateViewLayout() {
+    const isHome = currentView === 'home';
+    const overview = document.getElementById('home-overview');
+    const requestsArea = document.getElementById('requests-area');
+    const exportBtn = document.getElementById('export-btn');
+
+    if (overview) overview.hidden = !isHome;
+    if (requestsArea) requestsArea.hidden = isHome;
+    if (exportBtn) exportBtn.hidden = isHome;
+
+    if (isHome) {
         if (!tasksWidgetData) loadTasksWidget();
-    } else {
-        widget.style.display = 'none';
+        if (requests.length > 0) renderRequestsWidget();
     }
+}
+
+// ===== Widget de mejoras de la Vista global: cada contador abre Mejoras con su filtro =====
+function renderRequestsWidget() {
+    const container = document.getElementById('requests-widget-stats');
+    if (!container || currentView !== 'home') return;
+
+    const summary = computeRequestsSummary(requests);
+    const tiles = userRole === 'user'
+        ? [
+            { label: 'Asignadas a mí', value: summary.assigned, quick: 'mine', accent: true },
+            { label: 'Con actividad nueva', value: summary.activity, inbox: true, accent: true },
+            { label: 'En curso', value: summary.inProgress, quick: 'in_progress' },
+            { label: 'Completadas recientes', value: summary.recentCompleted, quick: 'completed' }
+        ]
+        : [
+            { label: 'Asignadas a mí', value: summary.assigned, quick: 'mine', accent: true },
+            { label: 'En curso', value: summary.inProgress, quick: 'in_progress' },
+            { label: 'Pendientes', value: summary.pending, quick: 'pending' },
+            { label: 'Sin asignar', value: summary.unassigned, quick: 'unassigned' }
+        ];
+
+    container.innerHTML = tiles.map(t => {
+        const cls = t.value === 0 ? 'is-empty' : (t.accent ? 'is-accent' : '');
+        const action = t.inbox
+            ? 'href="#" onclick="toggleInbox(); return false;"'
+            : `href="/index.php?view=mejoras" onclick="return goToMejoras('${t.quick}', event)"`;
+        return `
+        <a class="tasks-widget-stat ${cls}" ${action}>
+            <span class="tasks-widget-stat-value">${t.value}</span>
+            <span class="tasks-widget-stat-label">${t.label}</span>
+        </a>`;
+    }).join('');
+}
+
+function goToMejoras(quickView, event) {
+    if (event) event.preventDefault();
+    loadView('mejoras', null, event);
+    setQuickView(quickView);
+    return false;
 }
 
 // Load requests with multi-level sorting and filters
@@ -1325,10 +1382,12 @@ async function loadRequests() {
         if (sortSecondary) params.push(`sort_secondary=${sortSecondary}`);
         if (sortTertiary) params.push(`sort_tertiary=${sortTertiary}`);
 
-        // Filters
-        if (priority) params.push(`priority=${priority}`);
-        if (status) params.push(`status=${status}`);
-        if (difficulty) params.push(`difficulty=${difficulty}`);
+        // Filters (the Vista global summary always counts every visible request)
+        if (currentView !== 'home') {
+            if (priority) params.push(`priority=${priority}`);
+            if (status) params.push(`status=${status}`);
+            if (difficulty) params.push(`difficulty=${difficulty}`);
+        }
 
         url += params.join('&');
 
@@ -1339,7 +1398,10 @@ async function loadRequests() {
             requests = data.data;
             populateAssigneeFilter();
             renderRequests();
+            renderRequestsWidget();
             loadAppCounters();
+        } else {
+            console.error('Error loading requests', url, response.status, data.error);
         }
     } catch (error) {
         console.error('Error loading requests:', error);

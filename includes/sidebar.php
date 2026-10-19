@@ -14,6 +14,12 @@ if (!isset($user)) {
 }
 
 $company_name = $user['company_name'] ?? '';
+
+// En index.php: qué entrada principal va activa (las apps/empresas las marca main.js).
+$index_view = '';
+if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id']) && !isset($_GET['company'])) {
+    $index_view = (($_GET['view'] ?? '') === 'mejoras' || isset($_GET['open_request'])) ? 'mejoras' : 'global';
+}
 ?>
 
 <?php
@@ -38,7 +44,7 @@ $company_name = $user['company_name'] ?? '';
         <!-- Primary navigation -->
         <div class="nav-section">
             <?php if ($current_page === 'index'): ?>
-                <a href="javascript:void(0)" class="nav-item <?php echo ($current_page === 'index' && !isset($_GET['app_id'])) ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('global', null, event); return false;" data-nav="global">
+                <a href="/index.php" class="nav-item <?php echo $index_view === 'global' ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('home', null, event); return false;" data-nav="global">
                     <i class="iconoir-view-grid"></i>
                     <span>Vista global</span>
                 </a>
@@ -51,9 +57,21 @@ $company_name = $user['company_name'] ?? '';
 
             <a href="/tasks.php" class="nav-item <?php echo $current_page === 'tasks' ? 'active' : ''; ?>" data-nav="tasks">
                 <i class="iconoir-task-list"></i>
-                <span>Mis tareas</span>
+                <span>Tareas</span>
                 <span class="nav-count" id="tasks-count" hidden></span>
             </a>
+
+            <?php if ($current_page === 'index'): ?>
+                <a href="/index.php?view=mejoras" class="nav-item <?php echo $index_view === 'mejoras' ? 'active' : ''; ?>" onclick="event.preventDefault(); loadView('mejoras', null, event); return false;" data-nav="mejoras">
+                    <i class="iconoir-light-bulb"></i>
+                    <span>Mejoras</span>
+                </a>
+            <?php else: ?>
+                <a href="/index.php?view=mejoras" class="nav-item" data-nav="mejoras">
+                    <i class="iconoir-light-bulb"></i>
+                    <span>Mejoras</span>
+                </a>
+            <?php endif; ?>
 
             <a href="/ai-inbox.php" class="nav-item <?php echo $current_page === 'ai-inbox' ? 'active' : ''; ?>" data-nav="ai-inbox">
                 <i class="iconoir-sparks"></i>

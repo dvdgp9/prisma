@@ -57,14 +57,10 @@ switch ($method) {
         
         $params = [':company_id' => $user['company_id']];
         
-        // Filter: own tasks OR shared tasks (with all team OR specifically with this user)
-        if ($showShared) {
-            $query .= " AND (t.user_id = :user_id OR t.is_shared = 1 OR EXISTS (SELECT 1 FROM task_shares ts WHERE ts.task_id = t.id AND ts.user_id = :user_id2))";
-            $params[':user_id2'] = $user['id'];
-        } else {
-            $query .= " AND t.user_id = :user_id";
-        }
+        // Filter: own tasks and those assigned to this user by name; whole-team ones only with "Del equipo"
+        $query .= " AND " . task_list_visibility_sql($showShared);
         $params[':user_id'] = $user['id'];
+        $params[':user_id2'] = $user['id'];
         
         // Filter by completion status (optionally only the recently completed ones)
         if (!$showCompleted) {

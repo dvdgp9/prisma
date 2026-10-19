@@ -157,7 +157,7 @@ function buildGroups() {
             kind: 'tasks',
             icon: 'iconoir-task-list',
             title: 'Tareas rápidas',
-            subtitle: 'Irán a Mis tareas',
+            subtitle: 'Irán a Tareas',
             items: tareas
         });
     }
@@ -422,7 +422,7 @@ function renderDone(results) {
         const appName = r.item.app_id ? (AI_USER_APPS.find(a => a.id === r.item.app_id)?.name || '') : '';
         const where = r.item.tipo === 'mejora'
             ? `Mejora en ${escapeAiHtml(appName)}`
-            : 'Tarea rápida en Mis tareas';
+            : 'Tarea rápida en Tareas';
         const link = r.ok
             ? (r.item.tipo === 'mejora'
                 ? `<a href="/index.php?app_id=${r.item.app_id}">Ver app</a>`

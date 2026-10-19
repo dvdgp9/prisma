@@ -26,7 +26,7 @@ $user = get_logged_user();
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
     <style>
         .tabs {
             display: flex;

@@ -7185,6 +7185,24 @@ select.ai-pill-assignee.has-assignee {
     }
 }
 
+/* Widget de mejoras de la Vista global: 4 contadores (2×2 en pantallas estrechas) */
+.tasks-widget-stats--4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 900px) {
+    .tasks-widget-stats--4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.tasks-widget-stat.is-accent .tasks-widget-stat-value { color: var(--primary-color); }
+
+/* Exportar solo aplica al listado: se oculta en la Vista global */
+.content-header .btn[hidden] {
+    display: none;
+}
+
 /* ==========================================================================
    In-app File Viewer (.fv-*)
    Previews images and PDFs in an overlay so files no longer pop out of the

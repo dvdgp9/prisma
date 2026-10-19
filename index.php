@@ -20,7 +20,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
-    <link rel="stylesheet" href="/assets/css/styles.css?v=5.1">
+    <link rel="stylesheet" href="/assets/css/styles.css?v=5.2">
 </head>
 
 <?php
@@ -42,9 +42,9 @@ $company_name = $user['company_name'] ?? '';
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-header">
-                <h1 class="page-title" id="page-title">Vista Global</h1>
+                <h1 class="page-title" id="page-title">Vista global</h1>
                 <div class="actions">
-                    <button class="btn btn-outline" onclick="openExportModal()">
+                    <button class="btn btn-outline" id="export-btn" onclick="openExportModal()">
                         <i class="iconoir-download"></i>
                         Exportar
                     </button>
@@ -55,16 +55,32 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- Widget "Qué toca": resumen de tareas propias (solo en Vista Global) -->
-            <div class="tasks-widget" id="tasks-widget" style="display: none;">
-                <div class="tasks-widget-head">
-                    <span class="tasks-widget-title">
-                        <i class="iconoir-task-list"></i> Qué toca
-                    </span>
-                    <a class="tasks-widget-link" href="/tasks.php">Ir a Mis tareas <i class="iconoir-arrow-right"></i></a>
+            <!-- Vista global: resumen de tareas y mejoras (el listado vive en "Mejoras") -->
+            <div class="home-overview" id="home-overview" hidden>
+                <!-- Widget "Qué toca": resumen de tareas propias -->
+                <div class="tasks-widget" id="tasks-widget">
+                    <div class="tasks-widget-head">
+                        <span class="tasks-widget-title">
+                            <i class="iconoir-task-list"></i> Qué toca
+                        </span>
+                        <a class="tasks-widget-link" href="/tasks.php">Ir a Tareas <i class="iconoir-arrow-right"></i></a>
+                    </div>
+                    <div class="tasks-widget-stats" id="tasks-widget-stats">
+                        <!-- Rellenado por JS -->
+                    </div>
                 </div>
-                <div class="tasks-widget-stats" id="tasks-widget-stats">
-                    <!-- Rellenado por JS -->
+
+                <!-- Widget de mejoras: cada contador abre "Mejoras" con su filtro -->
+                <div class="tasks-widget" id="requests-widget">
+                    <div class="tasks-widget-head">
+                        <span class="tasks-widget-title">
+                            <i class="iconoir-light-bulb"></i> Mejoras
+                        </span>
+                        <a class="tasks-widget-link" href="/index.php?view=mejoras" onclick="return goToMejoras('all', event)">Ir a Mejoras <i class="iconoir-arrow-right"></i></a>
+                    </div>
+                    <div class="tasks-widget-stats tasks-widget-stats--4" id="requests-widget-stats">
+                        <!-- Rellenado por JS -->
+                    </div>
                 </div>
             </div>
 
@@ -114,6 +130,8 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
+            <!-- Listado de mejoras (Mejoras, apps y empresas); oculto en la Vista global -->
+            <div class="requests-area" id="requests-area">
             <div class="requests-toolbar-shell is-advanced" id="requests-toolbar-shell">
                 <div class="sorting-bar" id="sorting-bar">
                     <div class="sorting-controls">
@@ -287,6 +305,7 @@ $company_name = $user['company_name'] ?? '';
                         <!-- Rows rendered dynamically -->
                     </tbody>
                 </table>
+            </div>
             </div>
         </main>
     </div>
@@ -683,7 +702,7 @@ $company_name = $user['company_name'] ?? '';
                             <i class="iconoir-calendar"></i> Fecha
                         </label>
                         <input type="date" id="task-from-request-date" required>
-                        <small class="text-muted">La tarea aparecerá en tu agenda de Mis tareas.</small>
+                        <small class="text-muted">La tarea aparecerá en tu agenda de Tareas.</small>
                     </div>
 
                     <div class="task-from-request-error" id="task-from-request-error" hidden></div>
@@ -991,7 +1010,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
     <script src="/assets/js/task-parser.js?v=5"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/main.js?v=4.9"></script>
+    <script src="/assets/js/main.js?v=5.0"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>
