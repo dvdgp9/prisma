@@ -47,7 +47,7 @@ assert_file_contains('index.php', [
 
 $index = read_project_file('index.php');
 assert_true(strpos($index, 'notes-helpers.js') < strpos($index, '/assets/js/main.js'), 'notes-helpers.js loads before main.js');
-assert_true(strpos($index, 'id="notes-widget"') > strpos($index, 'id="requests-widget"') && strpos($index, 'id="notes-widget"') < strpos($index, 'id="app-info-section"'), 'notes block sits after Mejoras inside the overview');
+assert_true(strpos($index, 'id="notes-widget"') > strpos($index, 'id="my-work"') && strpos($index, 'id="notes-widget"') < strpos($index, 'id="app-info-section"'), 'notes block sits after "Mi trabajo" inside the overview');
 
 assert_file_contains('assets/js/main.js', [
     'function loadNotesWidget()',

@@ -50,6 +50,24 @@ SHOW TABLES LIKE 'note%';
 SHOW COLUMNS FROM notifications LIKE 'note_id';
 ```
 
+## 📝 Migración 016: Fecha de las mejoras
+
+**Archivo**: `016_request_due_date.sql`
+
+**Propósito**: Poder poner una fecha opcional a cada mejora, para que salga en la Vista global ("Mi trabajo") junto a las tareas.
+
+**Cambios** (solo añade, no toca datos existentes):
+- Nueva columna `requests.due_date` (`DATE`, sin hora, opcional). Las mejoras actuales quedan sin fecha.
+- Índice `idx_due_date` para ordenar y filtrar por fecha.
+
+**Ejecutar**: igual que la 001 (phpMyAdmin → pestaña "SQL" → pegar el contenido de `016_request_due_date.sql` → "Continuar"). **Una sola vez**: si se repite, da error "Duplicate column name 'due_date'". En ese caso no pasa nada: la columna ya existe.
+
+**Verificación**:
+```sql
+SHOW COLUMNS FROM requests LIKE 'due_date';
+SHOW INDEX FROM requests WHERE Key_name = 'idx_due_date';
+```
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

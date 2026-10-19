@@ -6,6 +6,8 @@ let currentTaskId = null;
 // Capacidades del usuario sobre la tarea abierta en el modal (vienen de la API).
 let currentTaskCaps = {};
 let teamMembers = [];
+// Quien mira la página (para escribir "Tú" en con quién se comparte).
+const CURRENT_USER_ID = Number(document.body.dataset.userId);
 
 // Detección descartada por el usuario en la creación rápida (chips con la "x").
 // Se mantiene hasta que se crea la tarea o se vacía el input.
@@ -23,6 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
     setupTaskModal();
     loadTeamMembers();
+
+    // Enlace directo desde la Vista global: tasks.php?task=ID abre esa tarea.
+    const linkedTaskId = Number(new URLSearchParams(window.location.search).get('task'));
+    if (linkedTaskId > 0) {
+        openTaskModal(linkedTaskId);
+        history.replaceState(null, '', '/tasks.php' + window.location.hash);
+    }
 });
 
 // Setup Quick Add functionality
@@ -389,12 +398,17 @@ function buildTaskCard(task, localToday) {
     // Con quién se comparte: el dueño lo cambia pulsando la etiqueta (o el botón de compartir si es privada).
     const canShare = caps.share !== false && !task.is_completed;
     if (task.is_shared || task.share_count > 0) {
-        const label = task.is_shared ? 'Equipo' : task.share_count;
         const icon = task.is_shared ? 'iconoir-group' : 'iconoir-user';
-        const who = task.is_shared ? 'todo el equipo' : `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}`;
+        const countLabel = `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}`;
+        const summary = task.is_shared ? null : taskShareSummary(task.shared_user_ids || [], teamMembers, CURRENT_USER_ID);
+        // En ordenador, los nombres; en móvil, solo el número (lo decide tasks.css).
+        const names = task.is_shared ? 'Equipo' : (summary.label || countLabel);
+        const count = task.is_shared ? 'Equipo' : String(task.share_count);
+        const who = task.is_shared ? 'Compartida con todo el equipo' : `Compartida ${summary.phrase || `con ${countLabel}`}`;
+        const inner = `<i class="${icon}"></i><span class="task-badge-names">${escapeHtml(names)}</span><span class="task-badge-count">${escapeHtml(count)}</span>`;
         meta.push(canShare
-            ? `<button type="button" class="task-badge shared task-badge-btn" title="Compartida con ${who} · cambiar" onclick="openShareMenu(${task.id}, this, event)"><i class="${icon}"></i>${label}</button>`
-            : `<span class="task-badge shared" title="Compartida con ${who}"><i class="${icon}"></i>${label}</span>`);
+            ? `<button type="button" class="task-badge shared task-badge-btn" title="${escapeHtml(who)} · cambiar" onclick="openShareMenu(${task.id}, this, event)">${inner}</button>`
+            : `<span class="task-badge shared" title="${escapeHtml(who)}">${inner}</span>`);
     }
     if (task.attachment_count > 0) {
         meta.push(`<span class="task-meta-item"><i class="iconoir-attachment"></i>${task.attachment_count}</span>`);
@@ -439,6 +453,7 @@ function buildTaskCard(task, localToday) {
 // Render principal: guarda los datos, aplica la búsqueda y delega según la vista activa.
 function renderTasks(tasks) {
     lastTasks = tasks || [];
+    lastTasks.forEach(normalizeTaskShares);
     const container = document.getElementById('tasks-list');
     const emptyState = document.getElementById('empty-state');
 
@@ -870,7 +885,7 @@ async function openTaskModal(taskId) {
             return;
         }
 
-        const task = data.data;
+        const task = normalizeTaskShares(data.data);
         currentModalTask = task;
         currentTaskCaps = task.capabilities || {};
         taskModalReturnFocus = returnFocus;
@@ -921,8 +936,17 @@ function refreshTaskModalBar() {
 }
 
 // Ids de las personas con las que está compartida (la lista solo trae cuántas).
+// La API trae los ids de con quién se comparte como texto ("6,8"); se guardan como lista.
+function normalizeTaskShares(task) {
+    if (task && !Array.isArray(task.shared_user_ids) && task.share_user_ids !== undefined) {
+        task.shared_user_ids = parseShareIds(task.share_user_ids);
+    }
+    return task;
+}
+
 async function getTaskSharedUserIds(task) {
     if (task.is_shared == 1 || !(task.share_count > 0)) return [];
+    normalizeTaskShares(task);
     if (Array.isArray(task.shared_user_ids) && task.shared_user_ids.length === Number(task.share_count)) {
         return task.shared_user_ids;
     }
@@ -991,14 +1015,9 @@ async function renderTaskMetaBar() {
     if (caps.share !== false) {
         const ids = await getTaskSharedUserIds(task);
         if (token !== taskMetaBarRenderToken) return;
-        const names = ids.map(id => {
-            const member = teamMembers.find(m => Number(m.id) === id);
-            return member ? (member.full_name || member.username) : null;
-        }).filter(Boolean);
+        const summary = taskShareSummary(ids, teamMembers, CURRENT_USER_ID);
         const shareLabel = task.is_shared == 1 ? 'Todo el equipo'
-            : names.length === 0 ? (task.share_count > 0 ? `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}` : 'Solo yo')
-            : names.length <= 2 ? names.join(', ')
-            : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+            : summary.label || (task.share_count > 0 ? `${task.share_count} ${task.share_count == 1 ? 'persona' : 'personas'}` : 'Solo para mí');
         const icon = task.is_shared == 1 ? 'iconoir-group' : ids.length || task.share_count > 0 ? 'iconoir-user' : 'iconoir-lock';
         shareControl = canShare
             ? `<button type="button" class="task-meta-chip" onclick="openShareMenu(${task.id}, this, event)" title="Cambiar con quién se comparte"><i class="${icon}"></i><span>${escapeHtml(shareLabel)}</span></button>`
@@ -1261,6 +1280,7 @@ async function loadTeamMembers() {
         if (data.success) {
             teamMembers = data.data;
             refreshTaskModalBar();
+            if (lastTasks.length) renderTasks(lastTasks); // ya se pueden poner nombres en las tarjetas
         }
     } catch (error) {
         console.error('Error loading team members:', error);

@@ -22,7 +22,8 @@ switch ($method) {
                 u.full_name as creator_name,
                 a.name as app_name,
                 (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count,
-                (SELECT COUNT(*) FROM task_shares WHERE task_id = t.id) as share_count
+                (SELECT COUNT(*) FROM task_shares WHERE task_id = t.id) as share_count,
+                (SELECT GROUP_CONCAT(ts_ids.user_id) FROM task_shares ts_ids WHERE ts_ids.task_id = t.id) as share_user_ids
             FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN apps a ON t.app_id = a.id

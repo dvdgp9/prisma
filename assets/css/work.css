@@ -1,0 +1,653 @@
+/* ============================================================
+   Trabajo (solo index.php): fecha objetivo de las mejoras.
+   Chip redondo como el resto de metadatos; el color dice la urgencia.
+   ============================================================ */
+
+.request-due {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+    height: 24px;
+    padding: 0 var(--sp-10);
+    border: 1px solid transparent;
+    border-radius: var(--r-full);
+    background: var(--ink-100);
+    color: var(--ink-700);
+    font-family: var(--font-sans);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.request-due > i {
+    font-size: var(--fs-13);
+}
+
+/* Urgencia */
+.request-due.is-overdue {
+    background: var(--danger-soft);
+    color: #B33D34;
+}
+
+.request-due.is-today {
+    background: var(--warn-soft);
+    color: #8A540F;
+}
+
+.request-due.is-soon {
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+}
+
+.request-due.is-later {
+    background: var(--ink-100);
+    color: var(--ink-700);
+}
+
+/* Sin fecha: discreto, para ver lo que falta planificar sin hacer ruido */
+.request-due.is-none {
+    background: transparent;
+    border-color: var(--ink-200);
+    color: var(--ink-500);
+    font-weight: var(--fw-medium);
+}
+
+/* Detalle de la mejora: chip que abre el calendario */
+.request-due-control {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+button.request-due.is-interactive {
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+button.request-due.is-interactive:hover {
+    border-color: var(--ink-300);
+}
+
+button.request-due.is-none.is-interactive {
+    border-style: dashed;
+    border-color: var(--ink-300);
+}
+
+button.request-due.is-interactive:focus-visible,
+.request-due-clear:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* El input nativo solo sirve para abrir el calendario: invisible y bajo el chip */
+.request-due-control .request-due-input {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.request-due-clear {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-full);
+    background: transparent;
+    color: var(--ink-500);
+    font-size: var(--fs-13);
+    cursor: pointer;
+}
+
+.request-due-clear:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button.request-due.is-interactive {
+        transition: none;
+    }
+}
+
+/* ============================================================
+   Vista global "Mi trabajo": tareas y mejoras agrupadas por cuándo.
+   Contenedor 12px, filas 8px, filtro segmentado como en Notas.
+   ============================================================ */
+
+.my-work {
+    margin-bottom: var(--sp-24);
+    padding: var(--sp-20) var(--sp-24) var(--sp-16);
+    background: var(--surface);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-12);
+    box-shadow: var(--shadow-xs);
+}
+
+.my-work-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sp-12) var(--sp-16);
+    margin-bottom: var(--sp-4);
+}
+
+.my-work-title {
+    margin: 0;
+    color: var(--ink-950);
+    font-size: var(--fs-18);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.01em;
+}
+
+.my-work-sub {
+    margin: var(--sp-2) 0 0;
+    color: var(--ink-500);
+    font-size: var(--fs-13);
+}
+
+/* Filtro Todo / Tareas / Mejoras */
+.work-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--ink-100);
+}
+
+.work-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-6);
+    height: 28px;
+    padding: 0 var(--sp-12);
+    border: 0;
+    border-radius: var(--r-6);
+    background: transparent;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.work-filter-btn:hover {
+    color: var(--ink-950);
+}
+
+.work-filter-btn.is-active {
+    background: var(--surface);
+    color: var(--ink-950);
+    box-shadow: var(--shadow-sm);
+}
+
+.work-filter-count {
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+    font-variant-numeric: tabular-nums;
+}
+
+.work-filter-btn.is-active .work-filter-count {
+    color: var(--ink-700);
+}
+
+/* Grupos */
+.my-work-group {
+    margin-top: var(--sp-16);
+}
+
+.my-work-group-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--sp-4) var(--sp-8);
+    padding: 0 var(--sp-10) var(--sp-6);
+}
+
+.my-work-group-title {
+    margin: 0;
+    color: var(--ink-800);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-semibold);
+}
+
+.my-work-group--overdue .my-work-group-title,
+.my-work-group--urgent .my-work-group-title {
+    color: #B33D34;
+}
+
+.my-work-group-count {
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+    font-variant-numeric: tabular-nums;
+}
+
+.my-work-group-hint {
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+}
+
+/* Filas */
+.my-work-list {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.my-work-row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-12);
+    padding: var(--sp-8) var(--sp-10);
+    border-radius: var(--r-8);
+    color: inherit;
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+.my-work-row:hover {
+    background: var(--ink-50);
+}
+
+.my-work-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-8);
+    background: var(--ink-100);
+    color: var(--ink-600);
+    font-size: var(--fs-15);
+}
+
+.my-work-row--request .my-work-icon {
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+}
+
+.my-work-link {
+    display: grid;
+    gap: var(--sp-2);
+    min-width: 0;
+    border-radius: var(--r-6);
+    color: inherit;
+    text-decoration: none;
+}
+
+.my-work-row-title {
+    overflow: hidden;
+    color: var(--ink-900);
+    font-size: var(--fs-14);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.my-work-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-10);
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+}
+
+.my-work-kind {
+    color: var(--ink-600);
+    font-weight: var(--fw-medium);
+}
+
+.my-work-progress,
+.my-work-activity {
+    color: var(--brand-ink);
+    font-weight: var(--fw-medium);
+}
+
+.my-work-activity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+}
+
+.my-work-unassigned {
+    color: #8A540F;
+}
+
+.my-work-side {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--sp-6);
+}
+
+.my-work-more {
+    height: 28px;
+    margin: var(--sp-4) 0 0 calc(28px + var(--sp-12) + var(--sp-10));
+    padding: 0 var(--sp-10);
+    border: 0;
+    border-radius: var(--r-6);
+    background: transparent;
+    color: var(--brand-ink);
+    font-family: var(--font-sans);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}
+
+.my-work-more:hover {
+    background: var(--brand-soft);
+}
+
+.my-work-link:focus-visible,
+.work-filter-btn:focus-visible,
+.my-work-more:focus-visible,
+.my-work-check:focus-visible,
+.my-work-date-btn:focus-visible,
+.work-menu-item:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Completar tarea: círculo que muestra el check al pasar o con el teclado */
+.my-work-check {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin: 3px;
+    padding: 0;
+    border: 1.5px solid var(--ink-300);
+    border-radius: var(--r-full);
+    background: var(--surface);
+    color: transparent;
+    font-size: var(--fs-12);
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.my-work-check:hover,
+.my-work-check:focus-visible {
+    border-color: var(--ok);
+    background: var(--ok-soft);
+    color: var(--ok);
+}
+
+.my-work-check:active {
+    transform: scale(0.94);
+}
+
+/* Fecha editable: el mismo chip, pulsable */
+button.my-work-date-btn {
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+button.my-work-date-btn:hover {
+    border-color: var(--ink-300);
+}
+
+button.my-work-date-btn.is-empty {
+    border-style: dashed;
+    border-color: var(--ink-300);
+    background: transparent;
+    color: var(--ink-500);
+    font-weight: var(--fw-medium);
+}
+
+button.my-work-date-btn[aria-expanded="true"] {
+    border-color: var(--brand);
+    box-shadow: var(--shadow-focus);
+}
+
+/* Menú de fecha */
+.work-menu {
+    position: fixed;
+    z-index: var(--z-dropdown);
+    width: 232px;
+    padding: var(--sp-6);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-12);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+}
+
+.work-menu-title {
+    margin: 0;
+    padding: var(--sp-6) var(--sp-10) var(--sp-4);
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-semibold);
+}
+
+.work-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    width: 100%;
+    height: 34px;
+    padding: 0 var(--sp-10);
+    border: 0;
+    border-radius: var(--r-8);
+    background: transparent;
+    color: var(--ink-800);
+    font-family: var(--font-sans);
+    font-size: var(--fs-13);
+    text-align: left;
+    cursor: pointer;
+}
+
+.work-menu-item:hover,
+.work-menu-item:focus-visible {
+    background: var(--ink-100);
+}
+
+.work-menu-item.is-active .work-menu-label {
+    font-weight: var(--fw-semibold);
+}
+
+.work-menu-item > i {
+    color: var(--brand-strong);
+}
+
+.work-menu-item.is-danger {
+    color: #B33D34;
+}
+
+.work-menu-hint {
+    margin-left: auto;
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+}
+
+.work-menu-sep {
+    height: 1px;
+    margin: var(--sp-6) var(--sp-4);
+    background: var(--ink-100);
+}
+
+/* El input nativo solo abre el calendario */
+.work-menu .work-menu-input {
+    position: absolute;
+    right: var(--sp-10);
+    bottom: var(--sp-10);
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .work-menu {
+        animation: work-menu-in var(--dur-fast) var(--ease-out);
+    }
+}
+
+@keyframes work-menu-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Aviso con botón "Deshacer" (como en Tareas; tasks.css no se carga en index) */
+.toast-action {
+    flex-shrink: 0;
+    margin-left: var(--sp-8);
+    padding: 6px 12px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+    color: var(--brand-ink);
+    font-family: inherit;
+    font-size: var(--fs-13);
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
+}
+
+.toast-action:hover {
+    background: var(--ink-100);
+}
+
+/* Vacío y error */
+.my-work-message {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-6);
+    padding: var(--sp-32) var(--sp-16) var(--sp-24);
+    text-align: center;
+}
+
+.my-work-message-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: var(--sp-4);
+    border-radius: var(--r-12);
+    background: var(--ink-100);
+    color: var(--ink-600);
+    font-size: 1.2rem;
+}
+
+.my-work-message-title {
+    margin: 0;
+    color: var(--ink-900);
+    font-size: var(--fs-15);
+    font-weight: var(--fw-semibold);
+}
+
+.my-work-message-text {
+    margin: 0 0 var(--sp-6);
+    color: var(--ink-600);
+    font-size: var(--fs-13);
+}
+
+/* Carga */
+.my-work-skeleton-row {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    align-items: center;
+    gap: var(--sp-12);
+    padding: var(--sp-8) var(--sp-10);
+}
+
+.my-work-skeleton-lines {
+    display: grid;
+    gap: var(--sp-6);
+}
+
+.my-work-skeleton {
+    display: block;
+    height: 10px;
+    border-radius: var(--r-full);
+    background: var(--ink-200);
+}
+
+.my-work-skeleton--icon { width: 28px; height: 28px; border-radius: var(--r-8); }
+.my-work-skeleton--title { width: 55%; height: 12px; }
+.my-work-skeleton--meta { width: 30%; }
+.my-work-skeleton--label { width: 80px; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .my-work-skeleton {
+        background: linear-gradient(90deg, var(--ink-200) 0%, var(--ink-100) 50%, var(--ink-200) 100%);
+        background-size: 200% 100%;
+        animation: my-work-shimmer 1.4s ease-in-out infinite;
+    }
+}
+
+@keyframes my-work-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+/* Móvil: filtro a todo el ancho y prioridad/fecha debajo del título */
+@media (max-width: 600px) {
+    .my-work {
+        padding: var(--sp-16) var(--sp-12) var(--sp-12);
+    }
+
+    .my-work-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .work-filter {
+        display: flex;
+    }
+
+    .work-filter-btn {
+        flex: 1;
+        padding: 0 var(--sp-8);
+    }
+
+    .my-work-row {
+        grid-template-columns: 28px minmax(0, 1fr);
+        row-gap: var(--sp-6);
+    }
+
+    .my-work-side {
+        grid-column: 2;
+        flex-wrap: wrap;
+    }
+
+    .my-work-side:empty {
+        display: none;
+    }
+
+    .my-work-more {
+        margin-left: calc(28px + var(--sp-12));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-work-row,
+    .work-filter-btn,
+    .my-work-check,
+    button.my-work-date-btn {
+        transition: none;
+    }
+
+    .my-work-check:active {
+        transform: none;
+    }
+}

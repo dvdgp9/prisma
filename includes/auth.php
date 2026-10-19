@@ -235,11 +235,41 @@ function request_capabilities_for_role($role, $has_app_access)
     $capabilities['view'] = true;
     $capabilities['comment'] = true;
     $capabilities['checklist'] = true;
-    $capabilities['update_status'] = true;
+    // Users only look and follow up (19 Oct 2026): status and due date are for the team.
+    $capabilities['update_status'] = in_array($role, ['programador', 'admin', 'superadmin'], true);
     $capabilities['edit'] = in_array($role, ['programador', 'admin', 'superadmin'], true);
     $capabilities['delete'] = in_array($role, ['admin', 'superadmin'], true);
 
     return $capabilities;
+}
+
+/**
+ * Capability a request update needs: changing only the status and/or the due
+ * date is planning (update_status); any other field needs full edit.
+ */
+function request_capability_for_update($input)
+{
+    $planningOnly = empty(array_diff(array_keys($input), ['id', 'status', 'due_date']));
+    return $planningOnly ? 'update_status' : 'edit';
+}
+
+/**
+ * Optional due date of a request: null or '' clears it; otherwise a real
+ * calendar day as YYYY-MM-DD. Returns ['value' => ?string, 'error' => ?string].
+ */
+function normalize_request_due_date($value)
+{
+    if ($value === null || $value === '') {
+        return ['value' => null, 'error' => null];
+    }
+
+    if (!is_string($value)
+        || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)
+        || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        return ['value' => null, 'error' => 'Fecha no válida (usa AAAA-MM-DD)'];
+    }
+
+    return ['value' => $value, 'error' => null];
 }
 
 /**

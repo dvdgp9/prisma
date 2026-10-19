@@ -276,6 +276,59 @@
     global.parseQuickTask = parseQuickTask;
     global.taskSourceRequestId = taskSourceRequestId;
     global.taskRelativeDay = taskRelativeDay;
+    // Ids de "con quién se comparte" tal como los da la API (GROUP_CONCAT: "6,8"), sin repetidos.
+    function parseShareIds(value) {
+        const ids = String(value || '').split(',')
+            .map(part => parseInt(part.trim(), 10))
+            .filter(id => Number.isFinite(id) && id > 0);
+        return ids.filter((id, index) => ids.indexOf(id) === index);
+    }
+
+    // Con quién se comparte una tarea: etiqueta corta, lista completa (title) y frase
+    // para "Compartida …" ("contigo y con Luis"). "Tú" primero y el resto por nombre;
+    // quien ya no está en el equipo cuenta como "más".
+    function taskShareSummary(ids, members, meId) {
+        let includesMe = false;
+        let unknown = 0;
+        const names = [];
+
+        (ids || []).forEach(id => {
+            if (Number(id) === Number(meId)) {
+                includesMe = true;
+                return;
+            }
+            const member = (members || []).find(m => Number(m.id) === Number(id));
+            if (member) names.push(member.full_name || member.username);
+            else unknown++;
+        });
+
+        names.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        if (includesMe) names.unshift('Tú');
+
+        if (!names.length) {
+            const label = unknown ? `${unknown} ${unknown === 1 ? 'persona' : 'personas'}` : '';
+            return { label, title: label, phrase: label ? `con ${label}` : '' };
+        }
+
+        const joinNames = parts => parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}`;
+        const total = names.length + unknown;
+        let label;
+        if (total === 1) label = names[0];
+        else if (total === 2 && !unknown) label = `${names[0]} y ${names[1]}`;
+        else label = `${names[0]} y ${total - 1} más`;
+
+        const title = joinNames(unknown ? names.concat(`${unknown} más`) : names);
+        const others = includesMe ? names.slice(1) : names;
+        const othersText = joinNames(unknown ? others.concat(`${unknown} más`) : others);
+        const phrase = includesMe
+            ? (othersText ? `contigo y con ${othersText}` : 'contigo')
+            : `con ${othersText}`;
+
+        return { label, title, phrase };
+    }
+
+    global.parseShareIds = parseShareIds;
+    global.taskShareSummary = taskShareSummary;
     global.stripQuickMatch = stripMatch;
     global.normalizeRequestTitleForTask = normalizeRequestTitleForTask;
     global.taskDateShortcuts = taskDateShortcuts;

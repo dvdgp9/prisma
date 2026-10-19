@@ -61,6 +61,17 @@ function openTaskMenu(anchor, items, options = {}) {
             return;
         }
 
+        // Fila fija, no se puede pulsar (p. ej. quien crea la tarea en "Compartir con").
+        if (item.type === 'fixed') {
+            menu.insertAdjacentHTML('beforeend', `
+                <div class="task-menu-item task-menu-fixed" aria-disabled="true"${item.title ? ` title="${escapeHtml(item.title)}"` : ''}>
+                    <span class="task-menu-avatar">${escapeHtml(item.avatar)}</span>
+                    <span>${escapeHtml(item.label)}</span>
+                    <i class="iconoir-check task-menu-check" aria-hidden="true"></i>
+                </div>`);
+            return;
+        }
+
         if (item.type === 'toggle') {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -372,11 +383,13 @@ async function openShareMenu(taskId, anchor, event) {
     };
 
     const items = [
-        { type: 'toggle', key: 'private', icon: 'iconoir-lock', label: 'Solo yo', onToggle: () => change({ all: false, users: [] }) },
-        { type: 'toggle', key: 'all', icon: 'iconoir-group', label: 'Todo el equipo', onToggle: () => change({ all: !state.all, users: [] }) }
+        { type: 'toggle', key: 'private', icon: 'iconoir-lock', label: 'Solo para mí', onToggle: () => change({ all: false, users: [] }) },
+        { type: 'toggle', key: 'all', icon: 'iconoir-group', label: 'Todo el equipo', onToggle: () => change({ all: !state.all, users: [] }) },
+        { type: 'separator' },
+        // Quien la crea siempre la tiene: se ve arriba, marcada y fija.
+        { type: 'fixed', avatar: getInitials(document.body.dataset.userName || '') || 'Tú', label: 'Tú (es tuya)', title: 'Quien crea la tarea siempre la tiene' }
     ];
     if (members.length) {
-        items.push({ type: 'separator' });
         members.forEach(member => {
             const id = Number(member.id);
             const name = member.full_name || member.username;

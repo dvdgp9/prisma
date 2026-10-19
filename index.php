@@ -21,6 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
+    <link rel="stylesheet" href="/assets/css/work.css?v=3">
 </head>
 
 <?php
@@ -55,33 +56,33 @@ $company_name = $user['company_name'] ?? '';
                 </div>
             </div>
 
-            <!-- Vista global: resumen de tareas y mejoras (el listado vive en "Mejoras") -->
+            <!-- Vista global: "Mi trabajo" (tareas + mejoras agrupadas por cuándo) y notas recientes.
+                 El listado completo de mejoras vive en "Mejoras". -->
             <div class="home-overview" id="home-overview" hidden>
-                <!-- Widget "Qué toca": resumen de tareas propias -->
-                <div class="tasks-widget" id="tasks-widget">
-                    <div class="tasks-widget-head">
-                        <span class="tasks-widget-title">
-                            <i class="iconoir-task-list"></i> Qué toca
-                        </span>
-                        <a class="tasks-widget-link" href="/tasks.php">Ir a Tareas <i class="iconoir-arrow-right"></i></a>
+                <section class="my-work" id="my-work" aria-labelledby="my-work-title">
+                    <div class="my-work-head">
+                        <div>
+                            <h2 class="my-work-title" id="my-work-title">Mi trabajo</h2>
+                            <p class="my-work-sub"><?php echo $user['role'] === 'superadmin'
+                                ? 'Tus tareas y todas las mejoras activas'
+                                : 'Tus tareas y las mejoras que tienes asignadas'; ?></p>
+                        </div>
+                        <div class="work-filter" role="tablist" aria-label="Qué ver">
+                            <button type="button" class="work-filter-btn" data-work-filter="all" role="tab" aria-selected="false">
+                                Todo <span class="work-filter-count" id="work-count-all"></span>
+                            </button>
+                            <button type="button" class="work-filter-btn" data-work-filter="task" role="tab" aria-selected="false">
+                                Tareas <span class="work-filter-count" id="work-count-task"></span>
+                            </button>
+                            <button type="button" class="work-filter-btn" data-work-filter="request" role="tab" aria-selected="false">
+                                Mejoras <span class="work-filter-count" id="work-count-request"></span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="tasks-widget-stats" id="tasks-widget-stats">
-                        <!-- Rellenado por JS -->
+                    <div class="my-work-body" id="my-work-body">
+                        <!-- Rellenado por my-work.js -->
                     </div>
-                </div>
-
-                <!-- Widget de mejoras: cada contador abre "Mejoras" con su filtro -->
-                <div class="tasks-widget" id="requests-widget">
-                    <div class="tasks-widget-head">
-                        <span class="tasks-widget-title">
-                            <i class="iconoir-light-bulb"></i> Mejoras
-                        </span>
-                        <a class="tasks-widget-link" href="/index.php?view=mejoras" onclick="return goToMejoras('all', event)">Ir a Mejoras <i class="iconoir-arrow-right"></i></a>
-                    </div>
-                    <div class="tasks-widget-stats tasks-widget-stats--4" id="requests-widget-stats">
-                        <!-- Rellenado por JS -->
-                    </div>
-                </div>
+                </section>
 
                 <!-- Notas recientes: lo último que el equipo me ha compartido -->
                 <div class="tasks-widget" id="notes-widget">
@@ -163,6 +164,7 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="priority">Prioridad</option>
                                 <option value="difficulty">Dificultad</option>
                                 <option value="status">Estado</option>
+                                <option value="due_date">Fecha objetivo</option>
                                 <option value="date">Fecha (nueva)</option>
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
@@ -176,6 +178,7 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="priority" selected>Prioridad</option>
                                 <option value="difficulty">Dificultad</option>
                                 <option value="status">Estado</option>
+                                <option value="due_date">Fecha objetivo</option>
                                 <option value="date">Fecha (nueva)</option>
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
@@ -189,6 +192,7 @@ $company_name = $user['company_name'] ?? '';
                                 <option value="priority">Prioridad</option>
                                 <option value="difficulty">Dificultad</option>
                                 <option value="status">Estado</option>
+                                <option value="due_date">Fecha objetivo</option>
                                 <option value="date" selected>Fecha (nueva)</option>
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
@@ -304,6 +308,7 @@ $company_name = $user['company_name'] ?? '';
                         <tr>
                             <th class="requests-table-sortable" data-sort-field="priority" onclick="setTableSort('priority')">Prioridad</th>
                             <th class="requests-table-sortable" data-sort-field="status" onclick="setTableSort('status')">Estado</th>
+                            <th class="requests-table-sortable" data-sort-field="due_date" onclick="setTableSort('due_date')">Fecha</th>
                             <th class="requests-table-sortable" data-sort-field="title" onclick="setTableSort('title')">Título</th>
                             <th class="requests-table-sortable" data-sort-field="app_name" onclick="setTableSort('app_name')">App</th>
                             <th class="requests-table-sortable" data-sort-field="owner" onclick="setTableSort('owner')">Responsable</th>
@@ -1021,10 +1026,12 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/task-parser.js?v=5"></script>
+    <script src="/assets/js/task-parser.js?v=6"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
-    <script src="/assets/js/main.js?v=5.1"></script>
+    <script src="/assets/js/work-helpers.js?v=3"></script>
+    <script src="/assets/js/main.js?v=5.4"></script>
+    <script src="/assets/js/my-work.js?v=2"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

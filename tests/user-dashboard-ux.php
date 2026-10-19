@@ -46,7 +46,7 @@ assert_contains_ux($pwa, "userRole === 'user'", 'PWA install presentation is rol
 assert_contains_ux($pwa, 'pwa-install-menu-item', 'user install prompt moves into the profile menu');
 
 assert_contains_ux($main, "widget.classList.toggle('is-clear'", 'empty task widget switches to a compact state');
-assert_contains_ux($main, 'Todo al día', 'empty task widget explains the zero state');
+assert_contains_ux(read_project_file('assets/js/my-work.js'), 'Todo al día', 'empty work list explains the zero state');
 assert_contains_ux($main, 'request-card-detail-cta', 'user cards expose a text detail action');
 assert_contains_ux($main, "showFinished || currentQuickView === 'completed'", 'completed filter reveals completed cards directly');
 assert_contains_ux($main, 'Creada hace', 'request age is explicitly labelled');

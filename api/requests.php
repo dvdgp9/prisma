@@ -111,6 +111,9 @@ switch ($method) {
                                     WHEN 'discarded' THEN 4
                                     ELSE 5
                                 END";
+                    case 'due_date':
+                        // Fecha objetivo, las que no tienen fecha al final
+                        return 'CASE WHEN r.due_date IS NULL THEN 1 ELSE 0 END, r.due_date ASC';
                     case 'date':
                         return 'r.created_at DESC';
                     case 'date_asc':
@@ -209,13 +212,22 @@ switch ($method) {
             error_response('No tienes acceso a esta aplicación', 403);
         }
 
+        // Optional due date: same rule as the status (users only look).
+        $dueDate = normalize_request_due_date($input['due_date'] ?? null);
+        if ($dueDate['error']) {
+            error_response($dueDate['error']);
+        }
+        if ($dueDate['value'] !== null && !request_capabilities_for_role($user['role'], true)['update_status']) {
+            error_response('No tienes permiso para poner fecha a una mejora', 403);
+        }
+
         try {
             $stmt = $db->prepare("
                 INSERT INTO requests (
                     app_id, title, description, priority, difficulty, status, created_by,
-                    requester_name, requester_email
-                ) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    requester_name, requester_email, due_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $input['app_id'],
@@ -226,7 +238,8 @@ switch ($method) {
                 $input['status'] ?? 'pending',
                 $user['id'],
                 $input['requester_name'] ?? null,
-                $input['requester_email'] ?? null
+                $input['requester_email'] ?? null,
+                $dueDate['value']
             ]);
 
             $request_id = $db->lastInsertId();
@@ -245,10 +258,16 @@ switch ($method) {
             error_response('Request ID is required');
         }
 
-        // A status-only change is allowed to every role with app access;
+        // Changing only the status and/or the due date is planning (update_status);
         // touching any other field still requires full edit capability.
-        $isStatusOnlyChange = empty(array_diff(array_keys($input), ['id', 'status']));
-        require_request_capability($input['id'], $isStatusOnlyChange ? 'update_status' : 'edit');
+        require_request_capability($input['id'], request_capability_for_update($input));
+
+        if (array_key_exists('due_date', $input)) {
+            $dueDate = normalize_request_due_date($input['due_date']);
+            if ($dueDate['error']) {
+                error_response($dueDate['error']);
+            }
+        }
 
         try {
             $fields = [];
@@ -289,6 +308,12 @@ switch ($method) {
             if (array_key_exists('assigned_to', $input)) {
                 $fields[] = 'assigned_to = ?';
                 $values[] = $input['assigned_to'] ?: null;
+            }
+
+            // Due date (validated above; null clears it)
+            if (array_key_exists('due_date', $input)) {
+                $fields[] = 'due_date = ?';
+                $values[] = $dueDate['value'];
             }
 
             // Status with completed_at handling

@@ -49,33 +49,30 @@ for ($i = 1; $inOrder && $i < count($positions); $i++) {
 }
 assert_true($inOrder, 'sidebar order is Vista global, Tareas, Mejoras, Notas, Crear con IA');
 
-// Vista global = resumen (Qué toca + Mejoras); Mejoras = listado con filtros.
+// Vista global = "Mi trabajo" (tareas + mejoras, plan MT5); Mejoras = listado con filtros.
 assert_file_contains('index.php', [
     'id="home-overview"',
-    'id="requests-widget-stats"',
+    'id="my-work"',
     'id="requests-area"',
     'id="export-btn"',
-    '/assets/js/main.js?v=5.1',
+    '/assets/js/main.js?v=5.4',
 ], 'index has the overview and the requests list as separate areas');
 assert_file_contains('assets/js/main.js', [
     "let currentView = 'home';",
     "urlParams.get('view') === 'mejoras'",
     'function updateViewLayout()',
     'function computeRequestsSummary(',
-    'function renderRequestsWidget()',
-    'function goToMejoras(',
     "history.pushState({view: 'mejoras'}, '', '/index.php?view=mejoras')",
 ], 'main.js switches between the overview and the Mejoras list');
-assert_file_contains('assets/css/styles.css', ['.tasks-widget-stats--4'], 'overview styles the four Mejoras tiles');
 
 // Tareas: mismo nombre en la página y en los accesos.
 assert_file_contains('tasks.php', ['<title>Tareas - Prisma</title>', '<h1 class="page-title">Tareas</h1>'], 'tasks page is titled Tareas');
-assert_file_contains('index.php', ['Ir a Tareas'], 'overview links to Tareas');
+assert_file_contains('assets/js/my-work.js', ['isTask ? `/tasks.php?task='], 'tasks in "Mi trabajo" open that task in Tareas');
 
 // Caché PWA: assets versionados en todas las páginas.
 foreach (['index.php', 'tasks.php', 'notes.php', 'ai-inbox.php', 'changelog.php', 'admin.php', 'manage-apps.php', 'login.php', 'solicitud.php', 'releases.php'] as $page) {
     assert_file_contains($page, ['/assets/css/styles.css?v=5.4'], "{$page} loads the new styles.css");
 }
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v38';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v42';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Sidebar Mejoras contract completed successfully.\n");

@@ -15,7 +15,7 @@ function assert_same($expected, $actual, $message)
 }
 
 $expectedByRole = [
-    'user' => ['view' => true, 'comment' => true, 'checklist' => true, 'update_status' => true, 'edit' => false, 'delete' => false],
+    'user' => ['view' => true, 'comment' => true, 'checklist' => true, 'update_status' => false, 'edit' => false, 'delete' => false],
     'programador' => ['view' => true, 'comment' => true, 'checklist' => true, 'update_status' => true, 'edit' => true, 'delete' => false],
     'admin' => ['view' => true, 'comment' => true, 'checklist' => true, 'update_status' => true, 'edit' => true, 'delete' => true],
     'superadmin' => ['view' => true, 'comment' => true, 'checklist' => true, 'update_status' => true, 'edit' => true, 'delete' => true],

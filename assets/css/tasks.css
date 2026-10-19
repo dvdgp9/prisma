@@ -417,6 +417,45 @@
     color: var(--primary-color);
 }
 
+/* Con quién se comparte: nombres en ordenador, solo el número en móvil */
+.task-badge-names {
+    max-width: 240px;
+    overflow: hidden;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+.task-badge-count {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .task-badge-names {
+        display: none;
+    }
+
+    .task-badge-count {
+        display: inline;
+    }
+}
+
+/* "Tú (es tuya)" en "Compartir con": fija, no se puede quitar */
+.task-menu .task-menu-fixed {
+    color: var(--ink-600);
+    cursor: default;
+}
+
+.task-menu .task-menu-fixed:hover {
+    background: transparent;
+}
+
+.task-menu-fixed .task-menu-check {
+    margin-left: auto;
+    color: var(--ink-400);
+}
+
 /* Task Actions */
 .task-actions {
     display: flex;

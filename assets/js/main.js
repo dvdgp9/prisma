@@ -34,7 +34,7 @@ window.addEventListener('prisma:notifications-updated', (event) => {
 
     if (requests.length > 0) {
         updateRequestsSummary(getFilteredRequests());
-        renderRequestsWidget();
+        if (typeof renderMyWork === 'function') renderMyWork();
     }
 });
 
@@ -190,6 +190,11 @@ function sortRequestsForTable(requestsToSort) {
                 aValue = parseInt(a.comment_count || 0, 10);
                 bValue = parseInt(b.comment_count || 0, 10);
                 break;
+            case 'due_date':
+                // Sin fecha al final (en orden ascendente)
+                aValue = a.due_date || '9999-12-31';
+                bValue = b.due_date || '9999-12-31';
+                break;
             case 'checklist': {
                 const aChecklist = getChecklistProgress(a);
                 const bChecklist = getChecklistProgress(b);
@@ -300,6 +305,13 @@ async function loadChecklistItems(requestId) {
     }
 }
 
+// Columna "Fecha" de la tabla: fecha objetivo de las activas; nada en las cerradas.
+function getTableDueMarkup(request) {
+    if (request.status !== 'pending' && request.status !== 'in_progress') return '-';
+    const info = requestDueInfo(request.due_date);
+    return `<span class="request-due is-${info.tone}">${escapeHtml(info.label)}</span>`;
+}
+
 function renderRequestsTable(filteredRequests, tableBody) {
     const sortedRequests = sortRequestsForTable(filteredRequests);
 
@@ -318,6 +330,7 @@ function renderRequestsTable(filteredRequests, tableBody) {
                 <td>
                     ${getTableStatusBadgeMarkup(request, request.capabilities?.update_status === true)}
                 </td>
+                <td>${getTableDueMarkup(request)}</td>
                 <td class="requests-table-title-cell">
                     <strong>${escapeHtml(request.title)}</strong>
                     ${request.description ? `<span class="requests-table-subline">${escapeHtml(request.description)}</span>` : ''}
@@ -895,6 +908,7 @@ function renderRequestMetaBar(request) {
             ${statusControl}
             ${priorityControl}
             ${diffControl}
+            ${getRequestDueControlHtml(request, caps.update_status)}
         </div>
         <div class="request-meta-bar__divider"></div>
         <div class="request-meta-bar__assignees" id="edit-meta-assignees">${renderMetaAssigneesHtml()}</div>
@@ -907,6 +921,49 @@ function renderRequestMetaBar(request) {
 
     updateEditRequestSummary(request);
     if (caps.edit) setupMetaAssignSearch();
+}
+
+// Fecha objetivo de la mejora (opcional). Con permiso de planificar (el mismo que
+// el estado) es un chip que abre el calendario nativo y guarda al momento.
+function getRequestDueControlHtml(request, canPlan) {
+    const info = requestDueInfo(request.due_date);
+    const tone = `is-${info.tone}`;
+
+    if (!canPlan) {
+        return info.tone === 'none'
+            ? ''
+            : `<span class="request-due ${tone}" title="Fecha objetivo"><i class="iconoir-calendar-check"></i><span>${escapeHtml(info.label)}</span></span>`;
+    }
+
+    const id = parseInt(request.id, 10);
+    const value = info.tone === 'none' ? '' : request.due_date;
+    return `
+        <span class="request-due-control">
+            <button type="button" class="request-due ${tone} is-interactive" title="Cambiar la fecha objetivo"
+                    onclick="event.stopPropagation(); openRequestDuePicker(this)">
+                <i class="iconoir-calendar-check"></i><span>${escapeHtml(info.tone === 'none' ? 'Poner fecha' : info.label)}</span>
+            </button>
+            <input type="date" class="request-due-input" value="${value}" tabindex="-1" aria-label="Fecha objetivo"
+                   onclick="event.stopPropagation()" onchange="quickUpdateRequest(${id}, 'due_date', this.value, event)">
+            ${value ? `
+                <button type="button" class="request-due-clear" title="Quitar la fecha" aria-label="Quitar la fecha"
+                        onclick="quickUpdateRequest(${id}, 'due_date', '', event)"><i class="iconoir-xmark"></i></button>` : ''}
+        </span>`;
+}
+
+function openRequestDuePicker(button) {
+    const input = button.parentElement.querySelector('.request-due-input');
+    if (!input) return;
+    if (typeof input.showPicker === 'function') {
+        try {
+            input.showPicker();
+            return;
+        } catch (error) {
+            console.error('showPicker not allowed, falling back to focus', error);
+        }
+    }
+    input.focus();
+    input.click();
 }
 
 function renderMetaAssigneesHtml() {
@@ -1237,70 +1294,7 @@ function loadView(type, entityId = null, sourceEvent = null) {
     updateViewLayout();
 }
 
-// ===== Widget "Qué toca" (resumen de tareas propias, solo en la Vista global) =====
-let tasksWidgetData = null;
-
-async function loadTasksWidget() {
-    try {
-        const res = await fetch('/api/tasks.php?completed=0&shared=0');
-        const data = await res.json();
-        if (data.success) {
-            tasksWidgetData = computeTasksWidgetCounts(data.data);
-            renderTasksWidget();
-        }
-    } catch (e) {
-        console.error('Error loading tasks widget:', e);
-    }
-}
-
-function computeTasksWidgetCounts(tasks) {
-    const t = new Date();
-    const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-    let overdue = 0, todayCount = 0, week = 0;
-    (tasks || []).forEach(task => {
-        if (task.is_completed == 1 || !task.due_date) return;
-        const [y, m, d] = task.due_date.split('-').map(Number);
-        const due = new Date(y, m - 1, d);
-        const diff = Math.round((due - today) / (1000 * 60 * 60 * 24));
-        if (diff < 0) overdue++;
-        else if (diff === 0) todayCount++;
-        else if (diff <= 7) week++;
-    });
-    return { overdue, today: todayCount, week };
-}
-
-function renderTasksWidget() {
-    const container = document.getElementById('tasks-widget-stats');
-    if (!container || !tasksWidgetData) return;
-    const { overdue, today, week } = tasksWidgetData;
-    const widget = document.getElementById('tasks-widget');
-    const total = overdue + today + week;
-
-    if (widget) widget.classList.toggle('is-clear', total === 0);
-
-    if (total === 0) {
-        container.innerHTML = `
-            <a class="tasks-widget-clear" href="/tasks.php">
-                <i class="iconoir-check-circle"></i>
-                <span>Todo al día. No tienes tareas previstas para esta semana.</span>
-            </a>
-        `;
-        return;
-    }
-
-    const tiles = [
-        { key: 'overdue', label: 'Vencidas', value: overdue, cls: 'overdue' },
-        { key: 'today', label: 'Para hoy', value: today, cls: 'today' },
-        { key: 'week', label: 'Próximos 7 días', value: week, cls: 'week' }
-    ];
-    container.innerHTML = tiles.map(t => `
-        <a class="tasks-widget-stat ${t.value > 0 ? t.cls : 'is-empty'}" href="/tasks.php#${t.key}">
-            <span class="tasks-widget-stat-value">${t.value}</span>
-            <span class="tasks-widget-stat-label">${t.label}</span>
-        </a>`).join('');
-}
-
-// Vista global = resumen (tareas + mejoras); el resto de vistas = listado de mejoras.
+// Vista global = "Mi trabajo" (my-work.js) + notas recientes; el resto de vistas = listado de mejoras.
 function updateViewLayout() {
     const isHome = currentView === 'home';
     const overview = document.getElementById('home-overview');
@@ -1312,8 +1306,7 @@ function updateViewLayout() {
     if (exportBtn) exportBtn.hidden = isHome;
 
     if (isHome) {
-        if (!tasksWidgetData) loadTasksWidget();
-        if (requests.length > 0) renderRequestsWidget();
+        if (typeof loadMyWork === 'function') loadMyWork();
         if (notesWidgetData === null) loadNotesWidget();
     }
 }
@@ -1369,46 +1362,6 @@ function renderNotesWidget() {
     }).join('');
 }
 
-// ===== Widget de mejoras de la Vista global: cada contador abre Mejoras con su filtro =====
-function renderRequestsWidget() {
-    const container = document.getElementById('requests-widget-stats');
-    if (!container || currentView !== 'home') return;
-
-    const summary = computeRequestsSummary(requests);
-    const tiles = userRole === 'user'
-        ? [
-            { label: 'Asignadas a mí', value: summary.assigned, quick: 'mine', accent: true },
-            { label: 'Con actividad nueva', value: summary.activity, inbox: true, accent: true },
-            { label: 'En curso', value: summary.inProgress, quick: 'in_progress' },
-            { label: 'Completadas recientes', value: summary.recentCompleted, quick: 'completed' }
-        ]
-        : [
-            { label: 'Asignadas a mí', value: summary.assigned, quick: 'mine', accent: true },
-            { label: 'En curso', value: summary.inProgress, quick: 'in_progress' },
-            { label: 'Pendientes', value: summary.pending, quick: 'pending' },
-            { label: 'Sin asignar', value: summary.unassigned, quick: 'unassigned' }
-        ];
-
-    container.innerHTML = tiles.map(t => {
-        const cls = t.value === 0 ? 'is-empty' : (t.accent ? 'is-accent' : '');
-        const action = t.inbox
-            ? 'href="#" onclick="toggleInbox(); return false;"'
-            : `href="/index.php?view=mejoras" onclick="return goToMejoras('${t.quick}', event)"`;
-        return `
-        <a class="tasks-widget-stat ${cls}" ${action}>
-            <span class="tasks-widget-stat-value">${t.value}</span>
-            <span class="tasks-widget-stat-label">${t.label}</span>
-        </a>`;
-    }).join('');
-}
-
-function goToMejoras(quickView, event) {
-    if (event) event.preventDefault();
-    loadView('mejoras', null, event);
-    setQuickView(quickView);
-    return false;
-}
-
 // Load requests with multi-level sorting and filters
 async function loadRequests() {
     try {
@@ -1450,13 +1403,15 @@ async function loadRequests() {
             requests = data.data;
             populateAssigneeFilter();
             renderRequests();
-            renderRequestsWidget();
+            if (currentView === 'home' && typeof renderMyWork === 'function') renderMyWork({ requestsLoaded: true });
             loadAppCounters();
         } else {
             console.error('Error loading requests', url, response.status, data.error);
+            if (currentView === 'home' && typeof renderMyWork === 'function') renderMyWork({ requestsError: true });
         }
     } catch (error) {
         console.error('Error loading requests:', error);
+        if (currentView === 'home' && typeof renderMyWork === 'function') renderMyWork({ requestsError: true });
     }
 }
 
@@ -1487,7 +1442,7 @@ function renderRequests() {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="10" class="requests-table-empty">No hay resultados para los filtros actuales</td>
+                    <td colspan="11" class="requests-table-empty">No hay resultados para los filtros actuales</td>
                 </tr>
             `;
         }
@@ -1500,7 +1455,7 @@ function renderRequests() {
         } else {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="10" class="requests-table-empty">No hay solicitudes activas para los filtros actuales</td>
+                    <td colspan="11" class="requests-table-empty">No hay solicitudes activas para los filtros actuales</td>
                 </tr>
             `;
         }
@@ -1599,6 +1554,9 @@ function createRequestCard(request, isFinished = false) {
     const requestCreatedLabel = getRequestCreatedLabel(request.created_at);
     const hasComments = parseInt(request.comment_count || 0, 10) > 0;
     const checklistProgress = getChecklistProgress(request);
+    // Fecha objetivo solo en las activas ("Sin fecha" discreto para ver lo que falta planificar)
+    const isActiveRequest = request.status === 'pending' || request.status === 'in_progress';
+    const dueInfo = requestDueInfo(request.due_date);
 
     const showAppLine = currentView !== 'app' && request.app_name;
     const description = (request.description || '').trim();
@@ -1679,6 +1637,12 @@ function createRequestCard(request, isFinished = false) {
                 ${priorityArrow}
                 ${priorityDropdown}
             </span>
+            ${isActiveRequest ? `
+                <span class="request-card-insight request-due is-${dueInfo.tone}" title="Fecha objetivo">
+                    <i class="iconoir-calendar-check"></i>
+                    <span>${escapeHtml(dueInfo.label)}</span>
+                </span>
+            ` : ''}
             <span class="request-card-insight">
                 <i class="iconoir-calendar"></i>
                 <span>${requestCreatedLabel}</span>
@@ -1894,9 +1858,7 @@ async function createTaskFromRequest() {
             icon: 'iconoir-check'
         }, 'toast-completed');
 
-        if (typeof loadTasksWidget === 'function') {
-            loadTasksWidget();
-        }
+        if (typeof loadMyWork === 'function') loadMyWork(true);
         if (typeof loadTasksCount === 'function') loadTasksCount();
     } catch (error) {
         console.error('Error creating task from request:', error);
@@ -2007,6 +1969,12 @@ async function quickUpdateRequest(requestId, field, value, event) {
                     'discarded': { title: 'Descartada', message: 'La mejora ha sido descartada', icon: 'iconoir-xmark' }
                 };
                 showToast(statusMessages[value], `toast-${value}`);
+            } else if (field === 'due_date') {
+                showToast({
+                    title: value ? 'Fecha guardada' : 'Fecha quitada',
+                    message: value ? requestDueInfo(value).label : 'La mejora queda sin fecha',
+                    icon: 'iconoir-calendar-check'
+                });
             }
 
             // If the detail modal is open for this request, reflect the change in its bar
@@ -2027,6 +1995,7 @@ async function quickUpdateRequest(requestId, field, value, event) {
 }
 
 // Toast notification system
+// config: { title, message, icon, duration (ms, 3000 por defecto), action: { label, onClick } }
 function showToast(config, type = '') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -2040,17 +2009,27 @@ function showToast(config, type = '') {
             <div class="toast-title">${config.title}</div>
             <div class="toast-message">${config.message}</div>
         </div>
+        ${config.action ? `<button type="button" class="toast-action">${escapeHtml(config.action.label)}</button>` : ''}
     `;
 
     container.appendChild(toast);
 
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
+    let dismissed = false;
+    const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
         toast.classList.add('toast-hide');
-        setTimeout(() => {
-            container.removeChild(toast);
-        }, 300);
-    }, 3000);
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    if (config.action) {
+        toast.querySelector('.toast-action').addEventListener('click', () => {
+            dismiss();
+            config.action.onClick();
+        });
+    }
+
+    setTimeout(dismiss, config.duration || 3000);
 }
 
 // Close dropdowns when clicking outside
@@ -3128,7 +3107,7 @@ async function submitFloatingTask() {
                 message: detected.length ? `${title} · ${detected.join(' · ')}` : title,
                 icon: 'iconoir-check'
             }, 'toast-completed');
-            if (typeof loadTasksWidget === 'function') loadTasksWidget();
+            if (typeof loadMyWork === 'function') loadMyWork(true);
             if (typeof loadTasksCount === 'function') loadTasksCount();
         } else {
             showToast({

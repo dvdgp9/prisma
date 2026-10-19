@@ -94,7 +94,7 @@ assert_file_contains('assets/js/tasks-interactions.js', [
 assert_file_contains('tasks.php', [
     'id="tasks-search"',
     'id="done-today"',
-    '/assets/js/tasks-interactions.js?v=3',
+    '/assets/js/tasks-interactions.js?v=4',
     'class="tasks-shortcuts-hint"',
 ], 'tasks page has search, daily summary, shortcuts hint and the new script');
 assert_file_contains('assets/css/tasks.css', [

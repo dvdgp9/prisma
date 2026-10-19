@@ -2629,7 +2629,6 @@ El usuario quiere añadir "Notas" y pide que interpretemos qué es y cuál es la
 - [ ] N4. Página `notes.php` + `notes.js`: lista (fijadas arriba, luego por última edición) y lector/editor Markdown. Escritorio a dos columnas; móvil lista → detalle. Menú de compartir igual que el de Tareas. Guardar con Cmd/Ctrl+Enter. ✅ Éxito: crear, editar, fijar, compartir y borrar desde el navegador; móvil sin scroll horizontal.
 - [ ] N5. Barra lateral: "Notas" después de "Mejoras" y el nuevo nombre para "Nota rápida". Vista global: bloque "Notas recientes" (últimas compartidas contigo). ✅ Éxito: contrato de la barra lateral actualizado.
 - [ ] N6. Aviso al compartir: columna `notifications.note_id` (en la misma migración) + enlace que abre la nota desde Notificaciones. ✅ Éxito: compartir con una persona le crea un aviso que abre la nota.
-- [ ] N7. Verificación local con harness, versionado de assets y `sw.js`, lista de archivos a subir.
 
 ### Decisiones a confirmar con el usuario
 1. **Quién edita una nota compartida.** Recomendado: como en Tareas (los compartidos editan; solo el autor borra y cambia con quién se comparte), con aviso si otra persona la ha cambiado mientras editabas. Alternativa: solo el autor edita y el resto lee.
@@ -2739,3 +2738,243 @@ El usuario quiere añadir "Notas" y pide que interpretemos qué es y cuál es la
 
 ## Lessons (Notas N6)
 - `api/notifications.php` hacía INNER JOIN con requests: cualquier notificación sin `request_id` era invisible. Revisar este punto antes de añadir otros tipos de aviso.
+
+## Project Status Board (Notas) — CIERRE (19 Oct 2026)
+- [x] N0–N6 hechos. **N7 eliminado del plan a petición del usuario; la funcionalidad Notas se da por FINALIZADA.**
+- La verificación local de cada paso, el versionado de assets y las listas de archivos a subir ya se hicieron dentro de N4, N5 y N6 (ver sus "Current Status").
+- Pendiente fuera del plan: commit de N5 y N6 (lo gestiona el usuario) y su prueba en producción.
+
+---
+
+# PLAN: VISTA GLOBAL = "MI TRABAJO" (tareas + mejoras unificadas) (Planner, 19 Octubre 2026)
+
+## Background and Motivation (Mi trabajo)
+Trabajando en equipo, para saber qué hacer en el día hay que mirar Tareas y después Mejoras. El usuario pide:
+1. Una vista unificada, y que sea la **Vista global**. Tareas y Mejoras se quedan como están por ahora (la idea es que dejen de hacer falta cuando la Vista global sea óptima).
+2. Poder filtrar **muy fácil** solo tareas o solo mejoras. La plataforma debe ayudar a ver el "caos" (cosas sin fecha o sin organizar).
+3. Poder poner **fecha opcional a las mejoras**, sin que una crítica sin fecha quede por debajo de una baja con fecha.
+
+## Key Challenges and Analysis (Mi trabajo)
+**Qué entra en la lista (para cada persona)**
+- Tareas: las mías + las compartidas conmigo por nombre, sin completar (mismo criterio que Tareas por defecto).
+- Mejoras: las asignadas a mí, en estado Pendiente o En curso. Las "sin asignar" o "todas las de la app" siguen en Mejoras.
+
+**Fecha en las mejoras**
+- Columna `requests.due_date DATE NULL`: una fecha objetivo por mejora, la misma para todos. Es más simple que una fecha por persona.
+- Descartado por ahora: vincular tareas a mejoras (`tasks.request_id`). Es más potente pero tiene más piezas; se puede añadir después.
+- Permisos: el rol `user` ya puede cambiar el estado de una mejora (`update_status`) pero no editarla. Propuesta: cambiar solo la fecha usa la misma capacidad que el estado (es planificar, no editar el contenido).
+
+**El problema "crítica sin fecha" frente a "baja con fecha"**
+No se ordena por una sola línea de fechas. Se agrupa por "cuándo" y la prioridad sube lo urgente que no tiene fecha:
+1. **Atrasado**: fecha anterior a hoy.
+2. **Hoy**.
+3. **Urgente sin fecha**: mejoras críticas o altas sin fecha, con la pista "Ponles fecha para planificarlas".
+4. **Próximos 7 días**.
+5. **Más adelante**.
+6. **Sin fecha**: tareas sin fecha y mejoras media/baja sin fecha.
+
+Dentro de cada grupo se ordena por fecha, después por prioridad (crítica > alta > media > baja; las tareas no tienen prioridad y cuentan como media) y después por antigüedad.
+Ejemplo del usuario: la crítica sin fecha va al grupo 3 y la baja para la semana que viene al grupo 4, así que la crítica se ve antes.
+Además, el grupo 3 y el contador de "Sin fecha" enseñan lo que está sin planificar: es la forma de "ver el caos".
+
+**Filtro**
+- Control segmentado arriba: Todo (n) · Tareas (n) · Mejoras (n). Un clic, y se recuerda en el navegador (localStorage).
+- Los grupos vacíos no se muestran; cada grupo lleva su contador en la cabecera.
+
+**Vista global**
+- La lista sustituye a los bloques de contadores "Qué toca" y "Mejoras".
+- "Notas recientes" se queda.
+- Se mantienen el botón "Nueva Mejora" y el "+" de tarea rápida.
+
+**Acciones en cada fila**
+- Tarea: casilla para completar (con deshacer); clic para abrirla en Tareas (`tasks.php?task=ID`, ese enlace directo hay que añadirlo); chip de fecha con atajos Hoy / Mañana / Lunes / Sin fecha (reutilizando `taskDateShortcuts` de task-parser.js).
+- Mejora: clic para abrir el detalle (el modal que ya existe en index); chip de fecha con los mismos atajos; prioridad y estado visibles; marca de actividad nueva si hay avisos sin leer.
+
+**Técnica**
+- main.js ya tiene más de 4.000 líneas: lo nuevo va en archivos propios:
+  - `assets/js/work-helpers.js`: puro (normalizar y agrupar), probado con Node.
+  - `assets/js/my-work.js`: pinta la lista y gestiona las acciones.
+  - `assets/css/my-work.css`: cargado solo en index, así no hay que versionar las 10 páginas.
+- Datos: reutiliza las dos llamadas que ya hace la Vista global (tareas y mejoras). El filtro de "asignadas a mí" se hace en el navegador, porque el volumen es pequeño. Si crece, se añade `?assigned_to=me` a la API.
+
+**Riesgos**
+- index.php comparte JS entre la Vista global, Mejoras, la vista de app y "Por aprobar": hay que cuidar `updateViewLayout`.
+- Las fechas son DATE sin hora: se comparan con el "hoy" local del navegador, como en Tareas.
+- La migración la ejecuta el usuario.
+
+## High-level Task Breakdown (Mi trabajo) — PROPUESTA, pendiente de decisiones
+- [ ] MT0. Decisiones (abajo).
+- [ ] MT1. Migración `016_request_due_date.sql`: `requests.due_date DATE NULL` + índice. Test de contrato. ✅ Éxito: el usuario la ejecuta sin errores.
+- [ ] MT2. API de mejoras: leer y guardar `due_date` (AAAA-MM-DD o null, validado). Cambiar solo la fecha exige `update_status`, como el estado. Tests. ✅ Éxito: tests en verde; una fecha inválida devuelve 400; un `user` puede poner fecha a una mejora de su app.
+- [ ] MT3. Fecha en Mejoras: campo en el detalle de la mejora, chip en tarjeta y tabla ("Sin fecha" discreto) y orden por fecha en el listado. ✅ Éxito: poner y quitar la fecha desde el detalle en el navegador.
+- [ ] MT4. Lógica pura en `work-helpers.js` (TDD con Node): normalizar tareas y mejoras a un mismo formato y agruparlas con las reglas de arriba. ✅ Éxito: tests del ejemplo crítica sin fecha frente a baja con fecha, atrasadas, hoy, orden interno y filtros.
+- [ ] MT5. Vista global "Mi trabajo": filtro Todo/Tareas/Mejoras con contadores (recordado), grupos con cabecera y contador, filas con tipo, título, app, prioridad/estado y fecha; estados de carga, vacío y error; móvil. "Notas recientes" se queda. ✅ Éxito: en el navegador, con datos de ejemplo, el orden es el esperado, los filtros cambian en un clic y a 375 px no hay scroll horizontal.
+- [ ] MT6. Acciones rápidas: completar tarea (con deshacer), cambiar la fecha (tarea y mejora) desde el chip con atajos, abrir mejora (modal) y tarea (`tasks.php?task=ID`). ✅ Éxito: cada acción se refleja en la lista sin recargar.
+- [ ] MT7. Verificación final, versionado de assets y sw.js, lista de archivos a subir.
+
+### Decisiones a confirmar con el usuario (Mi trabajo)
+1. ¿Quién puede poner fecha a una mejora? Recomendado: cualquiera que pueda cambiar su estado (incluye el rol usuario). Alternativa: solo programador/admin.
+2. ¿Qué prioridades suben a "Urgente sin fecha"? Recomendado: crítica y alta. Alternativa: solo crítica.
+3. Mejoras en la Vista global: ¿solo las asignadas a mí? Recomendado: sí (las sin asignar se ven en Mejoras). Alternativa: los admins también ven "sin asignar".
+4. "Notas recientes": recomendado debajo de la lista (una columna, más simple). Alternativa: columna lateral en pantallas anchas.
+
+## Project Status Board (Mi trabajo)
+- [ ] MT0 Decisiones del usuario
+
+## Actualización Planner (19 Oct 2026, tras las respuestas del usuario) — Mi trabajo
+**Decisiones tomadas** (sustituyen a las "Decisiones a confirmar" de arriba)
+1. **Fecha de una mejora = mismo permiso que el estado.** Además, el usuario pide que el rol **usuario sea de solo lectura**: se le **quita `update_status`**, que se le dio el 13 jul 2026 (commit 3b1c35b "Permisos user", sección "Executor: Capability update_status para rol user"). Cambiar estado o fecha queda para programador, admin y superadmin. El usuario sigue pudiendo ver, comentar y usar la checklist.
+2. **Solo las críticas** sin fecha suben a "Urgente sin fecha". Las altas sin fecha van a "Sin fecha" (ordenadas por prioridad, así que salen primeras de ese grupo).
+3. **Mejoras en la Vista global:** superadmin ve **todas** las mejoras activas (pendientes y en curso), con el responsable o "Sin asignar" visible en la fila. El resto ve las asignadas a sí mismo.
+4. **"Notas recientes"** va debajo de la lista.
+
+**Nuevo hallazgo: "no me aparezco a mí mismo" al crear una tarea** (en mejoras sí funciona)
+- Causa: el menú "Compartir con" de Tareas carga el equipo desde `api/task-shares.php`, que excluye a quien la crea (`id != ?`). Es intencionado (la tarea ya es suya, eso significa "Solo yo"), pero no se entiende: parece que no puedes asignártela.
+- Propuesta: en el menú, la primera opción pasa de "Solo yo" a "Solo para mí" y la persona creadora aparece arriba como "Tú (es tuya)", marcada y fija. Así queda claro que la tarea ya es tuya. Las tareas propias salen siempre en "Mi trabajo".
+
+## High-level Task Breakdown (Mi trabajo) v2 — sustituye a la propuesta anterior
+- [ ] MT1. Migración `016_request_due_date.sql`: `requests.due_date DATE NULL` + índice. Test de contrato. ✅ Éxito: el usuario la ejecuta sin errores.
+- [ ] MT2. Permisos y API de mejoras:
+  (a) Quitar `update_status` al rol `user` en `request_capabilities_for_role` y actualizar los tests y los controles que lo usan (botones rápidos de estado en tarjeta y tabla).
+  (b) Leer y guardar `due_date` (AAAA-MM-DD o null, validado). Un cambio solo de estado o de fecha exige `update_status`.
+  ✅ Éxito: tests en verde; `user` recibe 403 al cambiar estado o fecha; programador/admin pueden; una fecha inválida devuelve 400.
+- [ ] MT3. Fecha en Mejoras: campo en el detalle de la mejora, chip en tarjeta y tabla ("Sin fecha" discreto) y orden por fecha en el listado. ✅ Éxito: poner y quitar la fecha desde el detalle en el navegador.
+- [ ] MT4. Lógica pura en `work-helpers.js` (TDD con Node): normalizar tareas y mejoras y agruparlas (Atrasado / Hoy / Urgente sin fecha (solo críticas) / Próximos 7 días / Más adelante / Sin fecha). Superadmin incluye todas las mejoras activas; el resto, solo las asignadas. ✅ Éxito: tests del ejemplo crítica sin fecha frente a baja con fecha, atrasadas, orden interno, filtros y alcance por rol.
+- [ ] MT5. Vista global "Mi trabajo": filtro Todo/Tareas/Mejoras con contadores (recordado), grupos con contador, filas con tipo, título, app, prioridad/estado, fecha y responsable (o "Sin asignar" para superadmin); estados de carga, vacío y error; móvil; "Notas recientes" debajo. Sustituye a los bloques "Qué toca" y "Mejoras". ✅ Éxito: en el navegador el orden es el esperado, los filtros cambian en un clic y a 375 px no hay scroll horizontal.
+- [ ] MT6. Acciones rápidas: completar tarea (con deshacer), cambiar fecha de tarea y de mejora (esta solo con permiso) desde el chip con atajos, abrir mejora (modal) y tarea (enlace nuevo `tasks.php?task=ID`). ✅ Éxito: cada acción se refleja en la lista sin recargar.
+- [ ] MT7. Tareas: en "Compartir con", "Solo para mí" + "Tú (es tuya)" visible y fijo. ✅ Éxito: al crear una tarea te ves en el menú como dueño.
+- [ ] MT8. Verificación final, versionado de assets y sw.js, lista de archivos a subir.
+
+## Project Status Board (Mi trabajo)
+- [x] MT0 Decisiones del usuario (19 Oct 2026).
+- [ ] MT1–MT8 pendientes de que el usuario revise el plan v2 y diga "adelante" (modo Executor).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT1)
+- [x] MT1 escrito: `migrations/016_request_due_date.sql` (`ALTER TABLE requests ADD COLUMN due_date DATE NULL, ADD INDEX idx_due_date (due_date)`) + sección en `migrations/README.md` + test `tests/request-due-date-migration.php`. Primero falló y ahora pasa; 22/22 archivos OK.
+- Sin `IF NOT EXISTS` (solo MariaDB) ni `AFTER` (no depende de qué columnas existan en producción): la columna va al final de la tabla.
+- [ ] MT1 ejecutada en producción por el usuario ← SIGUIENTE PASO, lo hace el usuario. No empezar MT2 hasta que confirme.
+- No se ha ejecutado en ninguna base de datos. El test solo comprueba el contenido del archivo.
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT2)
+- [x] MT1 ejecutada en producción por el usuario (19 Oct 2026), sin errores.
+- [x] MT2 IMPLEMENTADO, pendiente de verificación del usuario.
+  - (a) `request_capabilities_for_role`: `update_status` solo para programador, admin y superadmin. **Se revierte** el permiso del 13 jul 2026 para el rol `user`, que ahora solo ve, comenta y usa la checklist. En la interfaz los botones rápidos de estado (tarjeta y tabla) ya dependen de `capabilities.update_status`, así que desaparecen solos para `user`. El selector de estado del modal ya dependía de `has_role('programador')`.
+  - (b) `request_capability_for_update($input)` (auth.php): cambiar solo estado y/o fecha exige `update_status`; cualquier otro campo, `edit`. Sustituye a `$isStatusOnlyChange` en `api/requests.php`.
+  - `normalize_request_due_date($value)` (auth.php): null o '' quitan la fecha; si no, AAAA-MM-DD con un día real del calendario (checkdate). Si no, 400 "Fecha no válida (usa AAAA-MM-DD)".
+  - `api/requests.php`: PUT valida y guarda `due_date`. POST acepta `due_date` opcional; con fecha exige `update_status` (si no, 403 "No tienes permiso para poner fecha a una mejora"). GET ya la devolvía (`r.*`).
+- Tests: NUEVO `tests/request-due-date-api.php` (permisos por rol, capacidad por tipo de cambio, validación de fechas, contrato del endpoint). Actualizados `request-access-capabilities.php` (user sin `update_status`) y `request-endpoint-guards.php` (nueva guarda). 23/23 archivos OK.
+- Prueba HTTP real de `api/requests.php` (router temporal fuera del repo, SQLite, programadora y usuario simulados), 16 escenarios OK: poner, quitar y releer la fecha; fecha imposible y otro formato → 400; estado + fecha; fecha + prioridad (editar); el usuario recibe `update_status=false`, 403 al cambiar estado o fecha y 403 al crear con fecha, pero puede crear sin fecha como hasta ahora. Sin avisos de PHP.
+- No probado en el navegador: que desaparezcan los botones de estado para `user` (depende de capabilities, que ya está probado).
+- **Archivos a subir (MT2)**: `includes/auth.php`, `api/requests.php`. Sin cambios de JS/CSS (no hay que versionar).
+- Siguiente: MT3 (fecha en Mejoras: detalle, tarjeta/tabla, orden).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT3)
+- [x] MT3 IMPLEMENTADO, pendiente de verificación del usuario.
+  - `assets/js/work-helpers.js` (NUEVO, puro, probado con Node): `parseDueDate()` y `requestDueInfo(fecha, hoy)` → `{tone, label, days}`. Tonos: overdue ("Venció ayer" / "Venció el 17 oct"), today ("Para hoy"), soon de 1 a 7 días ("Para mañana" / "Para el viernes" / "Para el 26 oct"), later ("Para el 3 nov", con año si es otro año), none ("Sin fecha"; también para valores vacíos o no válidos). En MT4 se le añadirá la agrupación de "Mi trabajo".
+  - Detalle de la mejora (barra de propiedades): `getRequestDueControlHtml()`. Con `update_status` es un chip "Poner fecha" / "Para el …" que abre el calendario nativo (`showPicker`, y si no, focus) y guarda al momento con `quickUpdateRequest(id, 'due_date', valor)`, más una × para quitarla. Sin permiso: chip de solo lectura (nada si no hay fecha). Avisos "Fecha guardada" / "Fecha quitada".
+  - Tarjetas: chip de fecha con tono en las activas (pendiente o en curso), con "Sin fecha" discreto (borde fino, gris). Las cerradas no llevan chip.
+  - Tabla: columna "Fecha" después de "Estado", ordenable (sin fecha al final); `colspan` de las filas vacías a 11.
+  - Orden: opción "Fecha objetivo" en los tres desplegables (`due_date`); en la API, `CASE WHEN r.due_date IS NULL THEN 1 ELSE 0 END, r.due_date ASC`.
+  - Estilos en `assets/css/work.css` (NUEVO, solo lo carga index.php, así que no hay que versionar las 10 páginas).
+- Versiones: `main.js?v=5.2`, `work-helpers.js?v=1`, `work.css?v=1`, `sw.js` → `prisma-v39`.
+- Tests: NUEVO `tests/request-due-date-ui.php` (11 casos de texto/tono con Node + contrato de index/main.js/API/CSS/sw). Actualizado sidebar-mejoras.php (main.js 5.2, sw v39). 24/24 archivos OK.
+- Verificación en navegador (router temporal fuera del repo: index.php y api/requests.php reales con SQLite; programadora, usuario y superadmin simulados) a 1440 y 375 px:
+  - tarjetas con los 5 tonos correctos y la completada sin chip
+  - en el detalle: poner fecha (servidor, chip, tarjeta y aviso actualizados), clic real en el chip sin errores y quitar la fecha
+  - tabla con la columna Fecha y orden con las que no tienen fecha al final; "Ordenar por: Fecha objetivo" igual
+  - rol usuario: sin botones de estado y con la fecha de solo lectura en tarjeta y detalle
+  - móvil sin scroll horizontal; consola sin errores
+- No probado: el aspecto del calendario nativo de cada navegador; la automatización no lo puede manejar, así que en la prueba se simula el cambio de fecha.
+- **Archivos a subir (MT3)**: `index.php`, `assets/js/main.js`, `assets/js/work-helpers.js`, `assets/css/work.css`, `api/requests.php`, `sw.js`.
+- Siguiente: MT4 (agrupación pura de "Mi trabajo" en work-helpers.js, TDD).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT4)
+- [x] MT4 IMPLEMENTADO (lógica pura, sin interfaz todavía).
+  - `assets/js/work-helpers.js`:
+    - `buildWorkItems(tasks, requests, viewer)`: formato común `{key, type, id, title, dueDate, priority, status, appName, assignees, createdAt, raw}`. Tareas sin completar (la API ya da las mías y las compartidas conmigo por nombre). Mejoras pendientes o en curso: el superadmin ve todas; el resto, las que tiene asignadas.
+    - `groupWorkItems(items, hoy, filtro)`: grupos no vacíos en este orden: Atrasado / Hoy / Urgente sin fecha (solo mejoras críticas, con la pista "Ponles fecha para planificarlas") / Próximos 7 días (1 a 7 días) / Más adelante / Sin fecha. Filtro `all | task | request`. Dentro de cada grupo: fecha, prioridad (las tareas cuentan como media), antigüedad (la más antigua primero) y tipo/id.
+    - `countWorkItems(items)` → `{all, task, request}` para los contadores del filtro.
+- Test NUEVO `tests/work-grouping.php` (Node): Ana (programadora) con tareas y mejoras en los 6 grupos; el ejemplo crítica sin fecha frente a baja con fecha; orden dentro de "Hoy" (crítica > media antigua > tarea); filtros solo tareas y solo mejoras; contadores; superadmin con mejoras sin asignar y de otras personas; forma de los items; sin trabajo no hay grupos. 25/25 archivos OK.
+- Al escribir el test conté mal dos contadores esperados (7 y 9 mejoras en vez de 6 y 8); lo corregí antes de implementar.
+- No se ha subido la versión de `work-helpers.js` (sigue `?v=1`): las funciones nuevas aún no las usa nada. Se subirá en MT5, cuando la Vista global las use.
+- **Archivos (MT4)**: `assets/js/work-helpers.js`. Se puede subir con MT5.
+- Siguiente: MT5 (Vista global "Mi trabajo").
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT5)
+- [x] MT5 IMPLEMENTADO, pendiente de verificación del usuario.
+  - Vista global = **"Mi trabajo"** + "Notas recientes" debajo. Sustituye a los bloques "Qué toca" y "Mejoras" (quitados de index.php y de main.js: `loadTasksWidget`, `computeTasksWidgetCounts`, `renderTasksWidget`, `renderRequestsWidget`, `goToMejoras`). Se mantienen "Nueva Mejora" y el botón + de tarea rápida.
+  - `index.php`: sección `#my-work` con título, subtítulo según rol ("Tus tareas y todas las mejoras activas" para superadmin; "Tus tareas y las mejoras que tienes asignadas" para el resto) y filtro segmentado Todo / Tareas / Mejoras con contadores.
+  - `assets/js/my-work.js` (NUEVO):
+    - Carga las tareas con `/api/tasks.php?completed=0&shared=0`. De las mejoras usa una copia de las que carga main.js en la Vista global; así otras vistas filtradas no la alteran.
+    - Agrupa con work-helpers.js. Filtro recordado en localStorage (`prisma_mywork_filter`, con try/catch).
+    - Filas:
+      - icono por tipo, título, "Tarea" o "Mejora", app, "En curso"
+      - responsables o "Sin asignar" (solo superadmin)
+      - "Actividad nueva" si hay avisos sin leer
+      - prioridad solo si es crítica o alta
+      - fecha con tono (no en "Hoy", donde sobra)
+    - Grupos de más de 8 filas: "Ver N más" / "Ver menos".
+    - Estados de carga (esqueletos con `aria-busy`), vacío según el filtro ("Todo al día"…) y error con "Reintentar".
+    - Clic en una mejora: abre su detalle aquí mismo. Clic en una tarea: lleva a Tareas (el enlace directo a la tarea es MT6).
+  - `main.js` avisa a "Mi trabajo":
+    - al abrir la Vista global: `loadMyWork()`
+    - al cargar las mejoras en la Vista global: `renderMyWork({ requestsLoaded: true })`, o `{ requestsError: true }` si fallan
+    - al cambiar los avisos sin leer: `renderMyWork()`
+    - al crear una tarea con el botón + o desde una mejora: `loadMyWork(true)`
+  - Estilos en `assets/css/work.css` (solo index): contenedor de 12px, filas de 8px, filtro como el de Notas, foco visible, móvil (≤600 px: filtro a todo el ancho; prioridad y fecha bajo el título) y `prefers-reduced-motion`.
+- Versiones: `main.js?v=5.3`, `work-helpers.js?v=2`, `work.css?v=2`, `my-work.js?v=1`, `sw.js` → `prisma-v40`.
+- Tests: NUEVO `tests/my-work-view.php` (contrato de index, my-work.js, main.js sin los bloques antiguos, CSS, sin rayas largas). Adaptados al diseño aprobado `sidebar-mejoras.php`, `user-dashboard-ux.php`, `home-notes-widget.php` y `request-due-date-ui.php` (describían los bloques antiguos). 26/26 archivos OK.
+- Verificación en navegador (router temporal fuera del repo: index.php, api/tasks.php, api/requests.php, notificaciones y notas reales con SQLite; programadora y superadmin simulados), a 1440 y 375 px:
+  - grupos y orden correctos, contadores 8/5/3; "Actividad nueva" con un aviso sin leer
+  - filtro Tareas, que se recuerda al recargar
+  - clic en una mejora: abre su detalle; un cambio de estado desde ahí se refleja en la lista
+  - superadmin: todas las mejoras activas, con "Sin asignar"
+  - estados vacío y error (Reintentar recarga); "Ver 4 más" / "Ver menos"
+  - una tarea creada con el botón + aparece sola
+  - Mejoras, vista de app y vuelta a la Vista global siguen bien
+  - móvil sin scroll horizontal; sin errores de JavaScript
+- **Archivos a subir (MT5)**: `index.php`, `assets/js/main.js`, `assets/js/my-work.js` (nuevo), `assets/js/work-helpers.js`, `assets/css/work.css`, `sw.js`.
+- Siguiente: MT6 (acciones rápidas: completar tarea con deshacer, cambiar fecha desde la fila, enlace directo `tasks.php?task=ID`).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT6)
+- [x] MT6 IMPLEMENTADO, pendiente de verificación del usuario.
+  - Filas rehechas: `<div class="my-work-row">` con [círculo de completar (tareas) o icono] + `<a class="my-work-link">` (solo título y meta) + lado (prioridad + fecha). Antes toda la fila era un enlace y dentro no puede haber botones.
+  - **Completar tarea**: círculo que muestra el check al pasar o con el teclado. La tarea sale de la lista al momento (y vuelve si la API falla, con aviso de error). Aviso "Tarea completada" con **Deshacer** (6 s, igual que en Tareas). Actualiza el contador de Tareas de la barra lateral.
+  - **Fecha desde la fila**: botón chip con la fecha ("Para hoy", "Venció ayer"…) o "Fecha" con borde discontinuo si no tiene. Menú: Hoy / Mañana / Próximo lunes / En una semana (se quita si coincide con el lunes) / Elegir fecha… (calendario nativo con `showPicker`) / Quitar fecha (si tiene). Teclado: flechas, Escape (devuelve el foco) y Tab. Se cierra al pulsar fuera o al cambiar el tamaño de la ventana.
+    - Permisos: tareas si se pueden editar; mejoras con `capabilities.update_status` (programador/admin/superadmin). Sin permiso: chip de solo lectura.
+    - Al guardar: la fila cambia de grupo sin recargar, aviso "Fecha guardada / quitada", y se actualizan las copias locales (también `requests` de main.js).
+  - **Abrir**: mejora → detalle aquí mismo; tarea → `tasks.php?task=ID`, que abre esa tarea en Tareas y limpia la dirección (tasks.js).
+  - `workDateMenuOptions(hoy, fechaActual)` en work-helpers.js (reutiliza `taskDateShortcuts` de task-parser.js), probado con Node.
+  - `showToast` de main.js admite `action` (botón) y `duration`, como el de Tareas. Estilos de `.toast-action` copiados a work.css (tasks.css no se carga en index).
+- Versiones: `main.js?v=5.4`, `my-work.js?v=2`, `work-helpers.js?v=3`, `work.css?v=3`, `tasks.js?v=12` (tasks.php), `sw.js` → `prisma-v41`.
+- Tests: NUEVO `tests/my-work-actions.php` (opciones de fecha un lunes y un jueves con Node + contrato de my-work.js, main.js, tasks.js, CSS e index). Versiones actualizadas en sidebar-mejoras, request-due-date-ui y my-work-view. Tres comprobaciones del test nuevo daban por hecha una forma concreta de escribir el código y se ajustaron a la implementación real (no eran fallos de funcionamiento). 27/27 archivos OK.
+- Verificación en navegador (router temporal con las APIs reales y SQLite, a 1440 y 375 px), con clics reales:
+  - completar una tarea → desaparece, el contador baja y sale "Deshacer"; deshacer → vuelve (servidor 0)
+  - menú de fecha en la mejora crítica sin fecha → "Hoy" → pasa a "Hoy" y desaparece "Urgente sin fecha"
+  - teclado (flechas y Escape con el foco de vuelta), "Quitar fecha" → vuelve a "Urgente sin fecha"
+  - "Elegir fecha…" en una tarea → "Más adelante"
+  - clic en el título de una tarea → Tareas abre esa tarea
+  - usuario (Luis): fecha de solo lectura, sin botón
+  - móvil: el menú cabe en pantalla, sin scroll horizontal; consola sin errores
+- **Limitación del entorno de prueba (no del código)**: SQLite no tiene `NOW()`, que `api/tasks.php` usa al completar; en el router temporal se emula. En MySQL ya funciona (Tareas lo usa a diario).
+- **Archivos a subir (MT6)**: `index.php`, `tasks.php`, `assets/js/main.js`, `assets/js/my-work.js`, `assets/js/work-helpers.js`, `assets/js/tasks.js`, `assets/css/work.css`, `sw.js`.
+- Siguiente: MT7 ("Compartir con" en Tareas: "Solo para mí" + "Tú (es tuya)") y MT8 (cierre).
+
+## Current Status / Progress Tracking (19 Oct 2026 — Mi trabajo MT7 + nombres en tarjetas de Tareas)
+- [x] MT7 IMPLEMENTADO, pendiente de verificación del usuario. Además, petición nueva del usuario (con captura): **en la tarjeta de tarea, el nombre de con quién se comparte** en lugar de "👤 1", al menos en ordenador.
+  - API (`api/tasks.php`): la lista y el detalle devuelven también `share_user_ids` (`GROUP_CONCAT(ts_ids.user_id)`, mismo separador "," en MySQL y SQLite).
+  - `task-parser.js`: `parseShareIds()` ("6,8" → [6, 8], sin repetidos ni basura) y `taskShareSummary(ids, equipo, yo)` → `{label, title, phrase}`. Etiqueta: "Ana Ruiz" / "Ana Ruiz y Luis Ortega" / "Ana Ruiz y 2 más". "Tú" va primero. Quien ya no está en el equipo cuenta como "más"; si no se conoce a nadie, "1 persona" / "N personas". Frase para el title: "con …" / "contigo" / "contigo y con …".
+  - `tasks.js`: `normalizeTaskShares()` al cargar la lista y al abrir una tarea (así no hace falta pedir las personas aparte). Tarjeta con `.task-badge-names` (ordenador) y `.task-badge-count` (móvil ≤768 px) y title "Compartida con … · cambiar". Al llegar el equipo se repinta la lista (los nombres salen de ahí). El detalle usa el mismo texto; "Solo yo" → "Solo para mí".
+  - `tasks-interactions.js`: "Compartir con" → "Solo para mí", "Todo el equipo", separador y una fila fija "Tú (es tuya)" con tus iniciales (tipo de fila nuevo `fixed` en `openTaskMenu`, que no se puede pulsar ni recibe foco), y después las personas.
+  - `tasks.css`: nombres sin mayúsculas (la etiqueta las forzaba), máx. 240 px con puntos suspensivos; fila fija gris.
+  - `tasks.php`: `<body data-user-id data-user-name>`.
+- Versiones: `task-parser.js?v=6` (tasks.php e index.php), `tasks.js?v=13`, `tasks-interactions.js?v=4`, `tasks.css?v=3.1`, `sw.js` → `prisma-v42`.
+- Tests: NUEVO `tests/tasks-share-names.php` (11 casos con Node + contrato de API, JS, CSS y tasks.php). Versiones actualizadas en tasks-t2, my-work-actions, sidebar-mejoras y request-due-date-ui. 28/28 archivos OK.
+- Verificación en navegador (tasks.php y APIs reales con SQLite, a 1440 y 375 px):
+  - tarjetas con "David Gutiérrez y Luis Ortega", "David Gutiérrez y 2 más", "Tú" y "Luis Ortega", con su title
+  - menú con "Solo para mí", "Tú (es tuya)" fija y Luis marcado; añadir a Marta → la tarjeta pasa a "Luis Ortega y Marta Gil" y el servidor guarda 6,10
+  - móvil: solo el número; detalle: "Solo para mí" y nombres
+  - la Vista global sigue bien; sin errores de JavaScript
+  - Corregido al probar: el title decía "Compartida con Tú" → ahora "Compartida contigo".
+- **Archivos a subir (MT7)**: `api/tasks.php`, `tasks.php`, `index.php`, `assets/js/task-parser.js`, `assets/js/tasks.js`, `assets/js/tasks-interactions.js`, `assets/css/tasks.css`, `sw.js`.
+- Siguiente: MT8 (cierre: lista final de archivos de MT1–MT7).

@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.0">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.1">
 </head>
 
 <?php
@@ -32,7 +32,7 @@ $user = get_logged_user();
 $userApps = get_user_apps();
 ?>
 
-<body>
+<body data-user-id="<?php echo (int) $user['id']; ?>" data-user-name="<?php echo htmlspecialchars($user['full_name'] ?: $user['username'], ENT_QUOTES); ?>">
     <div class="dashboard-container">
         <?php $current_page = 'tasks'; include __DIR__ . '/includes/sidebar.php'; ?>
 
@@ -237,10 +237,10 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=5"></script>
+    <script src="/assets/js/task-parser.js?v=6"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=11"></script>
-    <script src="/assets/js/tasks-interactions.js?v=3"></script>
+    <script src="/assets/js/tasks.js?v=13"></script>
+    <script src="/assets/js/tasks-interactions.js?v=4"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 
