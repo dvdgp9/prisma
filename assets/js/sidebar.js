@@ -278,7 +278,8 @@ const INBOX_PRESENTATION = {
     status_change: { iconClass: 'status', iconName: 'iconoir-refresh-double' },
     comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' },
     note_share: { iconClass: 'note', iconName: 'iconoir-page' },
-    task_assignment: { iconClass: 'assignment', iconName: 'iconoir-task-list' }
+    task_assignment: { iconClass: 'assignment', iconName: 'iconoir-task-list' },
+    task_completion: { iconClass: 'completion', iconName: 'iconoir-check-circle' }
 };
 
 const INBOX_EMPTY_MESSAGES = {
@@ -368,7 +369,7 @@ function setInboxTypeFilter(value) {
 function matchesInboxTypeFilter(n) {
     if (inboxTypeFilter === 'all') return true;
     if (inboxTypeFilter === 'status') {
-        return n.type === 'completion' || n.type === 'status_change';
+        return n.type === 'completion' || n.type === 'status_change' || n.type === 'task_completion';
     }
     // "Asignaciones" incluye las mejoras y las tareas que te asignan.
     if (inboxTypeFilter === 'assignment') {

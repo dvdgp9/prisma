@@ -21,7 +21,8 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/work.css?v=5">
+    <link rel="stylesheet" href="/assets/css/work.css?v=6">
+    <link rel="stylesheet" href="/assets/css/team.css?v=1">
 </head>
 
 <?php
@@ -78,6 +79,20 @@ $company_name = $user['company_name'] ?? '';
                         </div>
                         <?php endif; ?>
                     </div>
+                    <?php if ($canSeeTeamWork): ?>
+                    <!-- Avance del equipo ("De todos"): una tarjeta por persona y periodo de "Hecho". Lo pinta my-work.js. -->
+                    <div class="work-team" id="work-team" hidden>
+                        <div class="work-team-head">
+                            <h3 class="work-team-title">Avance del equipo</h3>
+                            <div class="work-period" role="group" aria-label="Periodo de lo hecho">
+                                <button type="button" class="work-period-btn" data-done-period="today" aria-pressed="false">Hoy</button>
+                                <button type="button" class="work-period-btn" data-done-period="7" aria-pressed="true">7 días</button>
+                                <button type="button" class="work-period-btn" data-done-period="30" aria-pressed="false">30 días</button>
+                            </div>
+                        </div>
+                        <div class="work-team-cards" id="work-team-cards"></div>
+                    </div>
+                    <?php endif; ?>
                     <div class="my-work-toolbar">
                         <div class="work-filter" role="tablist" aria-label="Qué ver">
                             <button type="button" class="work-filter-btn" data-work-filter="all" role="tab" aria-selected="false">
@@ -349,154 +364,101 @@ $company_name = $user['company_name'] ?? '';
         </main>
     </div>
 
-    <!-- New Request Modal -->
-    <div class="modal" id="new-request-modal">
-        <div class="modal-content modal-wide">
+    <!-- Nueva mejora: mismo lenguaje que el modal de tareas (barra de chips y una columna).
+         Lo gestiona request-create.js; la barra la pinta renderNewRequestBar(). -->
+    <div class="modal" id="new-request-modal" role="dialog" aria-modal="true" aria-labelledby="new-request-heading">
+        <div class="modal-content modal-wide request-create-content" id="new-request-content">
             <div class="modal-header">
                 <div class="modal-header-left">
-                    <i class="iconoir-plus-circle modal-header-icon"></i>
-                    <h3 class="modal-title">Nueva Petición</h3>
+                    <i class="iconoir-light-bulb modal-header-icon" aria-hidden="true"></i>
+                    <h3 class="modal-title" id="new-request-heading">Nueva mejora</h3>
                 </div>
-                <button class="close-modal" onclick="closeModal('new-request-modal')">
+                <button type="button" class="close-modal" onclick="requestCloseNewRequestModal()" aria-label="Cerrar">
                     <i class="iconoir-xmark"></i>
                 </button>
             </div>
 
+            <!-- Barra de propiedades: aplicación, prioridad, dificultad, fecha y asignados -->
+            <div class="request-meta-bar request-create-bar" id="new-request-bar"></div>
+
             <form id="new-request-form" onsubmit="submitNewRequest(event)">
-                <div class="modal-body-grid">
-                    <!-- Left Column: Main Content -->
-                    <div class="modal-column-main">
-                        <div class="form-group">
-                            <label for="request-title">
-                                <i class="iconoir-text"></i> Título *
-                            </label>
-                            <input type="text" id="request-title" required placeholder="Describe brevemente la mejora o problema">
-                        </div>
+                <div class="request-create-body">
+                    <div class="form-group">
+                        <label for="request-title" class="visually-hidden">Título</label>
+                        <input type="text" id="request-title" class="request-create-title" required placeholder="Título de la mejora" autocomplete="off">
+                    </div>
 
-                        <div class="form-group" style="flex: 1;">
-                            <label for="request-description">
-                                <i class="iconoir-align-left"></i> Descripción
-                            </label>
-                            <textarea id="request-description" rows="8" placeholder="Explica con detalle el problema, la funcionalidad deseada o los pasos para reproducir un error..."></textarea>
-                        </div>
+                    <div class="form-group">
+                        <label for="request-description">
+                            <i class="iconoir-align-left"></i> Descripción
+                        </label>
+                        <textarea id="request-description" class="request-create-description" rows="3" placeholder="Explica el problema, lo que te gustaría conseguir o los pasos para reproducir un error"></textarea>
+                    </div>
 
-                        <div class="form-group">
-                            <label>
-                                <i class="iconoir-attachment"></i> Adjuntos
-                            </label>
-                            <div class="file-upload-area" id="file-upload-area">
-                                <i class="iconoir-cloud-upload" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.5rem;"></i>
-                                <p>Arrastra archivos o haz clic para seleccionar</p>
-                                <p class="text-small text-muted">Máximo 5MB · Imágenes, PDF, documentos</p>
-                                <input type="file" id="file-input" style="display: none;" multiple>
+                    <!-- Solicitante: plegable y discreto, como en el modal de editar -->
+                    <div class="requester-collapse" id="new-requester-section">
+                        <button type="button" class="requester-collapse-toggle" id="new-requester-toggle" aria-expanded="false" aria-controls="new-requester-fields">
+                            <i class="iconoir-user"></i>
+                            <span>Solicitante</span>
+                            <span class="label-hint">Si alguien te la pidió, para avisarle</span>
+                            <div class="status-dot" id="new-requester-dot"></div>
+                            <i class="iconoir-nav-arrow-right toggle-icon"></i>
+                        </button>
+                        <div class="requester-collapse-content" id="new-requester-fields">
+                            <div class="requester-fields">
+                                <div class="form-group">
+                                    <label for="new-request-requester-name">Nombre</label>
+                                    <input type="text" id="new-request-requester-name" placeholder="Juan Pérez" autocomplete="off" oninput="updateRequesterDot('new')">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-request-requester-email">Email</label>
+                                    <input type="email" id="new-request-requester-email" placeholder="juan@ejemplo.com" autocomplete="off" oninput="updateRequesterDot('new')">
+                                </div>
                             </div>
-                            <div id="file-list" class="file-list-preview"></div>
-                        </div>
-
-                        <div class="form-group">
-                            <div class="attachments-header">
-                                <label>
-                                    <i class="iconoir-check-square"></i> Checklist <span class="label-hint">(opcional)</span>
-                                </label>
-                                <span id="new-checklist-count" class="badge-count-inline"></span>
-                            </div>
-                            <div class="checklist-add-row">
-                                <input type="text" id="new-checklist-input" placeholder="Añade una subtarea y pulsa Enter" onkeydown="handleNewChecklistKeydown(event)">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="addNewChecklistItem()">
-                                    <i class="iconoir-plus"></i>
-                                    Añadir
-                                </button>
-                            </div>
-                            <div id="new-checklist-list" class="checklist-list checklist-list--draft"></div>
                         </div>
                     </div>
 
-                    <!-- Right Column: Metadata -->
-                    <div class="modal-column-side">
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-settings"></i> Configuración
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div class="form-group">
-                                    <label for="request-app">Aplicación *</label>
-                                    <select id="request-app" required>
-                                        <option value="">Selecciona una app</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="request-priority">Prioridad</label>
-                                    <select id="request-priority">
-                                        <option value="low">Baja</option>
-                                        <option value="medium" selected>Media</option>
-                                        <option value="high">Alta</option>
-                                        <option value="critical">Crítica</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="request-difficulty">Dificultad estimada</label>
-                                    <select id="request-difficulty">
-                                        <option value="" selected>Sin definir</option>
-                                        <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
-                                        <option value="high">Alta</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <!-- Adjuntos: se suben al crear la mejora -->
+                    <div class="form-group" id="new-request-attachments">
+                        <div class="attachments-header">
+                            <label>
+                                <i class="iconoir-attachment"></i> Archivos adjuntos
+                            </label>
+                            <span class="badge-count-inline" id="new-request-file-count" hidden></span>
                         </div>
-
-                        <?php if (has_role('programador')): ?>
-                        <div class="modal-side-section">
-                            <div class="modal-side-title">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-user-badge-check"></i> Asignados
-                                </div>
-                            </div>
-                            <div class="modal-side-content">
-                                <div id="new-assigned-tags" class="assigned-tags"></div>
-                                <div class="assign-search-wrapper">
-                                    <input type="text" id="new-assign-search" class="assign-search-input" placeholder="Buscar usuario..." autocomplete="off">
-                                    <div id="new-assign-dropdown" class="assign-dropdown" style="display: none;"></div>
-                                </div>
-                            </div>
+                        <div class="file-upload-area file-upload-area--compact" id="new-request-upload" role="button" tabindex="0" aria-label="Añadir archivos">
+                            <i class="iconoir-cloud-upload"></i>
+                            <p>Haz clic, arrastra o pega una captura</p>
+                            <input type="file" id="new-request-file-input" class="request-create-file-input" multiple>
                         </div>
-                        <?php endif; ?>
+                        <div class="request-create-files" id="new-request-file-list"></div>
+                    </div>
 
-                        <div class="modal-side-section collapsible" id="new-requester-section">
-                            <div class="modal-side-title" onclick="this.parentElement.classList.toggle('active')">
-                                <div class="modal-side-title-content">
-                                    <i class="iconoir-user"></i> Solicitante
-                                    <div class="status-dot" id="new-requester-dot"></div>
-                                </div>
-                                <i class="iconoir-nav-arrow-right toggle-icon"></i>
-                            </div>
-                            <div class="modal-side-content">
-                                <p class="text-small text-muted" style="margin-bottom: 1rem;">
-                                    Si alguien te pidió esta mejora, añade sus datos para notificarle.
-                                </p>
-                                
-                                <div class="form-group">
-                                    <label for="request-requester-name">Nombre</label>
-                                    <input type="text" id="request-requester-name" placeholder="Juan Pérez" oninput="updateRequesterDot('new')">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="request-requester-email">Email</label>
-                                    <input type="email" id="request-requester-email" placeholder="juan@ejemplo.com" oninput="updateRequesterDot('new')">
-                                </div>
-                            </div>
+                    <!-- Checklist: los pasos se crean junto con la mejora -->
+                    <div class="form-group">
+                        <div class="attachments-header">
+                            <label for="new-checklist-input">
+                                <i class="iconoir-check-square"></i> Checklist <span class="label-hint">(opcional)</span>
+                            </label>
+                            <span id="new-checklist-count" class="badge-count-inline" hidden></span>
                         </div>
+                        <div class="checklist-add-row request-create-checklist-row">
+                            <input type="text" id="new-checklist-input" maxlength="500" placeholder="Añade un paso y pulsa Enter" autocomplete="off">
+                            <button type="button" class="btn btn-secondary btn-sm" id="new-checklist-add">
+                                <i class="iconoir-plus"></i> Añadir
+                            </button>
+                        </div>
+                        <div id="new-checklist-list" class="checklist-list checklist-list--draft"></div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-ghost" onclick="closeModal('new-request-modal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="iconoir-plus"></i> Crear Petición
+                    <span class="request-create-shortcuts" aria-hidden="true">
+                        <kbd id="new-request-mod-key">Ctrl</kbd> <kbd>Enter</kbd> crear · <kbd>Esc</kbd> cerrar
+                    </span>
+                    <button type="button" class="btn btn-ghost" onclick="requestCloseNewRequestModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="new-request-submit" title="Crear (Ctrl/Cmd + Enter)">
+                        <i class="iconoir-plus"></i> <span id="new-request-submit-label">Crear mejora</span>
                     </button>
                 </div>
             </form>
@@ -1050,9 +1012,11 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/task-parser.js?v=9"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
-    <script src="/assets/js/work-helpers.js?v=4"></script>
-    <script src="/assets/js/main.js?v=5.5"></script>
-    <script src="/assets/js/my-work.js?v=4"></script>
+    <script src="/assets/js/work-helpers.js?v=5"></script>
+    <script src="/assets/js/main.js?v=5.6"></script>
+    <script src="/assets/js/my-work.js?v=5"></script>
+    <script src="/assets/js/request-create-helpers.js?v=1"></script>
+    <script src="/assets/js/request-create.js?v=1"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>
     <?php endif; ?>

@@ -6,7 +6,6 @@ let appCounterRequests = [];
 let currentView = 'home'; // home (Vista global) | mejoras | app | company | pending
 let currentAppId = null;
 let currentCompanyId = null;
-let selectedFiles = [];
 let showFinished = false;
 let requestSearchTerm = '';
 let currentQuickView = 'all';
@@ -95,21 +94,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         setTimeout(() => openRequestDetailModal(parseInt(openRequestId)), 500);
     }
 
-    setupFileUpload();
     setupAppFilesUpload();
     setupEditModalFileUpload();
     syncRequestsViewModeUI();
-
-    // Cmd/Ctrl + Enter to submit new request form
-    const newRequestForm = document.getElementById('new-request-form');
-    if (newRequestForm) {
-        newRequestForm.addEventListener('keydown', function (e) {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                newRequestForm.requestSubmit();
-            }
-        });
-    }
 
     // Update pending count for admins (with slight delay to ensure DOM is ready)
     if (userRole === 'admin' || userRole === 'superadmin') {
@@ -1096,7 +1083,6 @@ async function loadApps() {
                 }
             });
             renderAppsNav();
-            populateAppSelects();
         }
     } catch (error) {
         console.error('Error loading apps:', error);
@@ -1205,15 +1191,6 @@ function toggleCompanyGroup(companyId) {
     if (group) {
         group.classList.toggle('collapsed');
     }
-}
-
-// Populate app select dropdowns
-function populateAppSelects() {
-    const selects = document.querySelectorAll('#request-app');
-    selects.forEach(select => {
-        select.innerHTML = '<option value="">Selecciona una app</option>' +
-            apps.map(app => `<option value="${app.id}">${escapeHtml(app.name)}</option>`).join('');
-    });
 }
 
 // Switch view (home = Vista global, mejoras, company or specific app)
@@ -2065,42 +2042,12 @@ async function vote(requestId, action = 'up') {
     }
 }
 
-// Open new request modal
-function openNewRequestModal() {
-    // Reset form
-    document.getElementById('new-request-form').reset();
-
-    // Pre-select current app if viewing a specific app
-    if (currentView === 'app' && currentAppId) {
-        const appSelect = document.getElementById('request-app'); // Keep original ID for now, assuming 'new-request-app' is a typo in instruction
-        if (appSelect) {
-            appSelect.value = currentAppId;
-        }
-    }
-
-    // Reset & wire assignment widget (only present for programador+)
-    window.newAssignments = [];
-    if (document.getElementById('new-assigned-tags')) {
-        renderAssignedTags('new');
-        setupAssignSearchInput('new');
-    }
-
-    // Open modal
-    document.getElementById('new-request-modal').classList.add('active');
-
-    // Auto-focus on title field for immediate typing
-    setTimeout(() => {
-        document.getElementById('request-title').focus(); // Assuming 'request-title' is the ID for the title field in the new request modal
-    }, 100);
-}
-
 // Close modal
 function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
-    if (modalId === 'new-request-modal') {
-        document.getElementById('new-request-form').reset();
-        selectedFiles = [];
-        document.getElementById('file-list').innerHTML = '';
+    // Nueva mejora: el modal lo gestiona request-create.js (p. ej. si se cierra desde el fondo).
+    if (modalId === 'new-request-modal' && typeof resetNewRequestModal === 'function') {
+        resetNewRequestModal();
     }
     if (modalId === 'edit-request-modal') {
         currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
@@ -2115,213 +2062,6 @@ function closeModal(modalId) {
             checklistError.textContent = '';
         }
     }
-}
-
-// Submit new request
-// ===== Pending checklist (Nueva Petición · client-side draft) =====
-let pendingChecklistItems = [];
-
-function handleNewChecklistKeydown(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        addNewChecklistItem();
-    }
-}
-
-function addNewChecklistItem() {
-    const input = document.getElementById('new-checklist-input');
-    const title = (input?.value || '').trim();
-    if (!title) return;
-    pendingChecklistItems.push({ title });
-    input.value = '';
-    input.focus();
-    renderPendingChecklist();
-}
-
-function removePendingChecklistItem(index) {
-    pendingChecklistItems.splice(index, 1);
-    renderPendingChecklist();
-}
-
-function renderPendingChecklist() {
-    const list = document.getElementById('new-checklist-list');
-    const count = document.getElementById('new-checklist-count');
-    if (!list) return;
-
-    if (pendingChecklistItems.length === 0) {
-        list.innerHTML = '';
-        if (count) { count.textContent = ''; count.hidden = true; }
-        return;
-    }
-
-    if (count) { count.textContent = `${pendingChecklistItems.length}`; count.hidden = false; }
-
-    list.innerHTML = pendingChecklistItems.map((item, idx) => `
-        <div class="checklist-item checklist-item--draft">
-            <span class="checklist-item-bullet" aria-hidden="true">
-                <i class="iconoir-square"></i>
-            </span>
-            <span class="checklist-item-text">${escapeHtml(item.title)}</span>
-            <button type="button" class="checklist-item-remove" onclick="removePendingChecklistItem(${idx})" title="Quitar">
-                <i class="iconoir-xmark"></i>
-            </button>
-        </div>
-    `).join('');
-}
-
-function resetPendingChecklist() {
-    pendingChecklistItems = [];
-    const input = document.getElementById('new-checklist-input');
-    if (input) input.value = '';
-    renderPendingChecklist();
-}
-
-async function submitNewRequest(event) {
-    event.preventDefault();
-
-    const appId = document.getElementById('request-app').value;
-    const title = document.getElementById('request-title').value;
-    const description = document.getElementById('request-description').value;
-    const priority = document.getElementById('request-priority').value;
-    const difficulty = document.getElementById('request-difficulty').value;
-    const requesterName = document.getElementById('request-requester-name').value;
-    const requesterEmail = document.getElementById('request-requester-email').value;
-
-    try {
-        // Create request
-        const requestData = {
-            app_id: appId,
-            title: title,
-            description: description,
-            priority: priority,
-            difficulty: difficulty || null
-        };
-
-        // Add optional requester info if provided
-        if (requesterName) {
-            requestData.requester_name = requesterName;
-        }
-        if (requesterEmail) {
-            requestData.requester_email = requesterEmail;
-        }
-
-        const response = await fetch('/api/requests.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestData)
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const requestId = data.data.id;
-
-            // Save assignments if any were selected (programador+ only)
-            if (window.newAssignments && window.newAssignments.length > 0) {
-                await fetch('/api/assignments.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        request_id: requestId,
-                        user_ids: window.newAssignments.map(a => a.id)
-                    })
-                });
-            }
-
-            // Upload files if any
-            if (selectedFiles.length > 0) {
-                for (const file of selectedFiles) {
-                    await uploadFile(requestId, file);
-                }
-            }
-
-            // Reset form
-            window.newAssignments = [];
-            document.getElementById('new-request-form').reset();
-            selectedFiles = [];
-            document.getElementById('file-list').innerHTML = '';
-
-            closeModal('new-request-modal');
-            loadRequests();
-
-            showToast({
-                title: 'Mejora creada',
-                message: 'La solicitud se ha creado correctamente',
-                icon: 'iconoir-check'
-            }, 'toast-completed');
-        } else {
-            alert(data.error || 'Error al crear la petición');
-        }
-    } catch (error) {
-        console.error('Error creating request:', error);
-        alert('Error al crear la petición');
-    }
-}
-
-// Upload file
-async function uploadFile(requestId, file) {
-    const formData = new FormData();
-    formData.append('request_id', requestId);
-    formData.append('file', file);
-
-    try {
-        await fetch('/api/upload.php', {
-            method: 'POST',
-            body: formData
-        });
-    } catch (error) {
-        console.error('Error uploading file:', error);
-    }
-}
-
-// Setup file upload
-function setupFileUpload() {
-    const uploadArea = document.getElementById('file-upload-area');
-    const fileInput = document.getElementById('file-input');
-    const fileList = document.getElementById('file-list');
-
-    uploadArea.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', (e) => {
-        handleFiles(e.target.files);
-    });
-
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
-
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        handleFiles(e.dataTransfer.files);
-    });
-}
-
-// Handle file selection
-function handleFiles(files) {
-    const fileList = document.getElementById('file-list');
-    selectedFiles = Array.from(files);
-
-    fileList.innerHTML = selectedFiles.map((file, index) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-            <span class="text-small">
-                <i class="iconoir-attachment"></i>
-                ${escapeHtml(file.name)} (${formatFileSize(file.size)})
-            </span>
-            <button type="button" class="btn btn-sm" onclick="removeFile(${index})" style="padding: 0.25rem 0.5rem;">×</button>
-        </div>
-    `).join('');
-}
-
-// Remove file from selection
-function removeFile(index) {
-    selectedFiles.splice(index, 1);
-    handleFiles(selectedFiles);
 }
 
 // Format file size
@@ -3918,104 +3658,6 @@ async function quickAssignUser(requestId, userId, name) {
     } catch (error) {
         console.error('Error assigning user:', error);
     }
-}
-
-// Multi-select assignment (shared by edit modal · prefix 'edit', and new modal · prefix 'new')
-function getAssignmentState(prefix) {
-    if (prefix === 'new') {
-        if (!window.newAssignments) window.newAssignments = [];
-        return window.newAssignments;
-    }
-    if (!window.currentAssignments) window.currentAssignments = [];
-    return window.currentAssignments;
-}
-
-function setAssignmentState(prefix, arr) {
-    if (prefix === 'new') window.newAssignments = arr;
-    else window.currentAssignments = arr;
-}
-
-function renderAssignedTags(prefix = 'edit') {
-    const container = document.getElementById(`${prefix}-assigned-tags`);
-    if (!container) return;
-
-    const state = getAssignmentState(prefix);
-    if (state.length === 0) {
-        container.innerHTML = '<span class="text-muted text-small">Sin asignar</span>';
-        return;
-    }
-
-    container.innerHTML = state.map((a, index) => `
-        <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}">
-            ${escapeHtml(a.full_name || a.username)}${index === 0 ? ' · Resp.' : ''}
-            <span class="remove-tag" onclick="removeAssignment(${a.id}, '${prefix}')">
-                ×
-            </span>
-        </span>
-    `).join('');
-}
-
-function removeAssignment(userId, prefix = 'edit') {
-    setAssignmentState(prefix, getAssignmentState(prefix).filter(a => a.id !== userId));
-    renderAssignedTags(prefix);
-}
-
-function setupAssignSearchInput(prefix = 'edit') {
-    const input = document.getElementById(`${prefix}-assign-search`);
-    const dropdown = document.getElementById(`${prefix}-assign-dropdown`);
-    if (!input || !dropdown) return;
-    
-    // Remove old listeners by cloning
-    const newInput = input.cloneNode(true);
-    input.parentNode.replaceChild(newInput, input);
-    
-    newInput.addEventListener('input', () => {
-        const search = newInput.value.toLowerCase().trim();
-        if (search.length === 0) {
-            dropdown.style.display = 'none';
-            return;
-        }
-        
-        const assignedIds = getAssignmentState(prefix).map(a => a.id);
-        const filtered = availableUsers.filter(u =>
-            !assignedIds.includes(u.id) &&
-            (u.username.toLowerCase().includes(search) ||
-             (u.full_name && u.full_name.toLowerCase().includes(search)))
-        );
-        
-        if (filtered.length === 0) {
-            dropdown.style.display = 'none';
-            return;
-        }
-        
-        dropdown.innerHTML = filtered.slice(0, 5).map(user => `
-            <div class="assign-dropdown-item" data-user-id="${user.id}" data-username="${user.username}" data-fullname="${escapeHtml(user.full_name || '')}">
-                <div class="comment-avatar" style="width: 20px; height: 20px; font-size: 0.5rem;">
-                    ${(user.full_name || user.username).charAt(0).toUpperCase()}
-                </div>
-                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
-            </div>
-        `).join('');
-        dropdown.style.display = 'block';
-        
-        dropdown.querySelectorAll('.assign-dropdown-item').forEach(item => {
-            item.onclick = () => {
-                const userId = parseInt(item.dataset.userId);
-                const username = item.dataset.username;
-                const fullName = item.dataset.fullname;
-                
-                getAssignmentState(prefix).push({ id: userId, username, full_name: fullName });
-                renderAssignedTags(prefix);
-
-                newInput.value = '';
-                dropdown.style.display = 'none';
-            };
-        });
-    });
-    
-    newInput.addEventListener('blur', () => {
-        setTimeout(() => { dropdown.style.display = 'none'; }, 200);
-    });
 }
 
 // ===================

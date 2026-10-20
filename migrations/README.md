@@ -122,6 +122,24 @@ SELECT type, COUNT(*) AS total FROM notifications GROUP BY type;
 ```
 Debe salir `type` como `varchar(64)`, `request_id` con `Null = YES` y ningún tipo vacío.
 
+## 📝 Migración 019: Quién completó cada tarea
+
+**Archivo**: `019_task_completed_by.sql`
+
+**Propósito**: Guardar quién completa cada tarea, para el panel de avance del equipo y para el aviso "X ha completado una tarea" (una tarea compartida la puede completar cualquiera de sus personas).
+
+**Cambios** (solo añade, no borra datos):
+- Nueva columna `tasks.completed_by` (`INT`, opcional).
+- Las tareas privadas ya completadas se asignan a quien las creó (nadie más pudo completarlas). Las compartidas completadas antes de la migración se quedan sin persona.
+
+**Ejecutar**: igual que la 001 (phpMyAdmin → pestaña "SQL" → pegar el contenido de `019_task_completed_by.sql` → "Continuar"). **Antes de subir los archivos nuevos**: la API de tareas ya usa la columna. **Una sola vez**: si se repite, da error "Duplicate column name 'completed_by'"; no pasa nada, la columna ya existe.
+
+**Verificación**:
+```sql
+SHOW COLUMNS FROM tasks LIKE 'completed_by';
+SELECT COUNT(*) AS completadas, SUM(completed_by IS NOT NULL) AS con_persona FROM tasks WHERE is_completed = 1;
+```
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

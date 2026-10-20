@@ -3328,3 +3328,233 @@ Tests: `tests/task-seen.php`, `tests/task-seen-ui.php`, `tests/notifications-sco
 - [x] C2 Arreglo
 - [x] C3 Verificación en el arnés
 - [ ] Confirmación de la compañera en producción (cierra el Planner)
+
+---
+
+# PLAN: AVANCE DEL EQUIPO + AVISOS DE TAREAS COMPLETADAS (Planner, 20 Octubre 2026)
+
+## Background and Motivation (avance del equipo)
+El usuario (superadmin) quiere ver fácilmente lo que sus compañeras van completando: hoy, cuando ellas completan una tarea que él les asignó, la tarea desaparece y a él no le llega nada. Además dice que no recibe ninguna notificación desde el 12 de agosto. Pide: (1) ajustar las notificaciones y (2) un panel de control (en la Vista global o en otro sitio) para ver el avance del equipo. Modo Planner. (La unificación del modal de mejoras va en otra sesión.)
+
+## Key Challenges and Analysis (avance del equipo)
+**Notificaciones "desde el 12 de agosto"**
+- No hay commits entre el 25 jul y el 25 ago: no parece un cambio de código de esa fecha.
+- Quién recibe avisos hoy: menciones (@usuario en comentarios), comentarios en mejoras que creaste o tienes asignadas, asignaciones de mejoras, y completada/cambio de estado de mejoras que creaste o asignaste tú (si lo hace otra persona). **Las tareas completadas no avisan nunca.**
+- Hipótesis principal: el trabajo de las compañeras va sobre todo por tareas, y las mejoras las mueve él mismo (nadie se avisa a sí mismo), así que no hay nada que le llegue. Otras: avisos que sí se crean pero no se ven (poco probable para superadmin: ve todas las mejoras), o la campana caída (pasó entre el 19 y el 20 oct por `note_id`, pero no explica agosto).
+- Hace falta mirar los datos: consultas de solo lectura (abajo) antes de decidir más ajustes.
+
+**Quién completó una tarea**
+- `tasks` tiene `is_completed` y `completed_at`, pero no quién la completó. Con tareas compartidas puede completarla cualquiera → hace falta `tasks.completed_by` (migración 019). Las completadas antes de la migración quedan sin nombre.
+- Mejoras: hay `completed_at` (migración 005), pero tampoco quién. Se atribuyen a sus personas asignadas (`request_assignments`), que es quien hace el trabajo.
+- Lección reciente: el esquema de producción no coincide con el repo → pedir `SHOW COLUMNS FROM tasks` antes de escribir la migración.
+
+**Dónde va el panel**
+- La Vista global ya tiene "Para mí | De todos" ("Trabajo del equipo", solo programador, admin y superadmin) con grupos por fecha, nombres en cada fila y filtro por persona. Es casi un panel: le falta (a) un resumen por persona y (b) lo que se ha hecho.
+- Opción A (recomendada): convertir "De todos" en el panel: una franja arriba con una tarjeta por persona (pendientes · vencidas · hechas en 7 días; al pulsarla filtra por esa persona) y un grupo "Hecho en los últimos 7 días" al final (tareas y mejoras, con quién y cuándo). Reutiliza la carga, los grupos y el filtro que ya existen.
+- Opción B: página nueva "Equipo" en la barra lateral. Más espacio, pero es otra pantalla que mantener y otro sitio al que ir.
+- Carga: en "De todos" las tareas pasan de `completed=0&shared=1` a `completed=1&completed_days=7&shared=1` (la API ya trae pendientes + completadas de los últimos 7 días). Las mejoras completadas ya vienen en la carga de la Vista global (con `completed_at`).
+
+**Privacidad**
+- Hoy nadie ve las tareas privadas de otra persona (ni el superadmin). El panel debería respetarlo (solo lo que ya ves: lo que asignas, lo que te asignan y lo del equipo). Cambiarlo es decisión del usuario.
+
+**Aviso de tarea completada**
+- Nuevo tipo `task_completion`: "Rebecca ha completado una tarea" al **creador** de la tarea cuando la completa otra persona. Icono de check, entra en el filtro "Estado" de la campana y al pulsarlo abre la tarea (el modal ya abre completadas). Ya no hay ENUM en `notifications.type` (migración 018), así que no hace falta migración para el tipo.
+- Si se reabre y se vuelve a completar, se sustituye el aviso anterior (como con las asignaciones).
+
+## High-level Task Breakdown (avance del equipo) — PROPUESTA, pendiente de decisiones y del diagnóstico
+- [ ] AE0. Diagnóstico con el usuario: consultas de solo lectura (avisos por persona y tipo con su última fecha; mejoras completadas desde el 12 ago y quién las creó; `SHOW COLUMNS FROM tasks`). ✅ Éxito: sabemos por qué no le llegan avisos y si `tasks` es como creemos.
+- [ ] AE1. Migración 019 `tasks.completed_by` (INT NULL + índice). API: al completar guarda quién; al reabrir lo borra; la lista devuelve `completed_by_name`. Tests (SQLite + contrato). ✅ Éxito: completar desde Tareas y desde la Vista global guarda la persona.
+- [ ] AE2. Aviso `task_completion` al creador si la completa otra persona (try/catch como el resto), en la campana (icono, filtro "Estado", abre la tarea). Tests. ✅ Éxito: Rebecca completa una tarea de David → a David se le enciende la campana.
+- [ ] AE3. Lógica pura (Node) en work-helpers.js: resumen por persona (pendientes, vencidas, hechas en 7 días) y lista "Hecho" (tareas y mejoras completadas en 7 días con quién y cuándo, más recientes primero), respetando el filtro por persona. ✅ Éxito: tests con David, Rebecca y Luis.
+- [ ] AE4. UI en "De todos": franja de personas (tarjetas que filtran, "Tú" incluido) + grupo "Hecho en los últimos 7 días" con "Ver más". Móvil: tarjetas en carrusel horizontal sin scroll de página. ✅ Éxito: en el navegador, David ve lo que Rebecca completó hoy con su nombre y la hora; pulsar su tarjeta filtra.
+- [ ] AE5. Ajustes de notificaciones que salgan del diagnóstico (si los hay), verificación en el arnés, versiones y lista de archivos.
+
+### Decisiones a confirmar con el usuario (avance del equipo)
+1. Dónde: "De todos" como panel (recomendado) o página nueva "Equipo".
+2. Qué tareas cuentan: solo las que ya ves (recomendado) o también las privadas de cada persona (solo admin/superadmin).
+3. Aviso de tarea completada: al creador (recomendado) o también a las demás personas con las que se comparte.
+4. Ventana de "Hecho": últimos 7 días con "Ver más" (recomendado) o selector Hoy / 7 días / 30 días.
+
+## Project Status Board (avance del equipo)
+- [ ] AE0 Diagnóstico y decisiones
+
+---
+
+# MODAL "NUEVA MEJORA" CON EL LENGUAJE DEL MODAL DE TAREAS (Executor, 20 Octubre 2026)
+
+## Background and Motivation (nueva mejora v2)
+El modal de crear mejora (botón "Nueva Mejora" de la Vista global, `index.php` #new-request-modal) es el de dos columnas antiguo. Se rehace con el lenguaje del modal de tareas v2 (cabecera con icono, título grande, barra de chips, descripción que crece, adjuntos compactos con arrastrar/pegar, pie con atajos, foco atrapado, Esc) sin perder ningún campo. El modal de editar mejora no se toca.
+
+## Key Challenges and Analysis (nueva mejora v2)
+**Inventario del modal actual** (index.php, main.js `openNewRequestModal` / `submitNewRequest` / `setupFileUpload` / `handleFiles` / checklist pendiente, styles.css):
+| Campo / comportamiento | Cómo es hoy | Llega a la API |
+|---|---|---|
+| Título `#request-title` (obligatorio) | input con label | `POST /api/requests.php` `title` |
+| Descripción `#request-description` | textarea 8 filas | `description` |
+| Aplicación `#request-app` (obligatoria) | select relleno por `populateAppSelects()`; preseleccionada si estás en la vista de una app | `app_id` |
+| Prioridad `#request-priority` | select, "Media" por defecto | `priority` |
+| Dificultad `#request-difficulty` | select, "Sin definir" por defecto | `difficulty` (o null) |
+| Asignados (solo programador+) | buscador `#new-assign-search` + etiquetas; el primero es "Resp." | `POST /api/assignments.php` tras crear |
+| Solicitante (nombre, email) | sección plegable con punto de estado | `requester_name`, `requester_email` si hay |
+| Adjuntos | zona grande, clic o arrastrar sobre la zona; una nueva selección sustituye a la anterior | `POST /api/upload.php` uno a uno tras crear (errores ignorados) |
+| Checklist (opcional) | input + "Añadir", lista de borrador | **Nunca se envía** (fallo desde el commit "Restyling") |
+| Atajos | Ctrl/Cmd+Enter envía; clic fuera cierra (sin avisar); Esc no hace nada | — |
+| Tras crear | cierra, recarga mejoras, toast "Mejora creada" | — |
+
+**Fallos encontrados en el modal actual**: (1) el checklist de borrador no se guarda y además no se vacía al reabrir; (2) `updateRequesterDot('new')` busca `#new-request-requester-name`, que no existe → TypeError en consola al escribir el solicitante; (3) para el rol `user` los adjuntos fallan con 403 sin avisar (`api/upload.php` exige `edit` desde el commit 8e789e1, decisión CUP.2.3); (4) la zona dice "Máximo 5MB" y la API admite 15 MB.
+
+**Referencia (modal de tareas v2)**: cabecera icono + título; barra `.request-meta-bar` con chips `.task-meta-chip` (`is-empty` con borde discontinuo) que abren menús; título `.task-title-field` sin caja; descripción con autoaltura; zona `.file-upload-area--compact` + soltar en todo el modal + pegar capturas (`captura-AAAAMMDD-HHMM.png`); pie con eliminar / aviso de cambios / Cancelar / Guardar; Esc y clic en el fondo cierran avisando si hay cambios; foco atrapado con Tab; móvil a pantalla completa con pie fijo.
+
+**Decisiones del Executor**:
+- `tasks.css` y `tasks-interactions.js` no se pueden cargar en index.php (tasks.css tiene reglas genéricas: `.content-header`, `.btn`, `.today`, `.view-toggle`… y tasks-interactions.js depende de tasks.js). Los menús reutilizan el estilo `.work-menu` de work.css (ya en index.php, el mismo de los chips de "Mi trabajo") y los helpers puros `workPriorityMenuOptions` / `workDateMenuOptions`. Los chips y el cuerpo se estilan con clases propias `request-create-*` en styles.css copiando las medidas del modal de tareas.
+- Lógica nueva en `assets/js/request-create.js` (modal) y helpers puros en `assets/js/request-create-helpers.js` (probados con Node). main.js solo pierde el código del modal antiguo.
+- Chips de la barra: Aplicación (obligatoria), Prioridad, Dificultad, Fecha objetivo (solo programador+, pendiente de confirmar), Asignar (solo programador+, menú con varias personas, la primera es la responsable). Solicitante: plegable bajo la descripción, como en el modal de editar. Checklist: bajo los adjuntos, compacto.
+- El checklist se envía tras crear (`POST /api/request-checklist.php`, permiso `checklist`, que tienen todos los roles con acceso a la app).
+- Preguntas enviadas a la sesión principal: chip de fecha al crear (recomendado sí, solo programador+) y ocultar adjuntos al rol `user` (recomendado sí). Se implementa lo recomendado; cambiarlo es una línea.
+
+## High-level Task Breakdown (nueva mejora v2)
+- [ ] NM1. Tests: helpers puros con Node (nombre de capturas, etiquetas de chips, payload, validación de tamaño) + contrato del markup/JS/CSS/versiones (`tests/request-create-modal.php`). ✅ fallan antes de implementar.
+- [ ] NM2. Implementación: markup en index.php, request-create-helpers.js, request-create.js, CSS en styles.css, limpieza en main.js, versiones (styles.css, main.js, nuevos JS, sw.js). ✅ tests en verde (todos los de tests/).
+- [ ] NM3. Navegador (arnés PHP + SQLite): crear con todos los campos y ver que llegan a la API; escritorio y 375 px sin scroll horizontal; sin errores de consola; rol user. ✅ capturas/comprobaciones.
+
+## Project Status Board (nueva mejora v2)
+- [ ] NM1 Tests
+- [ ] NM2 Implementación
+- [ ] NM3 Verificación en el navegador
+
+## Actualización Planner (20 Oct 2026, tras las respuestas del usuario) — avance del equipo
+**Decisiones del usuario**
+1. Panel en "De todos" (Vista global): tarjetas por persona arriba + grupo "Hecho".
+2. Solo las tareas que ya ve (las privadas de cada persona siguen siendo privadas).
+3. Aviso de tarea completada **a todas las personas**: a quien la creó y a las personas con las que se comparte por nombre, menos quien la completa. Interpretación del Planner (a confirmar si hace falta): en tareas de "Todo el equipo" solo se avisa a quien la creó, para no avisar a toda la empresa.
+4. "Hecho" con selector **Hoy / 7 días / 30 días** (recordado en el navegador, 7 por defecto). Las tarjetas por persona cuentan "hechas" en ese mismo periodo.
+
+**Cambios en los pasos**
+- AE2: destinatarios = creador + `task_shares` − quien completa (en tareas de equipo, solo el creador).
+- AE3/AE4: "De todos" carga las tareas con `completed=1&completed_days=30&shared=1` una vez y filtra el periodo en el navegador (sin pedir más al cambiar el selector). Las mejoras completadas ya vienen en la carga de la Vista global.
+- Siguiente paso: AE0 (el usuario ejecuta las consultas de diagnóstico). Después, Executor desde AE1.
+
+## Project Status Board (avance del equipo) — actualizado por el Planner
+- [x] Decisiones del usuario (20 oct 2026)
+- [ ] AE0 Diagnóstico (consultas en producción)
+- [ ] AE1 Migración 019 + completed_by
+- [ ] AE2 Aviso task_completion
+- [ ] AE3 Lógica del panel (Node)
+- [ ] AE4 UI en "De todos"
+- [ ] AE5 Ajustes de avisos, verificación y entrega
+
+## Current Status / Progress Tracking (20 Oct 2026 — nueva mejora v2 NM1–NM2)
+- **NM1** `tests/request-create-modal.php`: helpers con Node (borrador, payload mínimo y completo, obligatorios, cambios sin guardar, etiquetas de chips, menú de dificultad, asignados con responsable, filtro de personas sin acentos, apps por empresa, app por defecto, nombre de capturas, límite de 15 MB, checklist, permisos por rol) + contratos de markup, JS, CSS, versiones y sintaxis. Fallaba antes de implementar.
+- **NM2** Hecho: markup nuevo en `index.php`; `assets/js/request-create-helpers.js` (puro) y `assets/js/request-create.js` (modal); estilos en `assets/css/work.css` (hoja propia de index; así styles.css no cambia y no hay que subir las 10 páginas); main.js pierde el modal antiguo (−360 líneas) y `closeModal('new-request-modal')` delega en `resetNewRequestModal()`. Versiones: work.css 6, main.js 5.6, request-create*.js 1, sw.js prisma-v47; tests con versiones fijas actualizados. 36 tests en verde.
+
+## Actualización Planner (20 Oct 2026) — AE0 diagnóstico hecho
+**Avisos por persona en producción** (tipo · total · último):
+- David: status_change 2 · 12 ago; completion 17 · 31 jul; comment 26 · 27 jul.
+- Rebecca: task_assignment 1 · 20 oct (el nuevo aviso funciona); assignment 14 · 28 jul.
+- Karlotta: assignment 11 · 23 jul; comment 3 · 17 jul.
+**Mejoras con completed_at desde el 12 ago**: todas creadas por David. La del 12 ago (#330, 12:26:52) coincide al segundo con su último aviso `status_change`: alguien la **descartó** (completed_at también se pone al descartar). Las del 3 sep y 19-20 oct no le avisaron → las cerró él mismo (nadie se avisa a sí mismo); pendiente de que lo confirme.
+**Conclusión**: la campana funciona. Desde finales de julio nadie más comenta, asigna ni completa mejoras: el trabajo del equipo pasó a las **tareas**, que no avisaban de nada. No hace falta arreglar los avisos de mejoras; lo que falta es el aviso de tarea completada (AE2). AE5 se queda en verificación y entrega.
+**`tasks` en producción**: id, user_id, company_id, app_id, title varchar(500), description, is_completed, completed_at (timestamp NULL), is_shared, created_at, updated_at (ON UPDATE CURRENT_TIMESTAMP), due_date. No hay `completed_by` → migración 019 `ALTER TABLE tasks ADD COLUMN completed_by INT NULL` (sin AFTER; sin índice: no se filtra por esa columna).
+
+## Project Status Board (avance del equipo) — actualizado por el Planner
+- [x] AE0 Diagnóstico (consultas en producción)
+- [ ] AE1 Migración 019 + completed_by ← siguiente (Executor, cuando el usuario lo apruebe)
+
+## Current Status / Progress Tracking (20 Oct 2026 — nueva mejora v2 NM3)
+- **Navegador** (arnés PHP real + SQLite en el scratchpad de la sesión; entrada temporal de launch.json ya quitada; los 3 archivos de prueba que la subida real dejó en `uploads/` ya borrados):
+  - Superadmin: todo con teclado (Shift+Tab a los chips, Enter abre el menú, flechas, Enter elige; el foco vuelve al chip). App con buscador (9 apps, agrupadas por empresa), prioridad, dificultad, fecha ("Mañana"), dos asignados (la primera, responsable), solicitante (el punto se enciende: antes daba TypeError), 2 pasos de checklist, captura pegada (`captura-20261020-1344.png`) y un .txt elegido; uno de 16 MB se rechaza con aviso. Sin aplicación → chip en rojo, "Elige la aplicación de la mejora" y se abre su menú. Ctrl+Enter crea: llegan a la API **todos** los campos (`requests.php` con app_id, title, description, priority, difficulty, requester_name/email, due_date; `assignments.php` [11, 9]; 2 × `request-checklist.php`; 2 × `upload.php`) y se guardan; avisos de asignación creados; toast "Mejora creada · #4".
+  - Esc / clic en el fondo: vacío cierra sin preguntar; con texto pregunta ("¿Descartar esta mejora?") y "Cancelar" lo mantiene; seleccionar texto y soltar fuera no cierra. Tab y Shift+Tab dan la vuelta dentro del modal. Soltar un PDF sobre el modal lo añade. Esc con un menú abierto cierra solo el menú.
+  - Rol user: solo chips de aplicación, prioridad y dificultad; sin adjuntos (pegar no hace nada); crea la mejora y su checklist.
+  - Fallo parcial (asignar a alguien sin acceso a la app): la mejora se crea y sale "Mejora #6 creada con avisos · No se pudo asignar (…)"; el botón muestra "Creando…" y se bloquea mientras tanto.
+  - Móvil 375 px: pantalla completa, pie fijo, sin scroll horizontal (`scrollWidth` 375), menús dentro de la pantalla. Arreglado en la prueba: el "+" flotante de tarea rápida (mismo z-index) tapaba "Crear mejora"; ahora se oculta mientras el modal está abierto.
+  - Modal de editar: se abre y muestra lo creado (asignados, fecha, checklist), el punto del solicitante funciona y cierra bien.
+  - Consola: sin errores en la pasada limpia. Los únicos errores de la sesión son los provocados a propósito (archivo de 16 MB, asignación rechazada) y el 403 de `users-list.php` para el rol user, que ya pasaba antes (main.js carga la lista de usuarios para todos los roles).
+- 36 tests en verde.
+
+### Archivos a subir (nueva mejora v2), en este orden
+Sin migraciones. Si aún no has subido las listas anteriores ("asignar al crear" y "campana sin aviso"), súbelas antes: `main.js` e `index.php` de esta lista ya llevan sus cambios.
+1. `assets/js/request-create-helpers.js` (nuevo)
+2. `assets/js/request-create.js` (nuevo)
+3. `assets/js/main.js`
+4. `assets/css/work.css`
+5. `index.php`
+6. `sw.js` (el último)
+Tests (no hacen falta en producción): `tests/request-create-modal.php` (nuevo) y versiones actualizadas en `tests/my-work-actions.php`, `my-work-scope-ui.php`, `request-due-date-ui.php`, `sidebar-mejoras.php`, `task-seen-ui.php`, `tasks-quick-person.php`, `tasks-share-names.php`.
+
+## Executor's Feedback or Assistance Requests (nueva mejora v2)
+- **Decisiones pendientes de confirmar** (preguntadas a la sesión principal; implementado lo recomendado, cambiar cualquiera es una línea en `newRequestPermissions()` de request-create-helpers.js):
+  1. Chip "Poner fecha" al crear, solo programador/admin/superadmin (la API ya lo permitía; antes el modal no lo tenía).
+  2. Zona de adjuntos oculta para el rol user (la API le rechaza la subida desde el commit 8e789e1; antes se perdían sin avisar).
+- **Comportamiento nuevo, no pedido pero necesario**: el checklist del modal ahora sí se guarda (antes se perdía); si algo de lo que va aparte (asignar, pasos, archivos) falla, se avisa en vez de callarlo; los archivos se copian al elegirlos para que no falle la subida de un adjunto abierto desde el correo; las apps se agrupan por empresa y si solo tienes una se elige sola.
+- **Para más adelante (no tocado)**: el "+" flotante también tapa el pie del modal de editar mejora en móvil (mismo z-index); `loadAvailableUsers()` pide la lista de usuarios también para el rol user y da un 403 en consola en cada carga.
+
+## Lessons (nueva mejora v2)
+- `tasks.css` y `tasks-interactions.js` no se pueden cargar en index.php (tasks.css tiene reglas genéricas como `.content-header` o `.today`; tasks-interactions.js depende de tasks.js). En index, los menús de chips usan el aspecto `.work-menu` de work.css y los estilos propios de la página van en work.css (así no hay que subir styles.css en las 10 páginas).
+- `escapeHtml()` de main.js no escapa comillas: no usarlo dentro de atributos (request-create.js tiene su propio `newRequestEscape`).
+- El "+" flotante (`.floating-task-btn`) tiene z-index 1000, igual que `.modal`, y va después en el DOM: tapa los modales a pantalla completa en móvil.
+- Repintar la barra con `innerHTML` destruye el chip con el foco: guardar qué chip lo tenía y devolvérselo.
+- Arnés: con el panel del navegador oculto las capturas congelan la animación de entrada del modal (inyectar `animation:none` solo para la captura) y conviene comprobar el estado con JS. Las cookies de localhost se comparten entre puertos (`harness_as` de otro arnés se cuela). `api/upload.php` real escribe en `uploads/`: borrar los archivos de prueba al acabar.
+
+## Project Status Board (nueva mejora v2) — actualizado por el Executor
+- [x] NM1 Tests
+- [x] NM2 Implementación
+- [x] NM3 Verificación en el navegador
+- [ ] Confirmar las 2 decisiones pendientes (fecha al crear; adjuntos para user)
+- [ ] Verificación del usuario en producción (cierra el Planner)
+
+## Executor's Feedback or Assistance Requests (nueva mejora v2 — decisiones confirmadas, 20 Oct 2026)
+- El usuario confirma las tres opciones recomendadas, que son justo las que ya están implementadas y verificadas (sin cambios de código):
+  1. Chip "Poner fecha" al crear solo para programador, admin y superadmin (los mismos roles que la API).
+  2. El rol user sigue pudiendo crear mejoras (verificado en el arnés: #5 creada por Luis con su checklist); se le oculta la zona de adjuntos, como en el modal de editar. Los permisos de subida (`api/upload.php`) no se han tocado.
+  3. El checklist se crea con la mejora.
+
+## Project Status Board (nueva mejora v2) — actualizado por el Executor
+- [x] Confirmar las 2 decisiones pendientes (fecha al crear; adjuntos para user)
+- [ ] Verificación del usuario en producción (cierra el Planner)
+
+## Current Status / Progress Tracking (20 Oct 2026 — avance del equipo AE1–AE2, Executor)
+- Coordinación: la sesión del modal de mejoras trabaja en la misma carpeta (index.php, main.js, work.css, sw.js → prisma-v47). Acordado por mensaje: estilos del panel en `assets/css/team.css` (nuevo), no tocar main.js ni work.css; en index.php solo el <link>, el bloque de "Mi trabajo" y los <script> de work-helpers/my-work.
+- **AE1** `migrations/019_task_completed_by.sql` (+ README): `completed_by INT NULL` y relleno de las privadas ya completadas (creador; `updated_at = updated_at`). SQL dado al usuario. `api/tasks.php`: GET con `completed_by_name` (LEFT JOIN users cb); PUT guarda/borra `completed_at` y `completed_by` solo si cambia el estado (reenviar "completada" no cambia quién ni cuándo).
+- **AE2** `includes/task-shares.php`: `create_task_completion_notifications($db, $task, $actor)` (creador + personas por nombre − quien completa; tarea de equipo: solo el creador; sustituye el aviso anterior) y `clear_task_completion_notifications` (al reabrir). API en try/catch. sidebar.js: `task_completion` con icono de check, en el filtro "Estado"; sidebar.js 2.1. Test nuevo `tests/task-completion.php` en verde.
+
+## Current Status / Progress Tracking (20 Oct 2026 — avance del equipo AE3–AE5, Executor)
+- **AE3** work-helpers.js: `doneSince(period, now)`, `buildDoneItems(tasks, requests, viewer, since)` (tareas completadas + mejoras cerradas, sin descartadas; `doneBy` = quien la completó o, si no se sabe, `whoLabel` = quien la tenía), `teamSummary(open, done, viewer, today)` (pendientes · atrasadas · hechas; Tú primero), `doneWhenLabel`. `workPeople` usa ahora `workPersonNames`/`sortWorkPeople` (mismo resultado; tests antiguos en verde). Test nuevo `tests/team-progress.php`.
+- **AE4** index.php: franja "Avance del equipo" (#work-team, tarjetas #work-team-cards, Hoy / 7 días / 30 días) solo en "De todos"; `assets/css/team.css` (nuevo). my-work.js: "De todos" carga `completed=1&completed_days=30&shared=1`; tarjetas que filtran (otra vez = todas); grupo "Hecho…" al final con quién y cuándo, con "Ver más"; periodo recordado (`prisma_mywork_done_period`); al completar desde aquí pasa a "Hecho" como "Tú" y "Deshacer" la devuelve. Versiones: work-helpers 5, my-work 5, team.css 1, sidebar.js 2.1 (sw.js se queda en el prisma-v47 de la otra sesión).
+- **AE5** Arnés (ampliado: tareas completadas con y sin `completed_by`, mejoras de ejemplo servidas por el router y `DATE_SUB` traducido a SQLite):
+  - David en "De todos": Tú 1 pendiente / Luis 1 pendiente, 2 hechas / Rebecca 5 pendientes, 1 atrasada, 1 hecha. "Hecho en los últimos 7 días" con "Rebecca Soler · hoy 11:30", "Luis Ortega · hoy 09:15" (mejora) y la tarea antigua atribuida a Luis.
+  - Tarjeta de Rebecca → filtra la lista y "Hecho" y cambia el desplegable; otra vez → todas. 30 días añade "Preparar reunión · Tú · 8 oct"; Hoy deja solo lo de hoy; se recuerda.
+  - Rebecca completa una tarea de David desde el modal → `completed_by` = Rebecca, aviso a David: contador "1", "Rebecca Soler ha completado una tarea" con icono de check; en el panel sale arriba de "Hecho".
+  - David completa desde "De todos" una tarea de Rebecca → pasa a "Hecho" como "Tú · hoy 13:56" y Rebecca recibe el aviso. "Deshacer" → vuelve a pendientes, se borra quién la completó y el aviso.
+  - Móvil 375 px: tarjetas con scroll horizontal dentro de la franja; la página sin scroll lateral. Sin errores de servidor.
+- 38 tests en verde; `php -l` y `node --check` sin errores. Entrada temporal de launch.json quitada.
+
+### Archivos a subir (avance del equipo), en este orden
+0. **Primero, la migración 019** en phpMyAdmin (ya dada al usuario). Sin ella la API de tareas falla (consulta `completed_by`).
+1. `includes/task-shares.php`
+2. `api/tasks.php`
+3. `assets/js/sidebar.js`
+4. `includes/sidebar.php`
+5. `assets/js/work-helpers.js`
+6. `assets/js/my-work.js`
+7. `assets/css/team.css` (nuevo)
+8. `index.php` — **ojo: también lleva los cambios del modal de mejoras de la otra sesión**: subirlo junto con lo de esa sesión (request-create*.js, main.js, work.css).
+9. `sw.js` (el último; prisma-v47, compartido con la otra sesión)
+Documentación: `migrations/019_task_completed_by.sql`, `migrations/README.md`. Tests: `tests/task-completion.php`, `tests/team-progress.php` (nuevos) y adaptados `tests/my-work-scope-ui.php`, `my-work-view.php`, `my-work-actions.php`, `task-seen-ui.php`, `request-due-date-ui.php`, `notifications-scope.php`, `tasks-sidebar-count.php`.
+
+## Executor's Feedback or Assistance Requests (avance del equipo)
+- Pendiente de que el usuario lo pruebe en producción (Planner cierra).
+- Las tareas compartidas que se completaron antes de la migración no tienen persona: en "Hecho" salen con quien las tenía (p. ej. "Luis Ortega") y su título lo dice ("Compartida con…"). Las mejoras igual (no se guarda quién las cierra): se atribuyen a sus asignados.
+- index.php y sw.js mezclan este trabajo con el del modal de mejoras: conviene subir las dos cosas juntas.
+
+## Lessons (avance del equipo)
+- Arnés: la API de tareas usa `DATE_SUB(NOW(), INTERVAL :x DAY)` con `completed_days`; en SQLite se traduce con una subclase de PDO en el router (solo arnés). Las mejoras se sirven como JSON de ejemplo desde el router.
+- En el arnés, las coordenadas de `getBoundingClientRect` no sirven para clicar (el visor escala): usar `find` y clicar por `ref`.
+
+## Project Status Board (avance del equipo) — actualizado por el Executor
+- [x] AE0 Diagnóstico
+- [x] AE1 Migración 019 + completed_by
+- [x] AE2 Aviso task_completion
+- [x] AE3 Lógica del panel (Node)
+- [x] AE4 UI en "De todos"
+- [x] AE5 Verificación y entrega
+- [ ] Verificación del usuario en producción (cierra el Planner)

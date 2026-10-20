@@ -157,16 +157,7 @@
      */
     function workPeople(items, viewer) {
         const viewerId = Number(viewer && viewer.id);
-        const names = {};
-        ((viewer && viewer.members) || []).forEach(m => { names[Number(m.id)] = m.full_name || m.username; });
-        (items || []).forEach(item => {
-            if (item.type === 'request') {
-                (item.raw.assignments || []).forEach(a => { names[Number(a.id)] = names[Number(a.id)] || a.full_name || a.username; });
-            }
-            if (item.type === 'task' && item.forWhom && item.forWhom.kind === 'owner') {
-                names[Number(item.raw.user_id)] = names[Number(item.raw.user_id)] || item.forWhom.label;
-            }
-        });
+        const names = workPersonNames(items, viewer);
 
         const counts = {};
         let unassigned = 0;
@@ -180,13 +171,35 @@
             label: Number(id) === viewerId ? 'Tú' : (names[id] || `Persona ${id}`),
             count: counts[id]
         }));
-        people.sort((a, b) => {
+
+        return { people: sortWorkPeople(people, viewerId), unassigned };
+    }
+
+    // Nombre de cada persona: equipo, asignados de las mejoras, quien te pasó una tarea y quien la completó.
+    function workPersonNames(items, viewer) {
+        const names = {};
+        ((viewer && viewer.members) || []).forEach(m => { names[Number(m.id)] = m.full_name || m.username; });
+        (items || []).forEach(item => {
+            if (item.type === 'request') {
+                (item.raw.assignments || []).forEach(a => { names[Number(a.id)] = names[Number(a.id)] || a.full_name || a.username; });
+            }
+            if (item.type === 'task' && item.forWhom && item.forWhom.kind === 'owner') {
+                names[Number(item.raw.user_id)] = names[Number(item.raw.user_id)] || item.forWhom.label;
+            }
+            if (item.type === 'task' && Number(item.raw.completed_by) && item.raw.completed_by_name) {
+                names[Number(item.raw.completed_by)] = names[Number(item.raw.completed_by)] || item.raw.completed_by_name;
+            }
+        });
+        return names;
+    }
+
+    // Tú primero y el resto por nombre.
+    function sortWorkPeople(people, viewerId) {
+        return people.sort((a, b) => {
             if (a.key === String(viewerId)) return -1;
             if (b.key === String(viewerId)) return 1;
             return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
         });
-
-        return { people, unassigned };
     }
 
     // person: 'all' | 'none' (mejoras sin asignar) | id de la persona como texto.
@@ -297,6 +310,130 @@
         return PRIORITY_OPTIONS.map(option => Object.assign({}, option, { active: option.key === current }));
     }
 
+    // ===== Avance del equipo ("De todos"): lo hecho y una tarjeta por persona =====
+
+    // "AAAA-MM-DD HH:MM:SS" (DATETIME/TIMESTAMP de MySQL) como fecha local; null si no es válida.
+    function parseDateTime(value) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(value || ''));
+        return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) : null;
+    }
+
+    // Desde cuándo cuenta "Hecho": 'today' | '7' | '30' (hoy incluido). Otro valor: 7 días.
+    function doneSince(period, now) {
+        const ref = startOfDay(now || new Date());
+        const back = period === 'today' ? 0 : period === '30' ? 29 : 6;
+        return new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - back);
+    }
+
+    /**
+     * Tareas completadas y mejoras cerradas desde since (las descartadas no cuentan), más recientes primero.
+     * Cada una dice quién la hizo: quien completó la tarea (doneBy) o, si no se sabe (tareas completadas
+     * antes de guardarlo, y mejoras), quien la tenía (whoLabel). personIds sirve para el filtro por persona.
+     */
+    function buildDoneItems(tasks, requests, viewer, since) {
+        const viewerId = Number(viewer && viewer.id);
+        const members = (viewer && viewer.members) || [];
+        const from = since || doneSince('7', new Date());
+        const isRecent = value => {
+            const date = parseDateTime(value);
+            return !!date && date >= from;
+        };
+        const memberName = id => {
+            const member = members.find(m => Number(m.id) === id);
+            return member ? (member.full_name || member.username) : null;
+        };
+        const doneItem = (type, raw, doneAt, personIds, doneById, doneByName, who) => ({
+            key: `${type}-${raw.id}`,
+            type,
+            id: Number(raw.id),
+            title: raw.title || '',
+            appName: raw.app_name || null,
+            doneAt: String(doneAt),
+            doneBy: doneByName,
+            whoLabel: doneByName || who.label,
+            whoTitle: doneByName ? (doneById === viewerId ? 'Completada por ti' : `Completada por ${doneByName}`) : who.title,
+            personIds,
+            raw
+        });
+
+        const taskItems = (tasks || [])
+            .filter(task => Number(task.is_completed) === 1 && isRecent(task.completed_at))
+            .map(task => {
+                const ids = taskShareIdList(task);
+                const forWhom = global.taskForWhom(Object.assign({}, task, { shared_user_ids: ids }), members, viewerId);
+                const doneById = Number(task.completed_by) || null;
+                let personIds = [];
+                if (doneById) personIds = [doneById];
+                else if (forWhom.kind === 'me' || forWhom.kind === 'owner') personIds = [Number(task.user_id)];
+                else if (forWhom.kind === 'people') personIds = ids;
+                const doneByName = doneById
+                    ? (doneById === viewerId ? 'Tú' : (task.completed_by_name || memberName(doneById) || 'Otra persona'))
+                    : null;
+                return doneItem('task', task, task.completed_at, personIds, doneById, doneByName, forWhom);
+            });
+
+        const requestItems = (requests || [])
+            .filter(request => request.status === 'completed' && isRecent(request.completed_at))
+            .map(request => {
+                const assignments = request.assignments || [];
+                const personIds = assignments.map(a => Number(a.id));
+                const summary = global.taskShareSummary(personIds, assignments, viewerId);
+                const who = personIds.length
+                    ? { label: summary.label, title: `Asignada a ${summary.title}` }
+                    : { label: 'Sin asignar', title: 'Nadie la tenía asignada' };
+                return doneItem('request', request, request.completed_at, personIds, null, null, who);
+            });
+
+        return taskItems.concat(requestItems).sort((a, b) => {
+            if (a.doneAt !== b.doneAt) return a.doneAt < b.doneAt ? 1 : -1;
+            return b.id - a.id;
+        });
+    }
+
+    /**
+     * Una tarjeta por persona con algo pendiente o hecho en el periodo: pendientes, atrasadas y hechas.
+     * Tú primero y el resto por nombre. Las tareas de equipo y las mejoras sin asignar no cuentan para nadie.
+     */
+    function teamSummary(openItems, doneItems, viewer, today) {
+        const viewerId = Number(viewer && viewer.id);
+        const names = workPersonNames((openItems || []).concat(doneItems || []), viewer);
+        const ref = today || new Date();
+        const cards = {};
+        const card = id => {
+            if (!cards[id]) {
+                cards[id] = { key: String(id), label: id === viewerId ? 'Tú' : (names[id] || `Persona ${id}`), pending: 0, overdue: 0, done: 0 };
+            }
+            return cards[id];
+        };
+
+        (openItems || []).forEach(item => item.personIds.forEach(id => {
+            const c = card(Number(id));
+            c.pending++;
+            if (workGroupKey(item, ref) === 'overdue') c.overdue++;
+        }));
+        (doneItems || []).forEach(item => item.personIds.forEach(id => { card(Number(id)).done++; }));
+
+        return sortWorkPeople(Object.values(cards), viewerId);
+    }
+
+    // Cuándo se hizo, en corto: "hoy 12:40", "ayer 18:05", "vie 16 oct", "1 oct" o "30 dic 2025".
+    function doneWhenLabel(value, now) {
+        const date = parseDateTime(value);
+        if (!date) return '';
+        const ref = startOfDay(now || new Date());
+        const days = Math.round((ref - startOfDay(date)) / DAY_MS);
+        const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        if (days <= 0) return `hoy ${time}`;
+        if (days === 1) return `ayer ${time}`;
+        const dayMonth = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+        if (days < 7) return `${WEEKDAYS_SHORT[date.getDay()]} ${dayMonth}`;
+        return date.getFullYear() === ref.getFullYear() ? dayMonth : `${dayMonth} ${date.getFullYear()}`;
+    }
+
+    global.doneSince = doneSince;
+    global.buildDoneItems = buildDoneItems;
+    global.teamSummary = teamSummary;
+    global.doneWhenLabel = doneWhenLabel;
     global.parseDueDate = parseDueDate;
     global.workDateMenuOptions = workDateMenuOptions;
     global.workPriorityMenuOptions = workPriorityMenuOptions;

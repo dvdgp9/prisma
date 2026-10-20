@@ -55,7 +55,7 @@ assert_file_contains('index.php', [
     'id="my-work"',
     'id="requests-area"',
     'id="export-btn"',
-    '/assets/js/main.js?v=5.5',
+    '/assets/js/main.js?v=5.6',
 ], 'index has the overview and the requests list as separate areas');
 assert_file_contains('assets/js/main.js', [
     "let currentView = 'home';",
@@ -73,6 +73,6 @@ assert_file_contains('assets/js/my-work.js', ['isTask ? `/tasks.php?task='], 'ta
 foreach (['index.php', 'tasks.php', 'notes.php', 'ai-inbox.php', 'changelog.php', 'admin.php', 'manage-apps.php', 'login.php', 'solicitud.php', 'releases.php'] as $page) {
     assert_file_contains($page, ['/assets/css/styles.css?v=5.4'], "{$page} loads the new styles.css");
 }
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v47';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Sidebar Mejoras contract completed successfully.\n");

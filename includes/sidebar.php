@@ -206,4 +206,4 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
     </div>
 </div>
 
-<script src="/assets/js/sidebar.js?v=2.0"></script>
+<script src="/assets/js/sidebar.js?v=2.1"></script>

@@ -106,6 +106,6 @@ assert_file_contains('tasks.php', [
     '/assets/css/tasks.css?v=3.3',
 ], 'tasks page exposes the current user and loads the new assets');
 assert_file_contains('index.php', ['/assets/js/task-parser.js?v=9'], 'index loads the new task-parser.js');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v47';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Task share names completed successfully.\n");

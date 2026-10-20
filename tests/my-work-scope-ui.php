@@ -63,7 +63,8 @@ assert_file_contains('assets/js/my-work.js', [
     "localStorage.setItem('prisma_mywork_scope'",
     'function setMyWorkScope(',
     'function canSeeTeamWork(',
-    '/api/tasks.php?completed=0&shared=${scope === \'all\' ? 1 : 0}',
+    "'/api/tasks.php?completed=0&shared=0'",
+    "'/api/tasks.php?completed=1&completed_days=30&shared=1'",
     "fetch('/api/task-shares.php')",
     'buildWorkItems(list.data, myWork.requests, viewer, scope)',
     'workPeople(',
@@ -92,12 +93,12 @@ assert_file_contains('assets/css/work.css', [
 
 // --- Versiones: la PWA cachea los assets.
 assert_file_contains('index.php', [
-    '/assets/css/work.css?v=5',
-    '/assets/js/work-helpers.js?v=4',
-    '/assets/js/my-work.js?v=4',
+    '/assets/css/work.css?v=6',
+    '/assets/js/work-helpers.js?v=5',
+    '/assets/js/my-work.js?v=5',
     '/assets/js/task-parser.js?v=9',
 ], 'index loads the new versions of the work assets');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v47';"], 'service worker cache is bumped');
 
 foreach (['assets/js/my-work.js', 'assets/css/work.css', 'assets/js/work-helpers.js'] as $file) {
     $contents = read_project_file($file);

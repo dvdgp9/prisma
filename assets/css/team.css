@@ -1,0 +1,190 @@
+/* ============================================================
+   Avance del equipo (Vista global → "De todos"): una tarjeta por
+   persona (pendientes, atrasadas y hechas en el periodo; al pulsarla
+   filtra) y el grupo "Hecho". Lo pinta my-work.js.
+   ============================================================ */
+
+.work-team {
+    margin: var(--sp-12) 0 var(--sp-4);
+}
+
+.work-team[hidden] {
+    display: none;
+}
+
+.work-team-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-8) var(--sp-12);
+    margin-bottom: var(--sp-8);
+}
+
+.work-team-title {
+    margin: 0;
+    color: var(--ink-800);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-semibold);
+}
+
+/* Hoy | 7 días | 30 días: mismo aspecto que "Para mí | De todos", más pequeño */
+.work-period {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+}
+
+.work-period-btn {
+    height: 26px;
+    padding: 0 var(--sp-10);
+    border: 0;
+    border-radius: var(--r-6);
+    background: transparent;
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--fs-12);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.work-period-btn:hover {
+    background: var(--ink-50);
+    color: var(--ink-950);
+}
+
+.work-period-btn[aria-pressed="true"] {
+    background: var(--brand-soft);
+    color: var(--brand-ink);
+    font-weight: var(--fw-semibold);
+}
+
+.work-period-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Tarjetas: en fila; si no caben, se desplazan en horizontal dentro de la sección (nunca la página) */
+.work-team-cards {
+    display: flex;
+    gap: var(--sp-8);
+    overflow-x: auto;
+    padding-bottom: var(--sp-4);
+    scrollbar-width: thin;
+}
+
+.work-team-card {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 2px;
+    min-width: 132px;
+    padding: var(--sp-10) var(--sp-12);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-8);
+    background: var(--surface);
+    color: var(--ink-600);
+    font-family: var(--font-sans);
+    font-size: var(--fs-12);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.work-team-card:hover {
+    border-color: var(--ink-300);
+    background: var(--ink-50);
+}
+
+.work-team-card[aria-pressed="true"] {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.work-team-card:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+.work-team-name {
+    margin-bottom: var(--sp-2);
+    overflow: hidden;
+    color: var(--ink-950);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-team-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+}
+
+.work-team-stat strong {
+    color: var(--ink-800);
+    font-variant-numeric: tabular-nums;
+}
+
+.work-team-stat.is-overdue,
+.work-team-stat.is-overdue strong {
+    color: #B33D34;
+}
+
+.work-team-stat.is-done,
+.work-team-stat.is-done strong {
+    color: #2B7A56;
+}
+
+.work-team-empty {
+    margin: 0;
+    color: var(--ink-500);
+    font-size: var(--fs-13);
+}
+
+/* "Hecho": filas con check verde y la hora a la derecha */
+.my-work-group--done .my-work-group-title {
+    color: #2B7A56;
+}
+
+.my-work-row--done .my-work-row-title {
+    color: var(--ink-700);
+}
+
+.my-work-done-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--r-full);
+    background: var(--ok-soft);
+    color: var(--ok);
+    font-size: var(--fs-13);
+}
+
+.my-work-done-when {
+    color: var(--ink-500);
+    font-size: var(--fs-12);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.my-work-done-empty {
+    margin: 0;
+    padding: 0 var(--sp-10);
+    color: var(--ink-500);
+    font-size: var(--fs-13);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .work-period-btn,
+    .work-team-card {
+        transition: none;
+    }
+}

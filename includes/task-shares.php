@@ -162,3 +162,47 @@ function task_share_status($db, $task_ids)
 
     return $status;
 }
+
+/**
+ * "X ha completado una tarea" for everyone who has the task except whoever
+ * completed it: its creator and the people it is shared with by name. A task
+ * shared with the whole team only tells its creator (not the whole company).
+ * A repeated completion replaces the previous notice. Returns how many were created.
+ */
+function create_task_completion_notifications($db, $task, $actor)
+{
+    $task_id = (int) $task['id'];
+    $recipients = [(int) $task['user_id']];
+    if ((int) $task['is_shared'] !== 1) {
+        $stmt = $db->prepare("SELECT user_id FROM task_shares WHERE task_id = ?");
+        $stmt->execute([$task_id]);
+        $recipients = array_merge($recipients, array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
+    }
+    $recipients = array_values(array_filter(
+        task_share_clean_ids($recipients),
+        fn($id) => $id !== (int) $actor['id']
+    ));
+    if (!$recipients) {
+        return 0;
+    }
+
+    $name = trim((string) ($actor['full_name'] ?? '')) ?: ($actor['username'] ?? 'Alguien');
+    $delete = $db->prepare("DELETE FROM notifications WHERE type = 'task_completion' AND task_id = ? AND user_id = ?");
+    $insert = $db->prepare("
+        INSERT INTO notifications (user_id, type, task_id, triggered_by, message)
+        VALUES (?, 'task_completion', ?, ?, ?)
+    ");
+    foreach ($recipients as $userId) {
+        $delete->execute([$task_id, $userId]);
+        $insert->execute([$userId, $task_id, (int) $actor['id'], "{$name} ha completado una tarea"]);
+    }
+
+    return count($recipients);
+}
+
+// The task was reopened: its "completed" notices are no longer true.
+function clear_task_completion_notifications($db, $task_id)
+{
+    $stmt = $db->prepare("DELETE FROM notifications WHERE type = 'task_completion' AND task_id = ?");
+    $stmt->execute([(int) $task_id]);
+}

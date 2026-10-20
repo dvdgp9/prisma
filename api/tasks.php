@@ -21,12 +21,14 @@ switch ($method) {
                 t.*,
                 u.username as creator_username,
                 u.full_name as creator_name,
+                cb.full_name as completed_by_name,
                 a.name as app_name,
                 (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count,
                 (SELECT COUNT(*) FROM task_shares WHERE task_id = t.id) as share_count,
                 (SELECT GROUP_CONCAT(ts_ids.user_id) FROM task_shares ts_ids WHERE ts_ids.task_id = t.id) as share_user_ids
             FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
+            LEFT JOIN users cb ON t.completed_by = cb.id
             LEFT JOIN apps a ON t.app_id = a.id
         ";
 
@@ -152,7 +154,9 @@ switch ($method) {
         }
         
         // Owner or shared users can edit/complete; only the owner changes sharing.
-        require_task_capability($input['id'], task_capability_for_update($input));
+        $access = require_task_capability($input['id'], task_capability_for_update($input));
+        $wasCompleted = (int) $access['task']['is_completed'] === 1;
+        $completionChanged = isset($input['is_completed']) && (bool) $input['is_completed'] !== $wasCompleted;
 
         // Build update query dynamically
         $updates = [];
@@ -169,10 +173,14 @@ switch ($method) {
         if (isset($input['is_completed'])) {
             $updates[] = "is_completed = ?";
             $params[] = $input['is_completed'] ? 1 : 0;
-            if ($input['is_completed']) {
+            // When and who only change on a real change: re-sending "completed" keeps them.
+            if ($completionChanged && $input['is_completed']) {
                 $updates[] = "completed_at = NOW()";
-            } else {
+                $updates[] = "completed_by = ?";
+                $params[] = $user['id'];
+            } elseif ($completionChanged) {
                 $updates[] = "completed_at = NULL";
+                $updates[] = "completed_by = NULL";
             }
         }
         if (isset($input['is_shared'])) {
@@ -195,6 +203,20 @@ switch ($method) {
         $params[] = $input['id'];
         $stmt = $db->prepare("UPDATE tasks SET " . implode(', ', $updates) . " WHERE id = ?");
         $stmt->execute($params);
+
+        // "X ha completado una tarea" to the others who have it; reopening takes it back.
+        // The task is already saved: a failed notice must not report the change as failed.
+        if ($completionChanged) {
+            try {
+                if ($input['is_completed']) {
+                    create_task_completion_notifications($db, $access['task'], $user);
+                } else {
+                    clear_task_completion_notifications($db, $input['id']);
+                }
+            } catch (Exception $e) {
+                error_log('Failed to update task completion notifications for task ' . $input['id'] . ': ' . $e->getMessage());
+            }
+        }
         
         success_response(null, 'Tarea actualizada');
         break;
