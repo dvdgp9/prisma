@@ -239,6 +239,12 @@ function renderMyWork(update) {
     body.innerHTML = groups.length
         ? groups.map(group => myWorkGroupHtml(group)).join('')
         : myWorkEmptyHtml();
+
+    // Las tareas que te han asignado y ya se ven en pantalla cuentan como vistas (no las de "Ver más" cerrado).
+    if (typeof markTasksSeen === 'function') {
+        const shown = new Set([...body.querySelectorAll('.my-work-row--task')].map(row => Number(row.dataset.id)));
+        markTasksSeen(items.filter(item => item.type === 'task' && shown.has(item.id) && taskIsNewForMe(item.raw, viewer.id)).map(item => item.id));
+    }
 }
 
 /**
@@ -296,15 +302,24 @@ function myWorkRowHtml(item, groupKey) {
     const canSetPriority = !isTask && item.raw.capabilities?.edit === true;
     const due = requestDueInfo(item.dueDate);
     const unread = !isTask && typeof unreadRequestIds !== 'undefined' && unreadRequestIds.has(item.id);
+    const viewerId = Number(document.body.dataset.userId);
 
     const meta = [`<span class="my-work-kind">${isTask ? 'Tarea' : 'Mejora'}</span>`];
+    // Te la han asignado y es la primera vez que la ves.
+    if (isTask && taskIsNewForMe(item.raw, viewerId)) meta.push('<span class="my-work-new" title="Te la acaban de asignar">Nueva</span>');
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
     if (!isTask && item.status === 'in_progress') meta.push('<span class="my-work-progress">En curso</span>');
     // "De todos": para quién es (tú, nombres, equipo o sin asignar). En "Para mí" todo es tuyo.
     if (myWork.scope === 'all' && item.forWhom) {
+        // En las que has asignado tú: ✓ si aún no la han visto, ✓✓ cuando sí.
+        const receipt = isTask ? taskSeenReceipt(item.raw, myWork.members || [], viewerId, new Date()) : null;
+        const receiptHtml = receipt
+            ? `<i class="task-seen task-seen--${receipt.state} ${receipt.icon}" aria-hidden="true"></i><span class="visually-hidden">· ${escapeHtml(receipt.label)}</span>`
+            : '';
+        const whomTitle = receipt ? `${item.forWhom.title} · ${receipt.title}` : item.forWhom.title;
         meta.push(item.forWhom.kind === 'unassigned'
             ? '<span class="my-work-unassigned">Sin asignar</span>'
-            : `<span class="my-work-whom" title="${escapeHtml(item.forWhom.title)}"><i class="${item.forWhom.kind === 'team' ? 'iconoir-group' : 'iconoir-user'}" aria-hidden="true"></i>${escapeHtml(item.forWhom.label)}</span>`);
+            : `<span class="my-work-whom" title="${escapeHtml(whomTitle)}"><i class="${item.forWhom.kind === 'team' ? 'iconoir-group' : 'iconoir-user'}" aria-hidden="true"></i>${escapeHtml(item.forWhom.label)}${receiptHtml}</span>`);
     }
     // Tareas que te ha pasado otra persona (o de equipo creadas por otra persona).
     if (item.from) meta.push(`<span class="my-work-from">De ${escapeHtml(item.from)}</span>`);

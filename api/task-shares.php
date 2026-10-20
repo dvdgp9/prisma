@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/task-shares.php';
 
 header('Content-Type: application/json');
 
@@ -22,7 +23,7 @@ switch ($method) {
             // Get users this task is shared with (only for people who can see the task)
             require_task_capability($taskId, 'view');
             $stmt = $db->prepare("
-                SELECT u.id, u.username, u.full_name, u.email
+                SELECT u.id, u.username, u.full_name, u.email, ts.seen_at
                 FROM task_shares ts
                 JOIN users u ON ts.user_id = u.id
                 WHERE ts.task_id = ?
@@ -62,29 +63,27 @@ switch ($method) {
         // Only the owner changes who the task is shared with
         require_task_capability($taskId, 'share');
 
-        // Update is_shared flag
-        $stmt = $db->prepare("UPDATE tasks SET is_shared = ? WHERE id = ?");
-        $stmt->execute([$shareWithAll ? 1 : 0, $taskId]);
-        
-        // Clear existing shares and add new ones
-        $stmt = $db->prepare("DELETE FROM task_shares WHERE task_id = ?");
-        $stmt->execute([$taskId]);
-        
-        if (!empty($userIds) && !$shareWithAll) {
-            $stmt = $db->prepare("INSERT INTO task_shares (task_id, user_id) VALUES (?, ?)");
-            foreach ($userIds as $userId) {
-                // Verify user is in same company
-                $checkStmt = $db->prepare("SELECT id FROM users WHERE id = ? AND company_id = ?");
-                $checkStmt->execute([$userId, $user['company_id']]);
-                if ($checkStmt->fetch()) {
-                    $stmt->execute([$taskId, $userId]);
-                }
-            }
+        // By difference, so whoever keeps the task keeps their "seen" mark;
+        // the people just added get a notice in the bell.
+        $added = replace_task_shares($db, $user, $taskId, $shareWithAll, $userIds);
+        // The share is already saved: a failed notice must not report the change as failed.
+        try {
+            create_task_assignment_notifications($db, $taskId, $added, $user);
+        } catch (Exception $e) {
+            error_log('Failed to create task assignment notifications for task ' . $taskId . ': ' . $e->getMessage());
         }
-        
+
         success_response(null, 'Configuración de compartir actualizada');
         break;
         
+    case 'PUT':
+        // The tasks were shown to the current user: mark them as seen (only their own shares)
+        $input = get_json_input();
+        $result = mark_tasks_seen($db, $user['id'], $input['seen_task_ids'] ?? []);
+
+        success_response($result);
+        break;
+
     case 'DELETE':
         // Remove specific user from task shares
         $input = get_json_input();
@@ -97,6 +96,8 @@ switch ($method) {
         require_task_capability($input['task_id'], 'share');
 
         $stmt = $db->prepare("DELETE FROM task_shares WHERE task_id = ? AND user_id = ?");
+        $stmt->execute([$input['task_id'], $input['user_id']]);
+        $stmt = $db->prepare("DELETE FROM notifications WHERE type = 'task_assignment' AND task_id = ? AND user_id = ?");
         $stmt->execute([$input['task_id'], $input['user_id']]);
         
         success_response(null, 'Usuario eliminado de compartidos');

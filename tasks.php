@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.2">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.3">
 </head>
 
 <?php
@@ -237,10 +237,10 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=7"></script>
+    <script src="/assets/js/task-parser.js?v=8"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=14"></script>
-    <script src="/assets/js/tasks-interactions.js?v=4"></script>
+    <script src="/assets/js/tasks.js?v=15"></script>
+    <script src="/assets/js/tasks-interactions.js?v=5"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

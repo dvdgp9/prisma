@@ -68,6 +68,60 @@ SHOW COLUMNS FROM requests LIKE 'due_date';
 SHOW INDEX FROM requests WHERE Key_name = 'idx_due_date';
 ```
 
+## 📝 Migración 017: "Visto" en tareas y aviso en la campana
+
+**Archivo**: `017_task_seen.sql`
+
+**Propósito**: Que quien asigna una tarea sepa si la otra persona ya la ha visto (✓ sin ver, ✓✓ vista) y que quien la recibe tenga un aviso en la campana.
+
+**Cambios** (solo añade, no borra datos):
+- Nueva columna `task_shares.seen_at` (`DATETIME`, opcional): cuándo vio la tarea cada persona.
+- Las asignaciones que ya existían se marcan como vistas (con la fecha de la migración), para que no salgan todas como "Nueva".
+- Nueva columna `notifications.task_id` (con índice) para el aviso "te han asignado una tarea".
+
+**Ejecutar**: igual que la 001 (phpMyAdmin → pestaña "SQL" → pegar el contenido de `017_task_seen.sql` → "Continuar"). **Antes de subir los archivos nuevos**: la campana ya consulta `notifications.task_id` y fallaría sin la columna. **Una sola vez**: si se repite, da error "Duplicate column name". En ese caso no pasa nada: las columnas ya existen.
+
+**Ojo**: la campana también necesita `notifications.note_id` (de la 015). Si la verificación no la muestra, añadirla con:
+```sql
+ALTER TABLE notifications
+    ADD COLUMN note_id INT NULL,
+    ADD INDEX idx_note (note_id);
+```
+
+**Verificación**:
+```sql
+SHOW COLUMNS FROM task_shares LIKE 'seen_at';
+SHOW COLUMNS FROM notifications LIKE 'task_id';
+SHOW COLUMNS FROM notifications LIKE 'note_id';
+```
+
+## 📝 Migración 018: Tipos de aviso en Notificaciones
+
+**Archivo**: `018_notifications_types.sql`
+
+**Propósito**: En producción `notifications.type` es un `ENUM('mention','comment','assignment')` y `request_id` es obligatorio. La app ya crea avisos de otros tipos (mejora completada, cambio de estado, nota compartida, tarea asignada) y los de notas y tareas no tienen mejora. Con el ENUM esos avisos fallan (el error queda en el log) o se guardan con el tipo vacío.
+
+**Cambios** (no borra datos):
+- `type` pasa a `VARCHAR(64)` (los valores actuales se conservan).
+- `request_id` pasa a admitir `NULL`.
+- Repara los avisos que se guardaron con el tipo vacío: por su nota (`note_share`) o por su mensaje (`completion`, `status_change`). Los `request_id = 0` pasan a `NULL`.
+
+**Antes de ejecutar**: comprobar que `request_id` no tiene clave foránea (la consulta no debe devolver filas):
+```sql
+SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' AND REFERENCED_TABLE_NAME IS NOT NULL;
+```
+
+**Ejecutar**: igual que la 001 (phpMyAdmin → pestaña "SQL" → pegar el contenido de `018_notifications_types.sql` → "Continuar"). Se puede repetir sin problema.
+
+**Verificación**:
+```sql
+SHOW COLUMNS FROM notifications WHERE Field IN ('type', 'request_id');
+SELECT type, COUNT(*) AS total FROM notifications GROUP BY type;
+```
+Debe salir `type` como `varchar(64)`, `request_id` con `Null = YES` y ningún tipo vacío.
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

@@ -42,7 +42,7 @@ assert_file_contains('index.php', [
     'id="work-count-task"',
     'id="work-count-request"',
     'Tus tareas y las mejoras que tienes asignadas', // "Para mí"; "De todos" cambia el texto desde my-work.js (plan PT3)
-    '/assets/js/my-work.js?v=3',
+    '/assets/js/my-work.js?v=4',
 ], 'overview has the unified work list with its filter');
 
 $index = read_project_file('index.php');

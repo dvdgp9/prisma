@@ -447,6 +447,42 @@
     }
 }
 
+/* Visto de una tarea asignada: ✓ apagado = aún no la ha visto; ✓✓ verde = vista */
+.task-seen {
+    margin-left: 1px;
+    font-size: 1rem;
+}
+
+.task-seen--unseen,
+.task-seen--partial {
+    opacity: 0.6;
+}
+
+.task-seen--seen {
+    color: #2B7A56;
+}
+
+/* "Nueva": te la han asignado y es la primera vez que la ves */
+.task-new-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: var(--r-full);
+    background: var(--brand);
+    color: #fff;
+    font-size: var(--fs-11);
+    font-weight: var(--fw-semibold);
+}
+
+/* En el modal: quién la ha visto ya y cuándo */
+.task-seen-facts--seen {
+    color: #2B7A56;
+}
+
+.task-seen-facts--seen i {
+    color: var(--ok);
+}
+
 /* "Tú (es tuya)" en "Compartir con": fija, no se puede quitar */
 .task-menu .task-menu-fixed {
     color: var(--ink-600);

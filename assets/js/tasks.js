@@ -382,6 +382,10 @@ function buildTaskCard(task, localToday) {
     }
 
     const meta = [];
+    // Te la han asignado y es la primera vez que la ves.
+    if (taskIsNewForMe(task, CURRENT_USER_ID)) {
+        meta.push('<span class="task-new-pill" title="Te la acaban de asignar">Nueva</span>');
+    }
     if (dueDateHtml) meta.push(dueDateHtml);
     if (task.app_name) {
         meta.push(canEdit
@@ -398,11 +402,17 @@ function buildTaskCard(task, localToday) {
     // Para quién es (siempre). Si es tuya, al pulsar la etiqueta se cambia con quién se comparte.
     const canShare = caps.share !== false && !task.is_completed;
     const forWhom = taskForWhom(task, teamMembers, CURRENT_USER_ID);
-    const forWhomInner = `<i class="${forWhom.icon}"></i><span class="task-badge-names">${escapeHtml(forWhom.label)}</span><span class="task-badge-count">${escapeHtml(forWhom.count)}</span>`;
+    // Si la has asignado tú: ✓ si aún no la han visto, ✓✓ cuando sí (cuándo, en el title).
+    const receipt = taskSeenReceipt(task, teamMembers, CURRENT_USER_ID, new Date());
+    const receiptHtml = receipt
+        ? `<i class="task-seen task-seen--${receipt.state} ${receipt.icon}" aria-hidden="true"></i><span class="visually-hidden">· ${escapeHtml(receipt.label)}</span>`
+        : '';
+    const forWhomTitle = receipt ? `${forWhom.title} · ${receipt.title}` : forWhom.title;
+    const forWhomInner = `<i class="${forWhom.icon}"></i><span class="task-badge-names">${escapeHtml(forWhom.label)}</span><span class="task-badge-count">${escapeHtml(forWhom.count)}</span>${receiptHtml}`;
     const forWhomClass = `task-badge shared task-badge--${forWhom.kind}`;
     meta.push(canShare
-        ? `<button type="button" class="${forWhomClass} task-badge-btn" title="${escapeHtml(forWhom.title)} · cambiar (s)" onclick="openShareMenu(${task.id}, this, event)">${forWhomInner}</button>`
-        : `<span class="${forWhomClass}" title="${escapeHtml(forWhom.title)}">${forWhomInner}</span>`);
+        ? `<button type="button" class="${forWhomClass} task-badge-btn" title="${escapeHtml(forWhomTitle)} · cambiar (s)" onclick="openShareMenu(${task.id}, this, event)">${forWhomInner}</button>`
+        : `<span class="${forWhomClass}" title="${escapeHtml(forWhomTitle)}">${forWhomInner}</span>`);
     if (task.attachment_count > 0) {
         meta.push(`<span class="task-meta-item"><i class="iconoir-attachment"></i>${task.attachment_count}</span>`);
     }
@@ -464,6 +474,11 @@ function renderTasks(tasks) {
     } else {
         renderAgenda(container, visible, localToday);
         container.insertAdjacentHTML('beforeend', completedFooterHtml());
+    }
+
+    // Las que te han asignado y ya tienes delante cuentan como vistas (doble check para quien las asignó).
+    if (typeof markTasksSeen === 'function') {
+        markTasksSeen(visible.filter(t => taskIsNewForMe(t, CURRENT_USER_ID)).map(t => t.id));
     }
 
     if (typeof onTasksRendered === 'function') onTasksRendered();
@@ -874,6 +889,7 @@ async function openTaskModal(taskId) {
         }
 
         const task = normalizeTaskShares(data.data);
+        if (taskIsNewForMe(task, CURRENT_USER_ID) && typeof markTasksSeen === 'function') markTasksSeen([task.id]);
         currentModalTask = task;
         currentTaskCaps = task.capabilities || {};
         taskModalReturnFocus = returnFocus;
@@ -1028,6 +1044,11 @@ async function renderTaskMetaBar() {
     }
     if (done && task.completed_at) {
         facts.push(`<span class="request-meta-bar__fact task-fact-done"><i class="iconoir-check-circle"></i>Completada ${taskRelativeDay(task.completed_at, today)}</span>`);
+    }
+    // Si la has asignado tú: quién la ha visto ya y cuándo.
+    const receipt = taskSeenReceipt(task, teamMembers, CURRENT_USER_ID, new Date());
+    if (receipt) {
+        facts.push(`<span class="request-meta-bar__fact task-seen-facts task-seen-facts--${receipt.state}"><i class="${receipt.icon}"></i>${escapeHtml(receipt.title)}</span>`);
     }
 
     bar.innerHTML = `

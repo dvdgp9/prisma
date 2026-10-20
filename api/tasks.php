@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/task-shares.php';
 
 header('Content-Type: application/json');
 
@@ -37,6 +38,8 @@ switch ($method) {
             $stmt->execute([$access['task']['id']]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             $task['capabilities'] = $access['capabilities'];
+            // Who it is assigned to by name and whether they have seen it (✓ / ✓✓, "Nueva").
+            $task['share_status'] = task_share_status($db, [$task['id']])[(int) $task['id']] ?? [];
 
             success_response($task);
         }
@@ -90,9 +93,11 @@ switch ($method) {
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // The query above only returns tasks the user can see, so anything not owned is shared with them.
+        $shareStatus = task_share_status($db, array_column($tasks, 'id'));
         foreach ($tasks as &$task) {
             $isOwner = (int) $task['user_id'] === (int) $user['id'];
             $task['capabilities'] = task_capabilities_for_access($isOwner, !$isOwner);
+            $task['share_status'] = $shareStatus[(int) $task['id']] ?? [];
         }
         unset($task);
 
@@ -206,6 +211,10 @@ switch ($method) {
             }
         }
         
+        // Its notices in the bell go with it
+        $stmt = $db->prepare("DELETE FROM notifications WHERE task_id = ?");
+        $stmt->execute([$input['id']]);
+
         // Delete task (attachments cascade)
         $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
         $stmt->execute([$input['id']]);

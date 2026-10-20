@@ -220,6 +220,31 @@ async function loadTasksCount() {
 
 document.addEventListener('DOMContentLoaded', loadTasksCount);
 
+// Tareas que te han asignado y ya se te han enseñado (Tareas, Mi trabajo o abiertas):
+// se marcan como vistas para que quien las asignó vea el doble check. Una vez por carga.
+const tasksSeenSent = new Set();
+
+async function markTasksSeen(taskIds) {
+    const ids = (taskIds || []).map(Number).filter(id => id > 0 && !tasksSeenSent.has(id));
+    if (!ids.length) return;
+    ids.forEach(id => tasksSeenSent.add(id));
+
+    try {
+        const response = await fetch('/api/task-shares.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seen_task_ids: ids })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(`${response.status} ${data.error}`);
+        // El aviso de la campana de esas tareas ya sobra: el servidor lo ha marcado como leído.
+        if (data.data && data.data.notifications_read > 0) loadNotifications();
+    } catch (error) {
+        ids.forEach(id => tasksSeenSent.delete(id)); // se reintenta en el siguiente pintado
+        console.error('Error marking tasks as seen', ids, error);
+    }
+}
+
 // ===================
 // Inbox / Notifications (shared across all pages)
 // ===================
@@ -234,7 +259,8 @@ const INBOX_PRESENTATION = {
     completion: { iconClass: 'completion', iconName: 'iconoir-check-circle' },
     status_change: { iconClass: 'status', iconName: 'iconoir-refresh-double' },
     comment: { iconClass: 'comment', iconName: 'iconoir-chat-bubble' },
-    note_share: { iconClass: 'note', iconName: 'iconoir-page' }
+    note_share: { iconClass: 'note', iconName: 'iconoir-page' },
+    task_assignment: { iconClass: 'assignment', iconName: 'iconoir-task-list' }
 };
 
 const INBOX_EMPTY_MESSAGES = {
@@ -326,6 +352,10 @@ function matchesInboxTypeFilter(n) {
     if (inboxTypeFilter === 'status') {
         return n.type === 'completion' || n.type === 'status_change';
     }
+    // "Asignaciones" incluye las mejoras y las tareas que te asignan.
+    if (inboxTypeFilter === 'assignment') {
+        return n.type === 'assignment' || n.type === 'task_assignment';
+    }
     return n.type === inboxTypeFilter;
 }
 
@@ -382,15 +412,15 @@ function renderNotifications() {
 
         html += `
             <div class="inbox-item ${unread ? 'unread' : ''}" role="button" tabindex="0"
-                 onclick="handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'})"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'});}">
+                 onclick="handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'}, ${n.task_id || 'null'})"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleNotificationClick(${n.id}, ${n.request_id || 'null'}, ${n.note_id || 'null'}, ${n.task_id || 'null'});}">
                 <div class="inbox-item-icon ${presentation.iconClass}">
                     <i class="${presentation.iconName}"></i>
                 </div>
                 <div class="inbox-item-content">
                     <div class="inbox-item-text">${escapeHtml(n.message)}</div>
                     <div class="inbox-item-meta">
-                        <span class="inbox-item-request">${escapeHtml(n.note_id ? n.note_title : n.request_title)}</span>
+                        <span class="inbox-item-request">${escapeHtml(n.task_id ? n.task_title : n.note_id ? n.note_title : n.request_title)}</span>
                         <time title="${escapeHtml(formatInboxFullDate(createdAt))}">${formatInboxTime(createdAt)}</time>
                     </div>
                 </div>
@@ -472,7 +502,7 @@ async function setNotificationRead(notificationId, isRead) {
     }
 }
 
-async function handleNotificationClick(notificationId, requestId, noteId) {
+async function handleNotificationClick(notificationId, requestId, noteId, taskId) {
     await fetch('/api/notifications.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -480,6 +510,17 @@ async function handleNotificationClick(notificationId, requestId, noteId) {
     });
 
     toggleInbox();
+
+    // Aviso de tarea asignada: se abre la tarea (en la misma página si ya estamos en Tareas).
+    if (taskId) {
+        if (typeof openTaskModal === 'function' && window.location.pathname.includes('tasks.php')) {
+            openTaskModal(Number(taskId));
+            loadNotifications();
+        } else {
+            window.location.href = `/tasks.php?task=${taskId}`;
+        }
+        return;
+    }
 
     // Aviso de nota compartida: se abre en Notas (en la misma página si ya estamos ahí).
     if (noteId) {

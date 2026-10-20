@@ -3113,3 +3113,115 @@ Tests (no hacen falta en producción): `tests/tasks-for-whom.php`, `tests/my-wor
 - [x] PT3 Selector "Para mí | De todos" en la Vista global
 - [x] PT5 Versiones, tests y lista de archivos
 - [ ] Verificación del usuario en producción (cierra el Planner)
+
+---
+
+# TAREAS: "VISTO" AUTOMÁTICO + AVISO EN LA CAMPANA (Executor directo, 20 Octubre 2026)
+
+## Background and Motivation (visto en tareas)
+Cuando el usuario asigna una tarea a su compañera, tiene que preguntarle si la ha visto. Quiere confirmarlo con la mínima fricción para los dos.
+**Decisiones del usuario (20 oct 2026)**: visto automático (doble check tipo WhatsApp, ella no hace nada) + aviso en la campana ("X te ha asignado una tarea"). Sin botón "Entendido". Directamente en modo Executor.
+
+## Key Challenges and Analysis (visto en tareas)
+- "Asignar" = compartir por nombre (`task_shares`). Solo hay una vía de escritura: `POST /api/task-shares.php` (menú "Compartir con"). Hoy borra todas las filas y las vuelve a crear → perdería el visto. Hay que cambiarlo a diferencias (quitar las que sobran, añadir las nuevas).
+- Las tareas no generaban avisos (solo mejoras y notas). `notifications` necesita `task_id` y el alcance de la campana (includes/notifications.php) tiene que incluir tareas que la persona todavía puede ver.
+- **Cuándo cuenta como vista**: NO al pedir la lista (la barra lateral pide `/api/tasks.php` en todas las páginas para el contador). Se marca desde el navegador cuando la tarea se pinta en Tareas o en Mi trabajo, o al abrirla → `PUT /api/task-shares.php {seen_task_ids}`.
+- Al verla, el aviso de la campana de esa tarea se marca como leído (ya sobra).
+- Tareas "de todo el equipo": sin visto ni aviso (igual que las notas).
+- Migración 017: `task_shares.seen_at` (DATETIME NULL) + `notifications.task_id`. Las asignaciones que ya existían se marcan como vistas para que no salgan todas como "Nueva". **Hay que ejecutarla ANTES de subir los archivos** (si no, la campana falla porque la consulta usa `task_id`).
+
+## High-level Task Breakdown (visto en tareas)
+- [ ] V1. Tests primero: `tests/task-seen.php` (lógica con SQLite) y `tests/task-seen-ui.php` (helpers JS con Node + contratos); adaptar `tests/notifications-scope.php`. ✅ Éxito: fallan antes de implementar.
+- [ ] V2. Servidor: migración 017, `includes/task-shares.php` (replace_task_shares por diferencias, avisos, mark_tasks_seen, task_share_status), `api/task-shares.php` (POST con avisos, PUT visto, GET con seen_at), `api/tasks.php` (share_status en la lista y en una tarea; borrar avisos al borrar), `includes/notifications.php` (tareas en la campana). ✅ Éxito: tests PHP en verde.
+- [ ] V3. Pantalla: helpers en task-parser.js (`taskIsNewForMe`, `taskSeenReceipt`), check ✓/✓✓ en la etiqueta "Para quién" (Tareas, modal y "De todos"), "Nueva" para quien la recibe, marcar vista al pintar/abrir, aviso en la campana con enlace a la tarea. ✅ Éxito: tests Node en verde.
+- [ ] V4. Navegador con el arnés PHP+SQLite (David asigna → Rebecca ve aviso y "Nueva" → David ve ✓✓), móvil, versiones `?v=` y `sw.js`, lista de archivos.
+
+## Project Status Board (visto en tareas)
+- [ ] V1 Tests
+- [ ] V2 Servidor
+- [ ] V3 Pantalla
+- [ ] V4 Verificación y entrega
+
+## Current Status / Progress Tracking (20 Oct 2026 — visto en tareas V1–V2)
+- **V1** Tests nuevos `tests/task-seen.php` (SQLite: compartir por diferencias, avisos, visto, estado por persona + contratos de API y migración) y `tests/task-seen-ui.php` (Node: `taskIsNewForMe`, `taskSeenReceipt` + contratos de pantalla y versiones). `tests/notifications-scope.php` ampliado con avisos de tareas. Fallaban los tres antes de implementar.
+- **V2** `migrations/017_task_seen.sql` (+ README), `includes/task-shares.php` (nuevo), `api/task-shares.php` (POST por diferencias + aviso, PUT `seen_task_ids`, GET con `seen_at`; el DELETE suelto también borra el aviso), `api/tasks.php` (`share_status` en lista y en una tarea; borra avisos al borrar la tarea), `includes/notifications.php` (tareas en la campana con el mismo criterio de acceso que las notas). `tests/task-seen.php` en verde; en `notifications-scope.php` la parte de servidor en verde (falta sidebar.js, V3).
+
+## Current Status / Progress Tracking (20 Oct 2026 — visto en tareas V3)
+- task-parser.js: `taskIsNewForMe(task, meId)` y `taskSeenReceipt(task, members, meId, now)` (✓ "Sin ver", ✓ "Vista por 1 de 2", ✓✓ "Vista"; title "Rebecca Ruiz la vio hoy a las 10:42 · Luis Ortega aún no la ha visto").
+- sidebar.js: `markTasksSeen(ids)` (una vez por carga, reintenta si falla, recarga la campana si se leyó algún aviso); aviso `task_assignment` con icono de tarea, entra en el filtro "Asignaciones" y abre `/tasks.php?task=ID` (o el modal si ya estás en Tareas).
+- tasks.js: check en la etiqueta "Para quién", "Nueva", marca vistas las tareas pintadas y la abierta; en el modal, línea "X la vio hoy a las…". tasks-interactions.js: al cambiar con quién se comparte, quien sigue conserva su visto y quien entra empieza en ✓.
+- my-work.js: "Nueva" y check en "De todos"; marca vistas solo las filas pintadas (no las de "Ver más" cerrado).
+- Versiones: task-parser 8, tasks.js 15, tasks-interactions 5, tasks.css 3.3, my-work 4, work.css 5, sidebar.js 1.9, sw.js prisma-v44 (tests antiguos con versiones fijas actualizados). 34 tests en verde.
+
+## Current Status / Progress Tracking (20 Oct 2026 — visto en tareas V4)
+- **Navegador** (arnés PHP real + SQLite en el scratchpad de la sesión; entrada temporal de launch.json ya quitada):
+  - David en Tareas: ✓ apagado "Sin ver", ✓✓ verde "Vista" (title "Rebecca Soler la vio ayer a las 17:20"), ✓ "Vista por 1 de 2" con dos personas. En el modal: "Luis Ortega aún no la ha visto · Rebecca Soler la vio hoy a las 09:15".
+  - Rebecca en Tareas: "Nueva" en la recién asignada; se envía un PUT, su aviso queda leído y el contador de la campana desaparece. El aviso sale con icono de tarea y su título; al pulsarlo se abre la tarea.
+  - David vuelve: ✓✓ en esa tarea. Asigna otra a Rebecca desde "Compartir con": ✓ al momento y aviso creado. Añade a Luis en una que Rebecca ya había visto: Rebecca conserva su visto (comprobado en la base) y pasa a "Vista por 1 de 2".
+  - Rebecca en la Vista global: "Nueva" en "Para mí" y se marca vista. David en "De todos": los checks junto a los nombres.
+  - Móvil 375 px: la etiqueta enseña número + check, sin scroll horizontal. Sin errores de consola ni de servidor.
+- Ajuste tras verlo: check algo más grande en Tareas (1rem, ✓ sin ver al 60 %).
+- 34 tests en verde; `php -l` y `node --check` sin errores.
+
+### Archivos a subir (visto en tareas), en este orden
+0. **Primero, la migración** `migrations/017_task_seen.sql` en phpMyAdmin (una sola vez). Sin ella la campana falla, porque ya consulta `notifications.task_id`.
+1. `includes/task-shares.php` (nuevo)
+2. `includes/notifications.php`
+3. `api/task-shares.php`
+4. `api/tasks.php`
+5. `assets/js/task-parser.js`
+6. `assets/js/sidebar.js`
+7. `assets/js/tasks.js`
+8. `assets/js/tasks-interactions.js`
+9. `assets/js/my-work.js`
+10. `assets/css/tasks.css`
+11. `assets/css/work.css`
+12. `includes/sidebar.php`
+13. `tasks.php`
+14. `index.php`
+15. `sw.js` (el último)
+Documentación: `migrations/README.md`. Tests (no hacen falta en producción): `tests/task-seen.php`, `tests/task-seen-ui.php` (nuevos), `tests/notifications-scope.php` (ampliado) y versiones actualizadas en `tests/my-work-actions.php`, `my-work-scope-ui.php`, `my-work-view.php`, `request-due-date-ui.php`, `sidebar-mejoras.php`, `tasks-for-whom.php`, `tasks-share-names.php`, `tasks-sidebar-count.php`, `tasks-t2.php`.
+
+### Checklist de prueba en producción
+- [ ] Asignar una tarea a la compañera → en tu tarjeta sale ✓ (sin ver).
+- [ ] Ella ve el aviso en la campana (si está en otra página) y "Nueva" en Tareas o en la Vista global.
+- [ ] En cuanto la tiene en pantalla, a ti te sale ✓✓ al recargar (pasa el ratón por la etiqueta para ver la hora).
+- [ ] La hora del visto cuadra con la real (si va desfasada, la hora de MySQL no es la de PHP; ver Executor's Feedback).
+- [ ] Quitarla y volver a ponerla no le deja dos avisos.
+
+## Executor's Feedback or Assistance Requests (visto en tareas)
+- Pendiente de que el usuario lo pruebe en producción (Planner cierra).
+- **Hora del visto**: se guarda con la hora de MySQL (igual que `created_at` y `completed_at`). Si el servidor MySQL no está en hora de Madrid, la hora del tooltip saldría desplazada (igual que ya pasaría con "hace X" en la campana).
+- **Decisiones tomadas por el Executor** (cambiables): ver la tarea en la lista marca como leído su aviso de la campana; las asignaciones anteriores a la migración cuentan como vistas; las tareas de "Todo el equipo" no tienen visto ni aviso; el visto de quien la asignó se actualiza al recargar (no en vivo).
+
+## Lessons (visto en tareas)
+- `task_shares` y `tasks` no tienen CREATE TABLE en el repo (vienen de antes de las migraciones); en tests y arnés se crean a mano con las columnas que se usan.
+- Arnés SQLite: hay que registrar `NOW()` y `CURDATE()` con `sqliteCreateFunction` (api/tasks.php los usa); `DATE_SUB(... INTERVAL ...)` no existe en SQLite, así que no activar "Completadas" en el arnés. `CURRENT_TIMESTAMP` de SQLite es UTC: las horas del visto salen 2 h antes.
+- Varios tests fijan versiones exactas de assets (`?v=` y `prisma-vNN`): al subir versiones hay que actualizarlos (buscar con `grep -rn "?v=" tests/`).
+
+## Project Status Board (visto en tareas) — actualizado por el Executor
+- [x] V1 Tests
+- [x] V2 Servidor
+- [x] V3 Pantalla
+- [x] V4 Verificación y entrega
+- [ ] Verificación del usuario en producción (cierra el Planner)
+
+## Executor's Feedback or Assistance Requests (visto en tareas — migración 017 en producción, 20 Oct 2026)
+- Al ejecutar la 017, MySQL dio `#1054 - No se reconoce la columna 'note_id' en notifications`: en producción **falta `notifications.note_id`** (era de la 015; esa parte no llegó a aplicarse). Las dos primeras sentencias (`seen_at` y el UPDATE) probablemente sí se aplicaron; la del `task_id`, no.
+- Cambio: la 017 ya no usa `AFTER note_id` (la posición de la columna da igual). README de la 017 con la comprobación y el ALTER de `note_id`.
+- Riesgo detectado: el código de la campana subido con Notas (N6) ya consulta `n.note_id`, así que **es probable que en producción la campana y el aviso al compartir notas estén fallando ahora mismo**. Pendiente de que el usuario lo confirme.
+
+## Lessons (migración 017)
+- No asumir que una migración anterior se aplicó entera: evitar `AFTER <columna de otra migración>` y dar siempre una comprobación `SHOW COLUMNS` antes de los ALTER.
+- **Corrección (20 Oct 2026)**: al intentar añadir `note_id`, MySQL dice "Nombre duplicado de columna 'note_id'" → `note_id` SÍ existe en producción. Lo de "la campana de Notas está fallando" probablemente es falso. No está claro por qué la primera ejecución dio #1054 (¿otra base de datos seleccionada en phpMyAdmin?). Pedido al usuario `SELECT DATABASE(); SHOW COLUMNS FROM notifications; SHOW COLUMNS FROM task_shares;` antes de seguir.
+- **Aclaración del usuario (20 Oct 2026)**: ya había ejecutado los dos ALTER (`note_id` + `task_id`) antes de repetir; por eso los errores de "duplicado". Orden real: 1) 017 entera → `seen_at` + UPDATE aplicados, falla el `task_id` porque **faltaba `note_id`** (el diagnóstico inicial era correcto); 2) ALTER `note_id` + ALTER `task_id` → aplicados; 3) repeticiones → "duplicado" (no cambian nada). La base debería estar completa; solo falta la verificación `SHOW COLUMNS`. Como `note_id` faltaba hasta ahora, la campana y el aviso de notas compartidas seguramente fallaban en producción; con la columna ya añadida debería ir.
+- **Columnas comprobadas en producción (captura del usuario, 20 Oct 2026)**: `note_id` y `task_id` existen. PERO `type` es `ENUM('mention','comment','assignment') NOT NULL` y `request_id` es `INT NOT NULL`. La app ya inserta 'completion', 'status_change', 'note_share' y ahora 'task_assignment', y los de notas y tareas sin `request_id`. Según el sql_mode: o fallan (mejoras: try/catch + error_log, nadie lo ve; notas: sin try/catch → error al compartir) o se guardan con tipo '' y request_id 0.
+- Preparado `migrations/018_notifications_types.sql` (`type` → VARCHAR(64), `request_id` → NULL) + README + test. En `api/task-shares.php`, el aviso va en try/catch con `error_log` (como en las mejoras), para que un fallo del aviso no haga parecer que asignar ha fallado.
+- Antes de ejecutar la 018: pedido `SHOW CREATE TABLE notifications;` (por si `request_id` tiene clave foránea) y un recuento por tipo (para ver si hay avisos guardados con tipo vacío que reparar). **No subir los archivos hasta aplicar la 018.**
+
+## Lessons (notificaciones en producción)
+- La tabla `notifications` de producción NO es como la de `013_local_bootstrap.sql` (ENUM en `type`, `request_id` NOT NULL). Antes de usar un tipo nuevo o insertar sin `request_id`, comprobar el esquema real con `SHOW CREATE TABLE`.
+- **Resultados del usuario (20 Oct 2026)**: `SHOW CREATE TABLE` salió recortado por phpMyAdmin; el recuento por tipo da `'' = 19`, `comment = 29`, `assignment = 25` → MySQL NO es estricto: los avisos con tipos fuera del ENUM se guardaban con tipo vacío (y los de notas con `request_id = 0`).
+- La 018 ahora también repara: `request_id 0 → NULL`; tipo vacío → `note_share` (por `note_id`), `completion` / `status_change` (por el texto del mensaje, que no ha cambiado desde que existe). Probado en SQLite con filas de ejemplo: los mensajes desconocidos se quedan vacíos (se ven en la verificación).
+- Comprobación de clave foránea con `information_schema.KEY_COLUMN_USAGE` (no se recorta). **Orden de despliegue**: comprobación → 018 entera → verificación → subir archivos (lista de "Archivos a subir (visto en tareas)" + `migrations/018_notifications_types.sql` y README para el repositorio).
+- **018 aplicada en producción (20 Oct 2026)**: verificación OK, sin tipos vacíos: `assignment 25`, `comment 29`, `completion 17`, `status_change 2` (los 19 reparados; no había avisos de notas). El usuario hace commit y push. Pendiente: checklist de prueba en producción (Planner cierra).

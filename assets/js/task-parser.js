@@ -357,7 +357,58 @@
         return { kind: 'owner', label: owner, count: owner, title: `De ${owner}`, icon: 'iconoir-user' };
     }
 
+    // Personas con las que se comparte por nombre y cuándo la vio cada una (API: share_status).
+    function taskShareStatus(task) {
+        return (Array.isArray(task && task.share_status) ? task.share_status : [])
+            .map(s => ({ userId: Number(s.user_id), seenAt: s.seen_at || null }));
+    }
+
+    // Te la han asignado y todavía no la has visto: lleva "Nueva".
+    function taskIsNewForMe(task, meId) {
+        if (Number(task.user_id) === Number(meId)) return false;
+        return taskShareStatus(task).some(s => s.userId === Number(meId) && !s.seenAt);
+    }
+
+    // "hoy a las 10:42", "ayer a las 09:05" o "el 14 oct a las 18:30" ("YYYY-MM-DD HH:MM:SS" local).
+    function seenWhen(seenAt, now) {
+        const [datePart, timePart = '00:00'] = String(seenAt).split(' ');
+        const [y, m, d] = datePart.split('-').map(Number);
+        const day = localDate(y, m - 1, d);
+        const today = localDate(now.getFullYear(), now.getMonth(), now.getDate());
+        const days = Math.round((today - day) / 86400000);
+        const time = timePart.slice(0, 5);
+        if (days <= 0) return `hoy a las ${time}`;
+        if (days === 1) return `ayer a las ${time}`;
+        return `el ${day.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} a las ${time}`;
+    }
+
+    // Para quien asigna una tarea abierta: ✓ si alguien no la ha visto, ✓✓ cuando la han visto todas.
+    // null en tareas de otra persona, de todo el equipo, completadas o sin personas.
+    function taskSeenReceipt(task, members, meId, now) {
+        if (Number(task.user_id) !== Number(meId) || Number(task.is_shared) === 1 || Number(task.is_completed) === 1) return null;
+        const people = taskShareStatus(task).filter(s => s.userId !== Number(meId));
+        if (!people.length) return null;
+
+        const lines = people.map(s => {
+            const member = (members || []).find(m => Number(m.id) === s.userId);
+            const name = member ? (member.full_name || member.username) : 'Otra persona';
+            return { name, text: s.seenAt ? `${name} la vio ${seenWhen(s.seenAt, now)}` : `${name} aún no la ha visto` };
+        });
+        lines.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+        const seen = people.filter(s => s.seenAt).length;
+        const state = seen === people.length ? 'seen' : seen === 0 ? 'unseen' : 'partial';
+        return {
+            state,
+            icon: state === 'seen' ? 'iconoir-double-check' : 'iconoir-check',
+            label: state === 'seen' ? 'Vista' : state === 'unseen' ? 'Sin ver' : `Vista por ${seen} de ${people.length}`,
+            title: lines.map(l => l.text).join(' · ')
+        };
+    }
+
     global.taskForWhom = taskForWhom;
+    global.taskIsNewForMe = taskIsNewForMe;
+    global.taskSeenReceipt = taskSeenReceipt;
     global.parseShareIds = parseShareIds;
     global.taskShareSummary = taskShareSummary;
     global.stripQuickMatch = stripMatch;

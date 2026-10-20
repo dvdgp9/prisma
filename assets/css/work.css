@@ -476,6 +476,43 @@ button.request-due.is-interactive:focus-visible,
     color: var(--ink-500);
 }
 
+/* Tarea asignada que ves por primera vez */
+.my-work-new {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--sp-6);
+    border-radius: var(--r-full);
+    background: var(--brand);
+    color: #fff;
+    font-size: var(--fs-11);
+    font-weight: var(--fw-semibold);
+}
+
+/* "De todos": ✓ aún no la ha visto, ✓✓ verde = vista */
+.my-work-whom .task-seen {
+    font-size: var(--fs-13);
+}
+
+.my-work-whom .task-seen--unseen,
+.my-work-whom .task-seen--partial {
+    color: var(--ink-500);
+    opacity: 0.7;
+}
+
+.my-work-whom .task-seen--seen {
+    color: #2B7A56;
+}
+
+.my-work-meta .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
 .my-work-side {
     display: flex;
     flex-shrink: 0;

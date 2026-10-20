@@ -62,7 +62,7 @@ assert_same(['tone' => 'later', 'label' => 'Para el 5 ene 2027', 'days' => 78], 
 // --- Mejoras: fecha en el detalle, en tarjetas y tabla, y orden por fecha.
 assert_file_contains('index.php', [
     '/assets/js/work-helpers.js?v=4',
-    '/assets/css/work.css?v=4',
+    '/assets/css/work.css?v=5',
     '/assets/js/main.js?v=5.4',
     'data-sort-field="due_date"',
 ], 'index loads the date helpers, styles and table column');
@@ -82,6 +82,6 @@ assert_file_contains('assets/js/main.js', [
 
 assert_file_contains('api/requests.php', ["case 'due_date':", 'r.due_date IS NULL'], 'API sorts by due date with undated last');
 assert_file_contains('assets/css/work.css', ['.request-due', '.is-overdue', '.is-today', '.is-soon'], 'work.css styles the date chips by urgency');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v43';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v44';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Request due date UI completed successfully.\n");

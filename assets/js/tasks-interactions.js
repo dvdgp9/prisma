@@ -377,6 +377,10 @@ async function openShareMenu(taskId, anchor, event) {
         task.is_shared = state.all ? 1 : 0;
         task.share_count = state.all ? 0 : state.users.length;
         task.shared_user_ids = state.users.slice();
+        // Quien sigue conserva su visto; quien entra empieza sin ver (✓).
+        const previous = Array.isArray(task.share_status) ? task.share_status : [];
+        task.share_status = state.all ? [] : state.users.map(id =>
+            previous.find(s => Number(s.user_id) === id) || { user_id: id, seen_at: null });
         renderTasks(lastTasks);
         refresh();
         saveTaskShareState(taskId, { all: state.all, users: state.users.slice() });
