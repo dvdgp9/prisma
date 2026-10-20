@@ -128,6 +128,17 @@ switch ($method) {
         ]);
         
         $taskId = $db->lastInsertId();
+
+        // Assigned while creating it ("para Ana" / "+ana" in quick add): same flow as
+        // "Compartir con", so the person gets the notice and the "seen" mark starts empty.
+        if (!empty($input['shared_user_ids']) && empty($input['is_shared'])) {
+            $added = replace_task_shares($db, $user, $taskId, false, $input['shared_user_ids']);
+            try {
+                create_task_assignment_notifications($db, $taskId, $added, $user);
+            } catch (Exception $e) {
+                error_log('Failed to create task assignment notifications for task ' . $taskId . ': ' . $e->getMessage());
+            }
+        }
         
         success_response(['id' => $taskId], 'Tarea creada');
         break;

@@ -3225,3 +3225,65 @@ Documentación: `migrations/README.md`. Tests (no hacen falta en producción): `
 - La 018 ahora también repara: `request_id 0 → NULL`; tipo vacío → `note_share` (por `note_id`), `completion` / `status_change` (por el texto del mensaje, que no ha cambiado desde que existe). Probado en SQLite con filas de ejemplo: los mensajes desconocidos se quedan vacíos (se ven en la verificación).
 - Comprobación de clave foránea con `information_schema.KEY_COLUMN_USAGE` (no se recorta). **Orden de despliegue**: comprobación → 018 entera → verificación → subir archivos (lista de "Archivos a subir (visto en tareas)" + `migrations/018_notifications_types.sql` y README para el repositorio).
 - **018 aplicada en producción (20 Oct 2026)**: verificación OK, sin tipos vacíos: `assignment 25`, `comment 29`, `completion 17`, `status_change 2` (los 19 reparados; no había avisos de notas). El usuario hace commit y push. Pendiente: checklist de prueba en producción (Planner cierra).
+
+---
+
+# CREACIÓN RÁPIDA: ASIGNAR CON "para Rebecca" / "+rebe" (Executor directo, 20 Octubre 2026)
+
+## Background and Motivation (asignar al crear)
+El usuario quiere asignar una tarea a su compañera desde la creación rápida, sin abrir el menú "Compartir con".
+**Decisiones del usuario (20 oct 2026)**: las dos formas, "para Rebecca" (natural) y "+rebe" (atajo); una persona por tarea; Executor directo.
+
+## Key Challenges and Analysis (asignar al crear)
+- `@` y `#` ya son de las apps → persona con "para <nombre>" y "+<nombre>".
+- Falsos positivos: "para la reunión" con alguien llamado Laura. Regla: con "para" el nombre tiene que estar **entero** (nombre de pila, y absorbe el apellido si va detrás); con "+" vale el **principio** de cualquier palabra del nombre ("+rebe", "+soler"). Si coincide con más de una persona, no se detecta nada (hay que escribir más).
+- Conflicto con fechas: "mar" es martes; si alguien se llama Mar, "+mar" sería las dos cosas. La persona se detecta primero y su fragmento se tapa antes de buscar fecha y app.
+- Servidor: `POST /api/tasks.php` acepta `shared_user_ids` y reutiliza `replace_task_shares` + aviso (mismo flujo que el menú: visto ✓ y campana).
+- Dos sitios usan el parser: Tareas (chips de detección) y el "+" flotante de la Vista global (main.js). Los dos tienen que entenderlo; en la Vista global hay que cargar el equipo.
+- Sin migración.
+
+## High-level Task Breakdown (asignar al crear)
+- [ ] Q1. Tests (Node) del parser: "para Rebecca", "para Rebecca Soler", "+rebe", "+soler", "para el cliente", "para la reunión" con Laura, ambiguo, "+mar" con Mar + fecha, sin equipo. Contratos de API y pantalla. ✅ Éxito: fallan antes.
+- [ ] Q2. Parser (`parseQuickTask(text, apps, members)` → `person`), API (`shared_user_ids` al crear), Tareas (chip 👤 con ×, envío) y "+" flotante. ✅ Éxito: tests en verde.
+- [ ] Q3. Navegador con el arnés, versiones y lista de archivos.
+
+## Project Status Board (asignar al crear)
+- [ ] Q1 Tests
+- [ ] Q2 Implementación
+- [ ] Q3 Verificación y entrega
+
+## Current Status / Progress Tracking (20 Oct 2026 — asignar al crear Q1–Q2)
+- **Q1** `tests/tasks-quick-person.php` (Node: 23 casos del parser y del título + contratos de API, Tareas, "+" flotante y versiones). Fallaba antes de implementar.
+- **Q2** task-parser.js: `detectPerson` (privado), `parseQuickTask(text, apps, members)` devuelve `person` y tapa su fragmento antes de buscar fecha y app; `quickTaskTitle(raw, parsed, ignore)` (quita persona, fecha y app no descartadas; lo usan Tareas y el "+" flotante). api/tasks.php: `shared_user_ids` al crear → `replace_task_shares` + aviso (try/catch). tasks.js: chip 👤 con "x" (`quickIgnore.person`) y envío. main.js: `loadQuickTeamMembers()` al abrir el "+" flotante, envío y "para X" en el toast. Placeholders con "+nombre". Versiones: task-parser 9, tasks.js 16, main.js 5.5, sw.js prisma-v45 (tests con versiones fijas actualizados). 35 tests en verde.
+
+## Current Status / Progress Tracking (20 Oct 2026 — asignar al crear Q3)
+- **Navegador** (arnés PHP + SQLite; entrada temporal de launch.json ya quitada):
+  - Tareas: "Revisar las fotos del catálogo para Rebecca viernes" → chips "23 oct" y "Rebecca Soler"; al pulsar Enter, título limpio, fecha 23/10, asignada a Rebecca con ✓ (sin ver) y aviso creado.
+  - "Pedir presupuesto a +rebe mañana" quitando el chip de la persona con la "x" → título "Pedir presupuesto a +rebe", sin asignar y sin aviso.
+  - "+" flotante de la Vista global: carga el equipo al abrirse; "Llamar a la imprenta para Rebecca hoy" → para hoy, asignada a Rebecca, aviso creado y se cierra.
+  - Sin errores de servidor. En consola solo hay "ERR_CONNECTION_REFUSED" de la campana (consulta cada 60 s) del rato en que el arnés estuvo apagado entre pruebas; ninguno de esta función. 35 tests en verde.
+
+### Archivos a subir (asignar al crear), en este orden
+Sin migraciones. Si todavía no has subido lo del "visto", sube primero esa lista (sección "Archivos a subir (visto en tareas)"): esta depende de `includes/task-shares.php`.
+1. `api/tasks.php`
+2. `assets/js/task-parser.js`
+3. `assets/js/tasks.js`
+4. `assets/js/main.js`
+5. `tasks.php`
+6. `index.php`
+7. `sw.js` (el último)
+Tests (no hacen falta en producción): `tests/tasks-quick-person.php` (nuevo) y versiones actualizadas en `tests/task-seen-ui.php`, `my-work-scope-ui.php`, `my-work-actions.php`, `sidebar-mejoras.php`, `request-due-date-ui.php`, `tasks-share-names.php`, `tasks-for-whom.php`.
+
+## Executor's Feedback or Assistance Requests (asignar al crear)
+- Pendiente de que el usuario lo pruebe en producción (Planner cierra).
+- Reglas elegidas por el Executor (cambiables): con "para" hace falta el nombre de pila entero (para no confundir "para la reunión" con Laura); con "+" basta el principio del nombre o del apellido; si coincide con varias personas no se asigna (hay que escribir más letras).
+
+## Lessons (asignar al crear)
+- El parser se usa en dos sitios (Tareas y el "+" flotante de main.js): cualquier cambio de sintaxis va en los dos. El título limpio sale de `quickTaskTitle` para no repetir la lógica.
+- "mar" es abreviatura de martes en el parser de fechas: lo que se detecte antes (persona) se tapa con "|" del mismo largo antes de buscar fecha y app, para que no se solape.
+
+## Project Status Board (asignar al crear) — actualizado por el Executor
+- [x] Q1 Tests
+- [x] Q2 Implementación
+- [x] Q3 Verificación y entrega
+- [ ] Verificación del usuario en producción (cierra el Planner)

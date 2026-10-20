@@ -3040,6 +3040,24 @@ function formatFloatingDate(dateString) {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
+// Equipo para asignar con "para Ana" / "+ana" en la tarea rápida (se pide una vez, al abrirla).
+let quickTeamMembers = [];
+let quickTeamLoaded = false;
+
+async function loadQuickTeamMembers() {
+    if (quickTeamLoaded) return;
+    quickTeamLoaded = true;
+    try {
+        const response = await fetch('/api/task-shares.php');
+        const data = await response.json();
+        if (!data.success) throw new Error(`${response.status} ${data.error}`);
+        quickTeamMembers = data.data || [];
+    } catch (error) {
+        quickTeamLoaded = false; // se reintenta la próxima vez que se abra
+        console.error('Error loading team for the quick task:', error);
+    }
+}
+
 function toggleFloatingTaskInput() {
     const btn = document.getElementById('floating-task-btn');
     const input = document.getElementById('floating-task-input');
@@ -3050,6 +3068,7 @@ function toggleFloatingTaskInput() {
     
     if (input.classList.contains('active')) {
         titleInput.focus();
+        loadQuickTeamMembers();
     }
 }
 
@@ -3069,26 +3088,20 @@ async function submitFloatingTask() {
     if (!raw) return;
 
     // Mismo parseo NLP que la creación rápida de la página de tareas.
-    const parsed = (typeof parseQuickTask === 'function') ? parseQuickTask(raw, apps) : { date: null, app: null };
-    let title = raw;
-    const payload = {};
+    const parsed = (typeof parseQuickTask === 'function') ? parseQuickTask(raw, apps, quickTeamMembers) : { date: null, app: null, person: null };
+    const title = quickTaskTitle(raw, parsed, {});
+    const payload = { title };
 
-    if (parsed.date) {
-        title = stripQuickMatch(title, parsed.date.match);
-        payload.due_date = parsed.date.value;
-    }
-    if (parsed.app) {
-        title = stripQuickMatch(title, parsed.app.match);
-        payload.app_id = parsed.app.id;
-    }
-    title = title.trim();
-    if (!title) title = raw;
-    payload.title = title;
+    if (parsed.date) payload.due_date = parsed.date.value;
+    if (parsed.app) payload.app_id = parsed.app.id;
+    // "para Ana" / "+ana": se crea ya asignada (le llega el aviso).
+    if (parsed.person) payload.shared_user_ids = [parsed.person.id];
 
     // Feedback de lo detectado en el toast.
     const detected = [];
     if (parsed.date) detected.push(formatFloatingDate(parsed.date.value));
     if (parsed.app) detected.push('@' + parsed.app.name);
+    if (parsed.person) detected.push('para ' + parsed.person.name);
 
     try {
         const response = await fetch('/api/tasks.php', {

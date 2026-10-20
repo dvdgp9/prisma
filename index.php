@@ -1034,7 +1034,7 @@ $company_name = $user['company_name'] ?? '';
         <i class="iconoir-plus"></i>
     </div>
     <div class="floating-task-input" id="floating-task-input">
-        <input type="text" id="floating-task-title" placeholder="Tarea rápida…  (mañana, viernes, 15/07, @app)" onkeydown="handleFloatingTaskKeydown(event)">
+        <input type="text" id="floating-task-title" placeholder="Tarea rápida…  (mañana, viernes, 15/07, @app, +nombre)" onkeydown="handleFloatingTaskKeydown(event)">
         <button class="floating-task-submit" onclick="submitFloatingTask()">
             <i class="iconoir-send"></i>
         </button>
@@ -1047,11 +1047,11 @@ $company_name = $user['company_name'] ?? '';
     <!-- Markdown rendering (notes) -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-    <script src="/assets/js/task-parser.js?v=8"></script>
+    <script src="/assets/js/task-parser.js?v=9"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=4"></script>
-    <script src="/assets/js/main.js?v=5.4"></script>
+    <script src="/assets/js/main.js?v=5.5"></script>
     <script src="/assets/js/my-work.js?v=4"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js"></script>

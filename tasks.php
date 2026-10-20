@@ -100,7 +100,7 @@ $userApps = get_user_apps();
                         type="text"
                         id="quick-add-input"
                         class="quick-add-input"
-                        placeholder="Escribe una tarea y pulsa Enter…  (prueba: mañana, viernes, 15/07, @app)"
+                        placeholder="Escribe una tarea y pulsa Enter…  (prueba: mañana, viernes, 15/07, @app, +nombre)"
                         autocomplete="off"
                     >
                     <div class="quick-add-actions">
@@ -110,7 +110,7 @@ $userApps = get_user_apps();
                     </div>
                 </div>
 
-                <!-- Chips de detección en vivo (fecha / app a partir del texto) -->
+                <!-- Chips de detección en vivo (fecha / app / persona a partir del texto) -->
                 <div class="quick-add-chips" id="quick-add-chips" hidden></div>
                 
                 <!-- Expanded options (hidden by default) -->
@@ -237,9 +237,9 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/task-parser.js?v=8"></script>
+    <script src="/assets/js/task-parser.js?v=9"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=15"></script>
+    <script src="/assets/js/tasks.js?v=16"></script>
     <script src="/assets/js/tasks-interactions.js?v=5"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>

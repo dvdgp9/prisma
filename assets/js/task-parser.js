@@ -1,8 +1,9 @@
 /**
  * Parser de creación rápida de tareas (lenguaje natural, en español).
- * Detecta, dentro del texto escrito, una fecha límite y una aplicación,
- * devolviendo además los fragmentos de texto que las generaron para poder
- * limpiarlos del título o conservarlos si el usuario descarta la detección.
+ * Detecta, dentro del texto escrito, una fecha límite, una aplicación y la
+ * persona a la que se asigna, devolviendo además los fragmentos de texto que
+ * las generaron para poder limpiarlos del título o conservarlos si el usuario
+ * descarta la detección.
  *
  * Sin dependencias externas. Resolución de fechas en horario local.
  */
@@ -152,21 +153,78 @@
         return found || null;
     }
 
+    // Una sola persona que encaje; con varias, ninguna (hay que escribir más letras).
+    function uniqueMember(list) {
+        return list.length === 1 ? list[0] : null;
+    }
+
     /**
-     * parseQuickTask(text, apps)
-     * @param {string} text  Texto escrito por el usuario.
-     * @param {Array}  apps  [{id, name}] aplicaciones del usuario.
-     * @returns {{ date: {value:string, match:string}|null,
-     *            app:  {id:number, name:string, match:string}|null }}
+     * Persona a la que se asigna la tarea:
+     * - "para Rebecca": el nombre de pila entero (y el apellido si va detrás), para
+     *   que "para la reunión" no sea Laura.
+     * - "+rebe": el principio del nombre o, si no, del apellido ("+soler").
+     * Gana la primera que aparece en el texto.
      */
-    function parseQuickTask(text, apps) {
-        const result = { date: null, app: null };
+    function detectPerson(text, members) {
+        if (!members || !members.length) return null;
+        const people = members
+            .map(m => {
+                const name = m.full_name || m.username || '';
+                return { id: parseInt(m.id, 10), name, words: normalize(name).split(/\s+/).filter(Boolean) };
+            })
+            .filter(p => p.words.length);
+        const candidates = [];
+        let m;
+
+        const plusRe = /(^|\s)\+([\p{L}\d_-]+)/gu;
+        while ((m = plusRe.exec(text))) {
+            const term = normalize(m[2]);
+            const byFirstName = people.filter(p => p.words[0].startsWith(term));
+            const person = byFirstName.length
+                ? uniqueMember(byFirstName)
+                : uniqueMember(people.filter(p => p.words.some(w => w.startsWith(term))));
+            if (person) candidates.push({ index: m.index + m[1].length, match: '+' + m[2], person });
+        }
+
+        const paraRe = /(^|[\s(])(para\s+)(\p{L}+)/giu;
+        while ((m = paraRe.exec(text))) {
+            const person = uniqueMember(people.filter(p => p.words[0] === normalize(m[3])));
+            if (!person) continue;
+            let match = m[2] + m[3];
+            const next = /^\s+(\p{L}+)/u.exec(text.slice(m.index + m[0].length));
+            if (next && person.words[1] && normalize(next[1]) === person.words[1]) match += next[0];
+            candidates.push({ index: m.index + m[1].length, match, person });
+        }
+
+        candidates.sort((a, b) => a.index - b.index);
+        return candidates[0] || null;
+    }
+
+    /**
+     * parseQuickTask(text, apps, members)
+     * @param {string} text     Texto escrito por el usuario.
+     * @param {Array}  apps     [{id, name}] aplicaciones del usuario.
+     * @param {Array}  members  [{id, full_name, username}] equipo (opcional, para asignar).
+     * @returns {{ date:   {value:string, match:string}|null,
+     *            app:    {id:number, name:string, match:string}|null,
+     *            person: {id:number, name:string, match:string}|null }}
+     */
+    function parseQuickTask(text, apps, members) {
+        const result = { date: null, app: null, person: null };
         if (!text) return result;
         const today = startOfToday();
 
+        // --- Persona: primero, y se tapa su fragmento para que "+mar" no se lea como "martes" ---
+        let rest = text;
+        const found = detectPerson(text, members);
+        if (found) {
+            result.person = { id: found.person.id, name: found.person.name, match: found.match };
+            rest = text.slice(0, found.index) + '|'.repeat(found.match.length) + text.slice(found.index + found.match.length);
+        }
+
         // --- Fecha ---
         for (const p of DATE_PATTERNS) {
-            const m = text.match(p.re);
+            const m = rest.match(p.re);
             if (!m) continue;
             const date = p.resolve(m, today);
             if (date) {
@@ -176,7 +234,7 @@
         }
 
         // --- App: @term o #term ---
-        const appMatch = text.match(/[@#]([\p{L}\d_-]+)/u);
+        const appMatch = rest.match(/[@#]([\p{L}\d_-]+)/u);
         if (appMatch) {
             const app = matchApp(appMatch[1], apps);
             if (app) {
@@ -194,6 +252,18 @@
         if (idx === -1) return text;
         const out = text.slice(0, idx) + text.slice(idx + match.length);
         return out.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // Título sin los fragmentos detectados (persona, fecha y app) que no se han descartado.
+    // Si no queda nada, el texto tal cual.
+    function quickTaskTitle(raw, parsed, ignore) {
+        const skip = ignore || {};
+        let title = raw;
+        if (parsed.person && !skip.person) title = stripMatch(title, parsed.person.match);
+        if (parsed.date && !skip.date) title = stripMatch(title, parsed.date.match);
+        if (parsed.app && !skip.app) title = stripMatch(title, parsed.app.match);
+        title = title.trim();
+        return title || raw.trim();
     }
 
     function capitalizeFirstLetter(text) {
@@ -412,6 +482,7 @@
     global.parseShareIds = parseShareIds;
     global.taskShareSummary = taskShareSummary;
     global.stripQuickMatch = stripMatch;
+    global.quickTaskTitle = quickTaskTitle;
     global.normalizeRequestTitleForTask = normalizeRequestTitleForTask;
     global.taskDateShortcuts = taskDateShortcuts;
     global.matchesTaskSearch = matchesTaskSearch;

@@ -11,7 +11,7 @@ const CURRENT_USER_ID = Number(document.body.dataset.userId);
 
 // Detección descartada por el usuario en la creación rápida (chips con la "x").
 // Se mantiene hasta que se crea la tarea o se vacía el input.
-let quickIgnore = { date: false, app: false };
+let quickIgnore = { date: false, app: false, person: false };
 
 // Texto del buscador (filtra en cliente sobre la última carga).
 let searchQuery = '';
@@ -76,8 +76,8 @@ function setupQuickAdd() {
 // Analiza el input actual con el parser (si está disponible).
 function parseQuickInput() {
     const input = document.getElementById('quick-add-input');
-    if (typeof parseQuickTask !== 'function') return { date: null, app: null };
-    return parseQuickTask(input.value, typeof QUICK_APPS !== 'undefined' ? QUICK_APPS : []);
+    if (typeof parseQuickTask !== 'function') return { date: null, app: null, person: null };
+    return parseQuickTask(input.value, typeof QUICK_APPS !== 'undefined' ? QUICK_APPS : [], teamMembers);
 }
 
 // Pinta los chips de detección bajo el input.
@@ -109,6 +109,17 @@ function renderQuickPreview() {
             </span>`);
     }
 
+    if (parsed.person && !quickIgnore.person) {
+        chips.push(`
+            <span class="quick-chip" data-kind="person">
+                <i class="iconoir-user"></i>
+                <span>${escapeHtml(parsed.person.name)}</span>
+                <button type="button" class="quick-chip-remove" onclick="dismissQuickChip('person')" title="No asignarla">
+                    <i class="iconoir-xmark"></i>
+                </button>
+            </span>`);
+    }
+
     if (chips.length === 0) {
         container.hidden = true;
         container.innerHTML = '';
@@ -127,7 +138,7 @@ function dismissQuickChip(kind) {
 
 // Limpia preview y estado de descartes.
 function resetQuickPreview() {
-    quickIgnore = { date: false, app: false };
+    quickIgnore = { date: false, app: false, person: false };
     const container = document.getElementById('quick-add-chips');
     if (container) {
         container.hidden = true;
@@ -142,22 +153,12 @@ async function createQuickTask() {
 
     if (!raw) return;
 
-    // Detección NLP: limpiamos del título solo los tokens no descartados.
+    // Detección NLP: limpiamos del título solo los tokens no descartados
+    // (si todo era metadato, el título se queda con el texto tal cual).
     const parsed = parseQuickInput();
-    let title = raw;
-    let parsedAppId = null;
-    let parsedDueDate = null;
-
-    if (parsed.date && !quickIgnore.date) {
-        title = stripQuickMatch(title, parsed.date.match);
-        parsedDueDate = parsed.date.value;
-    }
-    if (parsed.app && !quickIgnore.app) {
-        title = stripQuickMatch(title, parsed.app.match);
-        parsedAppId = parsed.app.id;
-    }
-    title = title.trim();
-    if (!title) title = raw; // no dejar el título vacío si todo era metadato
+    const title = quickTaskTitle(raw, parsed, quickIgnore);
+    const parsedAppId = parsed.app && !quickIgnore.app ? parsed.app.id : null;
+    const parsedDueDate = parsed.date && !quickIgnore.date ? parsed.date.value : null;
 
     const expanded = document.getElementById('quick-add-expanded');
     const isExpanded = expanded.classList.contains('visible');
@@ -168,6 +169,8 @@ async function createQuickTask() {
 
     if (parsedAppId) taskData.app_id = parsedAppId;
     if (parsedDueDate) taskData.due_date = parsedDueDate;
+    // "para Ana" / "+ana": se crea ya asignada (le llega el aviso, como con "Compartir con").
+    if (parsed.person && !quickIgnore.person) taskData.shared_user_ids = [parsed.person.id];
 
     // Las opciones manuales del panel expandido tienen prioridad si se rellenan.
     if (isExpanded) {

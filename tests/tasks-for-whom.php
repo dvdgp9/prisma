@@ -75,6 +75,6 @@ assert_file_contains('assets/js/tasks.js', ['taskForWhom(task, teamMembers, CURR
 $tasksJs = read_project_file('assets/js/tasks.js');
 assert_same(false, strpos($tasksJs, 'title="Compartir (s)"') !== false, 'the separate share button is gone (the chip opens "Compartir con")');
 assert_file_contains('assets/js/tasks-interactions.js', ["focusedCard.querySelector('.task-badge-btn')"], 'the "s" shortcut still anchors the menu on the chip');
-assert_file_contains('tasks.php', ['/assets/js/task-parser.js?v=8', '/assets/js/tasks.js?v=15'], 'tasks page loads the new scripts');
+assert_file_contains('tasks.php', ['/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=16'], 'tasks page loads the new scripts');
 
 fwrite(STDOUT, "Tasks for whom completed successfully.\n");
