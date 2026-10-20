@@ -892,7 +892,8 @@ async function openTaskModal(taskId) {
         }
 
         const task = normalizeTaskShares(data.data);
-        if (taskIsNewForMe(task, CURRENT_USER_ID) && typeof markTasksSeen === 'function') markTasksSeen([task.id]);
+        // Te la han asignado: al abrirla queda vista y su aviso de la campana, leído.
+        if (Number(task.user_id) !== CURRENT_USER_ID && typeof markTaskOpened === 'function') markTaskOpened(task.id);
         currentModalTask = task;
         currentTaskCaps = task.capabilities || {};
         taskModalReturnFocus = returnFocus;

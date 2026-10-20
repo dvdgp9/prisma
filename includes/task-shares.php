@@ -110,11 +110,13 @@ function create_task_assignment_notifications($db, $task_id, $recipient_ids, $ac
 }
 
 /**
- * The user has seen these tasks (they were shown on screen): stamp the first
- * time only, and read the matching assignment notices, which are no longer needed.
+ * The user has seen these tasks: stamp the first time only. Being shown in a
+ * list does not read the assignment notice (the bell has to light up; the home
+ * page lists tasks on arrival). With $read_notices (the task was opened) the
+ * matching notices are read too, as they are no longer needed.
  * Only touches the user's own rows, so no other permission check is needed.
  */
-function mark_tasks_seen($db, $user_id, $task_ids)
+function mark_tasks_seen($db, $user_id, $task_ids, $read_notices = false)
 {
     $ids = array_slice(task_share_clean_ids($task_ids), 0, TASK_SEEN_MAX_IDS);
     if (!$ids) {
@@ -127,6 +129,10 @@ function mark_tasks_seen($db, $user_id, $task_ids)
     $stmt = $db->prepare("UPDATE task_shares SET seen_at = CURRENT_TIMESTAMP WHERE user_id = ? AND seen_at IS NULL AND task_id IN ({$placeholders})");
     $stmt->execute($params);
     $seen = $stmt->rowCount();
+
+    if (!$read_notices) {
+        return ['seen' => $seen, 'notifications_read' => 0];
+    }
 
     $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'task_assignment' AND is_read = 0 AND task_id IN ({$placeholders})");
     $stmt->execute($params);

@@ -220,9 +220,21 @@ async function loadTasksCount() {
 
 document.addEventListener('DOMContentLoaded', loadTasksCount);
 
-// Tareas que te han asignado y ya se te han enseñado (Tareas, Mi trabajo o abiertas):
+// Tareas que te han asignado y ya se te han enseñado en una lista (Tareas o Mi trabajo):
 // se marcan como vistas para que quien las asignó vea el doble check. Una vez por carga.
+// No tocan la campana: su aviso sigue sin leer hasta que lo pulses o abras la tarea.
 const tasksSeenSent = new Set();
+
+async function putTaskShares(payload) {
+    const response = await fetch('/api/task-shares.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(`${response.status} ${data.error}`);
+    return data.data || {};
+}
 
 async function markTasksSeen(taskIds) {
     const ids = (taskIds || []).map(Number).filter(id => id > 0 && !tasksSeenSent.has(id));
@@ -230,18 +242,24 @@ async function markTasksSeen(taskIds) {
     ids.forEach(id => tasksSeenSent.add(id));
 
     try {
-        const response = await fetch('/api/task-shares.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ seen_task_ids: ids })
-        });
-        const data = await response.json();
-        if (!data.success) throw new Error(`${response.status} ${data.error}`);
-        // El aviso de la campana de esas tareas ya sobra: el servidor lo ha marcado como leído.
-        if (data.data && data.data.notifications_read > 0) loadNotifications();
+        await putTaskShares({ seen_task_ids: ids });
     } catch (error) {
         ids.forEach(id => tasksSeenSent.delete(id)); // se reintenta en el siguiente pintado
         console.error('Error marking tasks as seen', ids, error);
+    }
+}
+
+// Has abierto una tarea que te han asignado: vista y, además, su aviso de la campana leído.
+async function markTaskOpened(taskId) {
+    const id = Number(taskId);
+    if (!(id > 0)) return;
+    tasksSeenSent.add(id);
+
+    try {
+        const result = await putTaskShares({ opened_task_ids: [id] });
+        if (result.notifications_read > 0) loadNotifications();
+    } catch (error) {
+        console.error('Error marking task as opened', id, error);
     }
 }
 

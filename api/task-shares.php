@@ -77,9 +77,12 @@ switch ($method) {
         break;
         
     case 'PUT':
-        // The tasks were shown to the current user: mark them as seen (only their own shares)
+        // Tasks shown to the current user in a list: seen (only their own shares).
+        // Opened tasks: seen, and their assignment notice is read.
         $input = get_json_input();
-        $result = mark_tasks_seen($db, $user['id'], $input['seen_task_ids'] ?? []);
+        $result = !empty($input['opened_task_ids'])
+            ? mark_tasks_seen($db, $user['id'], $input['opened_task_ids'], true)
+            : mark_tasks_seen($db, $user['id'], $input['seen_task_ids'] ?? []);
 
         success_response($result);
         break;

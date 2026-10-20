@@ -135,8 +135,8 @@ assert_file_contains('assets/js/main.js', [
     'payload.shared_user_ids = [parsed.person.id]',
 ], 'floating quick task detects and sends the person');
 
-assert_file_contains('tasks.php', ['+nombre)', '/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=16'], 'tasks page hints the syntax and loads the new scripts');
+assert_file_contains('tasks.php', ['+nombre)', '/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=17'], 'tasks page hints the syntax and loads the new scripts');
 assert_file_contains('index.php', ['+nombre)', '/assets/js/task-parser.js?v=9', '/assets/js/main.js?v=5.5'], 'index hints the syntax and loads the new scripts');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v45';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Quick task person completed successfully.\n");

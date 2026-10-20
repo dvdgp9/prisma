@@ -123,14 +123,21 @@ assert_same('0', (string) $db->query('SELECT is_shared FROM tasks WHERE id = 100
 create_task_assignment_notifications($db, 100, [9], $david);
 $db->exec("INSERT INTO notifications (user_id, type, request_id, triggered_by, message) VALUES (9, 'comment', 5, 7, 'Comentario sin leer')");
 $result = mark_tasks_seen($db, 9, [100, 101, 'x', -1, 100]);
-assert_same(['seen' => 1, 'notifications_read' => 1], $result, 'marks the shares of this person as seen and reads the matching notice');
+// Que salga en una lista cuenta como vista, pero el aviso sigue sin leer: la campana tiene que avisar
+// (la Vista global pinta las tareas al entrar y, si no, el contador no llegaba a salir).
+assert_same(['seen' => 1, 'notifications_read' => 0], $result, 'shown in a list: marked as seen, the notice stays unread');
 $rows = share_rows($db, 100);
 assert_same(true, $rows[0][1] !== null, 'seen_at is stored');
+assert_same([[9, 7, 'David Gutiérrez te ha asignado una tarea', 0]], assignment_notices($db, 100), 'the bell still shows the notice');
+
+// Al abrir la tarea (o pulsar el aviso), el aviso ya sobra.
+assert_same(['seen' => 0, 'notifications_read' => 1], mark_tasks_seen($db, 9, [100], true), 'opening the task reads its notice');
+assert_same([[9, 7, 'David Gutiérrez te ha asignado una tarea', 1]], assignment_notices($db, 100), 'notice is read after opening the task');
 assert_same([[8, null]], share_rows($db, 101), 'other people\'s shares are untouched');
 assert_same('0', (string) $db->query("SELECT is_read FROM notifications WHERE type = 'comment'")->fetchColumn(), 'other notices stay unread');
 
 $db->exec("UPDATE task_shares SET seen_at = '2026-10-20 10:42:00' WHERE task_id = 100 AND user_id = 9");
-assert_same(['seen' => 0, 'notifications_read' => 0], mark_tasks_seen($db, 9, [100]), 'seeing it again changes nothing');
+assert_same(['seen' => 0, 'notifications_read' => 0], mark_tasks_seen($db, 9, [100], true), 'seeing or opening it again changes nothing');
 assert_same([[9, '2026-10-20 10:42:00']], share_rows($db, 100), 'the first time it was seen is kept');
 assert_same(['seen' => 0, 'notifications_read' => 0], mark_tasks_seen($db, 9, []), 'nothing to mark');
 
@@ -148,6 +155,7 @@ assert_file_contains('api/task-shares.php', [
     'create_task_assignment_notifications($db, $taskId, $added, $user)',
     "case 'PUT':",
     "mark_tasks_seen(\$db, \$user['id'], \$input['seen_task_ids'] ?? [])",
+    "mark_tasks_seen(\$db, \$user['id'], \$input['opened_task_ids'], true)",
     'ts.seen_at',
 ], 'task shares API: diff-based sharing, notices and "seen"');
 assert_file_not_contains('api/task-shares.php', [

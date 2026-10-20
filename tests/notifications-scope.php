@@ -117,7 +117,7 @@ assert_file_contains('assets/js/sidebar.js', [
     '/tasks.php?task=${taskId}',
     "n.type === 'assignment' || n.type === 'task_assignment'",
 ], 'inbox renders and opens note and task notices');
-assert_file_contains('includes/sidebar.php', ['<option value="note_share">Notas</option>', '/assets/js/sidebar.js?v=1.9'], 'inbox type filter has Notas');
+assert_file_contains('includes/sidebar.php', ['<option value="note_share">Notas</option>', '/assets/js/sidebar.js?v=2.0'], 'inbox type filter has Notas');
 assert_file_contains('assets/css/styles.css', ['.inbox-item-icon.note'], 'note notices have their own icon colour');
 
 fwrite(STDOUT, "Notifications scope completed successfully.\n");

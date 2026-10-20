@@ -82,6 +82,6 @@ assert_file_contains('assets/js/main.js', [
 
 assert_file_contains('api/requests.php', ["case 'due_date':", 'r.due_date IS NULL'], 'API sorts by due date with undated last');
 assert_file_contains('assets/css/work.css', ['.request-due', '.is-overdue', '.is-today', '.is-soon'], 'work.css styles the date chips by urgency');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v45';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Request due date UI completed successfully.\n");

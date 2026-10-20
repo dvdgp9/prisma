@@ -3287,3 +3287,44 @@ Tests (no hacen falta en producción): `tests/tasks-quick-person.php` (nuevo) y 
 - [x] Q2 Implementación
 - [x] Q3 Verificación y entrega
 - [ ] Verificación del usuario en producción (cierra el Planner)
+
+---
+
+# FALLO: EL AVISO DE TAREA ASIGNADA NO ENCIENDE LA CAMPANA (Executor, 20 Octubre 2026)
+
+## Background and Motivation (campana sin aviso)
+La compañera del usuario dice que al asignarle una tarea no le sale el circulito de notificaciones nuevas; si entra en Notificaciones el aviso sí está, pero no avisa.
+
+## Key Challenges and Analysis (campana sin aviso)
+- Causa (decisión del Executor en "visto en tareas"): `mark_tasks_seen` marcaba como leído el aviso al pintarse la tarea en una lista. La Vista global ("Mi trabajo", página de inicio) pinta sus tareas al entrar → la tarea se marca vista y su aviso leído en el acto → el contador no llega a salir (o parpadea) y en la lista el aviso aparece ya leído.
+- Arreglo: separar "vista" (✓✓ para quien asigna, al pintarse en una lista) de "aviso leído" (solo al pulsar el aviso o abrir la tarea). `PUT /api/task-shares.php` con `seen_task_ids` (solo visto) u `opened_task_ids` (visto + aviso leído).
+
+## High-level Task Breakdown (campana sin aviso)
+- [ ] C1. Tests: `mark_tasks_seen` sin leer avisos por defecto; con `$read_notices` sí; contratos (API `opened_task_ids`, `markTaskOpened` al abrir el modal, listas solo `markTasksSeen`). ✅ fallan antes.
+- [ ] C2. Arreglo + versiones (sidebar.js, tasks.js, sw.js). ✅ tests en verde.
+- [ ] C3. Arnés: Rebecca entra en la Vista global → contador encendido y tarea con ✓✓ para David; al abrir la tarea, el aviso se lee.
+
+## Current Status / Progress Tracking (20 Oct 2026 — campana sin aviso C1–C3)
+- **C1** Tests adaptados: `tests/task-seen.php` (pintarse en una lista: vista, aviso sin leer; `mark_tasks_seen(..., true)` al abrir: aviso leído; contrato `opened_task_ids`), `tests/task-seen-ui.php` (`markTaskOpened`, `markTasksSeen` no recarga la campana, el modal llama a `markTaskOpened`). Fallaban antes del arreglo.
+- **C2** `includes/task-shares.php`: `mark_tasks_seen($db, $user_id, $task_ids, $read_notices = false)`. `api/task-shares.php` PUT: `seen_task_ids` (listas) u `opened_task_ids` (modal). `sidebar.js`: `markTasksSeen` ya no toca la campana; nuevo `markTaskOpened(taskId)` (vista + aviso leído + recarga la campana). `tasks.js`: el modal llama a `markTaskOpened` en tareas que no son tuyas. Versiones: sidebar.js 2.0, tasks.js 17, sw.js prisma-v46. 35 tests en verde.
+- **C3** Arnés: Rebecca entra en la Vista global con una tarea nueva → contador "1" en Notificaciones, "Nueva" en la fila, aviso sin leer y `seen_at` guardado (✓✓ para David). Al pulsar la tarea → se abre en Tareas, aviso leído y contador apagado. Entrada temporal de launch.json quitada.
+
+### Archivos a subir (campana sin aviso)
+Sin migraciones.
+1. `includes/task-shares.php`
+2. `api/task-shares.php`
+3. `assets/js/sidebar.js`
+4. `assets/js/tasks.js`
+5. `includes/sidebar.php`
+6. `tasks.php`
+7. `sw.js` (el último)
+Tests: `tests/task-seen.php`, `tests/task-seen-ui.php`, `tests/notifications-scope.php` y versiones en `tests/my-work-scope-ui.php`, `my-work-actions.php`, `sidebar-mejoras.php`, `tasks-sidebar-count.php`, `request-due-date-ui.php`, `tasks-share-names.php`, `tasks-quick-person.php`, `tasks-for-whom.php`.
+
+## Lessons (campana sin aviso)
+- La Vista global es la página de inicio y pinta las tareas al entrar: cualquier efecto "al verse en una lista" se dispara nada más abrir Prisma. No usarlo para apagar avisos.
+
+## Project Status Board (campana sin aviso) — actualizado por el Executor
+- [x] C1 Tests
+- [x] C2 Arreglo
+- [x] C3 Verificación en el arnés
+- [ ] Confirmación de la compañera en producción (cierra el Planner)

@@ -97,10 +97,18 @@ assert_same(null, $r['oldApiReceipt'], 'no receipt without share_status');
 // Marcar como vista: una vez por carga y solo lo que se ha pintado.
 assert_file_contains('assets/js/sidebar.js', [
     'function markTasksSeen(taskIds)',
+    'function markTaskOpened(taskId)',
     "method: 'PUT'",
     'seen_task_ids: ids',
+    'opened_task_ids: [id]',
     'tasksSeenSent',
-], 'sidebar.js marks tasks as seen once per page load');
+], 'sidebar.js marks tasks as seen once per page load, and opened ones read their notice');
+
+// Pintarse en una lista no apaga la campana (fallo del 20 oct: el aviso no encendía el contador).
+$sidebar = read_project_file('assets/js/sidebar.js');
+$seenFn = substr($sidebar, strpos($sidebar, 'async function markTasksSeen('), 1200);
+$seenFn = substr($seenFn, 0, strpos($seenFn, 'async function markTaskOpened(') ?: strlen($seenFn));
+assert_same(false, strpos($seenFn, 'loadNotifications') !== false, 'marking tasks as seen from a list does not touch the bell');
 
 // Tareas: check en la etiqueta "Para quién", "Nueva" y visto al pintar o abrir.
 assert_file_contains('assets/js/tasks.js', [
@@ -109,7 +117,7 @@ assert_file_contains('assets/js/tasks.js', [
     'taskIsNewForMe(task, CURRENT_USER_ID)',
     'task-new-pill',
     'markTasksSeen(visible.filter(t => taskIsNewForMe(t, CURRENT_USER_ID)).map(t => t.id))',
-    'markTasksSeen([task.id])',
+    'markTaskOpened(task.id)',
 ], 'tasks page shows the receipt, the "Nueva" pill and marks rendered tasks as seen');
 
 // Vista global: "Nueva" en "Para mí", check en "De todos" y visto al pintar.
@@ -123,8 +131,8 @@ assert_file_contains('assets/css/tasks.css', ['.task-seen', '.task-seen--seen', 
 assert_file_contains('assets/css/work.css', ['.my-work-new', '.my-work-whom .task-seen'], 'my work styles for the pill and the receipt');
 
 // Versiones (la PWA cachea los assets).
-assert_file_contains('tasks.php', ['/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=16', '/assets/css/tasks.css?v=3.3'], 'tasks page loads the new assets');
+assert_file_contains('tasks.php', ['/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=17', '/assets/css/tasks.css?v=3.3'], 'tasks page loads the new assets');
 assert_file_contains('index.php', ['/assets/js/task-parser.js?v=9', '/assets/js/my-work.js?v=4', '/assets/css/work.css?v=5'], 'index loads the new assets');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v45';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v46';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Task seen UI completed successfully.\n");
