@@ -38,11 +38,12 @@ $company_name = $user['company_name'] ?? '';
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <h1 class="page-title">
                     <i class="iconoir-list" style="font-size: 1.5rem;"></i>
                     Changelog
                 </h1>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="actions">
                     <button class="btn btn-outline" onclick="exportToMarkdown()">
                         <i class="iconoir-download"></i>

@@ -36,8 +36,9 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <h1 class="page-title">Gestionar Aplicaciones</h1>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="actions">
                     <button class="btn btn-primary" onclick="openNewAppModal()">
                         <i class="iconoir-plus"></i>

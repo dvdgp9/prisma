@@ -38,7 +38,7 @@ $userApps = get_user_apps();
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <div>
                     <div class="page-title-row">
                         <h1 class="page-title">Tareas</h1>
@@ -49,6 +49,7 @@ $userApps = get_user_apps();
                     </div>
                     <p class="text-muted">Apunta rápidamente lo que necesitas recordar</p>
                 </div>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="header-actions">
                     <label class="tasks-search">
                         <i class="iconoir-search"></i>

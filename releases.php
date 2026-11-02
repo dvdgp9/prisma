@@ -540,7 +540,7 @@ $userApps = get_user_apps();
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <div>
                     <h1 class="page-title">
                         <i class="iconoir-calendar" style="color: var(--primary);"></i>
@@ -548,6 +548,7 @@ $userApps = get_user_apps();
                     </h1>
                     <p class="text-muted">Programa cuándo anunciar tus funcionalidades</p>
                 </div>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="header-actions">
                     <div class="view-toggle">
                         <button class="view-toggle-btn active" data-view="calendar" onclick="chooseView('calendar')">

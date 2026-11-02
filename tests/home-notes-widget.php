@@ -30,7 +30,7 @@ function assert_file_contains($relativePath, $needles, $message)
 }
 
 // --- "Nota rápida" pasa a llamarse "Crear con IA" (decisión del usuario, 19 oct 2026).
-assert_file_contains('includes/sidebar.php', ['<span>Asistente</span>'], 'sidebar opens the shared assistant');
+assert_file_contains('includes/workspace-tools.php', ['id="assistant-toggle"', 'Preguntar a Prisma'], 'workspace header opens the shared assistant');
 assert_file_contains('ai-inbox.php', ['<title>Crear con IA - Prisma</title>', '<h1 class="page-title">Crear con IA</h1>'], 'AI page is titled "Crear con IA"');
 foreach (['includes/sidebar.php', 'ai-inbox.php'] as $file) {
     assert_true(stripos(read_project_file($file), 'Nota rápida') === false, "{$file} no longer says \"Nota rápida\"");

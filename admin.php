@@ -146,8 +146,9 @@ $user = get_logged_user();
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <h1 class="page-title">Panel de Administración</h1>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
             </div>
 
             <!-- Tabs -->

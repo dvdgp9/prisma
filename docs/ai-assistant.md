@@ -146,3 +146,16 @@ Commit funcional `f351a5d`, publicado en GitHub y desplegado mediante fast-forwa
 Recorrido HTTPS real: página y assets, 401/403 esperados, nota privada sintética, conversación contextual, plan y respuesta del proveedor real, referencia validada que abre esa nota, persistencia y reintento sin duplicados. Además, consultas SQL de mejoras+tareas ejecutadas en la BD real con un término aleatorio sin coincidencias, sin enviar registros reales de trabajo al modelo. Conversación, nota sintética y sesión temporal eliminadas al finalizar; ningún registro de trabajo existente se ha modificado.
 
 IA1–IA3 quedan operativos en `https://prisma.wthefox.com`. Las copias privadas anteriores quedan disponibles para recuperación. El siguiente bloque funcional es IA4 (tarjetas y aplicación de cambios), seguido de IA5 (integración de creación/resumen existentes).
+
+
+## Acceso al asistente desde la cabecera — 2 Nov 2026
+
+El menú lateral contiene destinos de navegación. El asistente se abre como herramienta del espacio de trabajo desde «Preguntar a Prisma», junto a la campana de notificaciones en la cabecera. El icono de panel y el estado expandido anticipan el comportamiento; Ctrl/Cmd+J permite abrir/cerrar sin buscar el botón. Los accesos contextuales de mejoras y tareas se conservan.
+
+`includes/workspace-tools.php` comparte ambos botones en Inicio, Tareas, Notas, creación con IA, Changelog, Admin, aplicaciones y Releases. Las acciones propias de la pantalla ocupan una fila separada. En móvil el acceso se acorta a «Asistente», permanece visible con el menú cerrado y ofrece objetivos táctiles de 44 px. El panel conserva su comportamiento de diálogo a pantalla completa.
+
+Solo puede estar abierto uno de los paneles (asistente/notificaciones). Los botones exponen `aria-controls` y `aria-expanded`; el foco vuelve al disparador al cerrar y entra en el compositor después de cargar el historial. La etiqueta accesible sigue el texto visible en móvil. Se conserva el borrador al navegar y se respeta movimiento reducido. La campana actualiza también el atributo `hidden` del contador para ser compatible con las reglas de Notas.
+
+Validación: 43 scripts existentes, sintaxis PHP/JS y diff. Revisión de navegador a 1440×1000 y 375×812, sin scroll horizontal; apertura/cierre, atajo, continuidad del borrador, alternancia con notificaciones, contador de no leídas y vuelta al modal de tarea con Escape. Consola sin errores en la pasada final. Capturas con datos ficticios fuera del repositorio: `prisma-header-tools-desktop.jpg`, `prisma-header-tools-mobile.jpg` y `prisma-header-tools-panel.jpg`.
+
+Sin cambios de BD ni migraciones. Assets assistant v3, sidebar.js v2.2 y caché PWA prisma-v50 / runtime-v38. Se despliega mediante fast-forward y comprobación HTTPS de las ocho cabeceras autenticadas y sus assets.

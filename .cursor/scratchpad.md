@@ -3692,3 +3692,12 @@ IA1–IA5 completan los tres bloques aprobados. Primer hito utilizable: panel pe
 - Verificación final IA3 en HTTPS con proveedor real: página/assets, rechazo 401 sin sesión y 403 sin CSRF, nota sintética privada creada para la prueba, consulta contextual con resumen y referencia verificable, apertura del registro referenciado, reintento sin duplicado y persistencia. Consulta SQL real de mejoras+tareas con término aleatorio y cero coincidencias. Nota, conversación y sesión de prueba eliminadas al finalizar; no se modificó trabajo existente.
 - 43 tests locales en verde; consultas/persistencia probadas con prepares nativos en MariaDB temporal; sintaxis PHP/JS y diff correctos. En producción, 17 PHP verificados para IA1+IA2 y los 7 afectados por IA3. Prueba visual de IA3 con fuentes y consultas parciales en desktop/móvil; capturas `prisma-ia3-desktop.jpg` y `prisma-ia3-mobile.jpg` en artefactos del chat.
 - Resultado disponible en `https://prisma.wthefox.com`: asistente contextual persistente con consultas de lectura y fuentes. Pendientes funcionales: IA4 (tarjetas y escrituras autorizadas), IA5 (integración final de accesos), IA6 posterior.
+
+
+### Ajuste UX del acceso al asistente — 2 Nov 2026
+
+- Petición del usuario: el elemento de menú que abre un panel lateral resulta ambiguo. Aplicada la skill `design-taste-frontend`, conservando PHP/JS/CSS y el sistema visual existente.
+- Asistente y notificaciones pasan a la cabecera compartida de ocho páginas autenticadas. «Preguntar a Prisma» (móvil «Asistente»), icono de panel, estado expandido y Ctrl/Cmd+J. Menú lateral reservado a navegación; acciones propias de cada pantalla en una fila separada.
+- Paneles mutuamente excluyentes; foco al cargar historial y al cerrar, etiquetas accesibles según texto visible, móvil con botones de 44 px, borrador/contexto conservados. Corregido `hidden` del contador al recibir no leídas.
+- Verificación: 43 scripts, sintaxis PHP/JS y diff; navegador desktop 1440×1000/móvil 375×812 sin scroll lateral, apertura/atajo/continuidad/notificaciones/modal de tarea/Escape; consola sin errores en revisión final. Capturas con datos ficticios en artefactos del chat.
+- No requiere migraciones. Assistant assets v3; sidebar.js v2.2; PWA v50/runtime38. Publicación/despliegue en el mismo destino autorizado, con copia privada del código y smoke HTTPS de ocho páginas. IA4 sigue pendiente.

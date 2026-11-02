@@ -6,7 +6,13 @@
     const $ = id => document.getElementById(id);
     const input = $('assistant-input');
     const messages = $('assistant-messages');
-    const trigger = $('assistant-nav-btn');
+    const trigger = $('assistant-toggle');
+    const triggers = [...document.querySelectorAll('[data-assistant-toggle], [data-assistant-open]')];
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const shortcut = isMac ? '⌘ J' : 'Ctrl J';
+    document.querySelectorAll('[data-assistant-shortcut]').forEach(key => { key.textContent = shortcut; });
+    if (trigger) trigger.title = `Abrir el asistente en un panel lateral (${shortcut})`;
+    triggers.forEach(button => { button.setAttribute('aria-controls', 'prisma-assistant'); button.setAttribute('aria-expanded', 'false'); });
     const identity = `${panel.dataset.userId}:${panel.dataset.companyId}`;
     const prefix = `prisma_assistant:${identity}:`;
     const mobile = matchMedia('(max-width: 767px)');
@@ -207,6 +213,7 @@
             if (epoch !== state.generation) return;
             state.loading = false; applyDetail(data); restoreDraft();
             if (restoreContext && state.fixed) await setContext({ context: data.conversation.context, label: data.conversation.context_label });
+            if (state.open && document.activeElement === document.body) input.focus();
         } catch (e) {
             if (epoch !== state.generation) return;
             if (e.status === 404) { state.conversation = null; state.messages = []; state.pending = false; state.cursor = null; restoreDraft(); renderMessages(); saveUI(); }
@@ -300,6 +307,10 @@
     }
     const inertBefore = new Map();
     function mobileMode() {
+        if (trigger) {
+            trigger.setAttribute('aria-label', mobile.matches ? 'Asistente de Prisma' : 'Preguntar a Prisma');
+            trigger.title = mobile.matches ? `Abrir el asistente (${shortcut})` : `Abrir el asistente en un panel lateral (${shortcut})`;
+        }
         for (const [el, value] of inertBefore) el.inert = value;
         inertBefore.clear();
         if (mobile.matches && state.open) {
@@ -315,9 +326,9 @@
         if (mobile.matches && state.open) { panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); }
         else { panel.setAttribute('role', 'complementary'); panel.removeAttribute('aria-modal'); }
     }
-    function close() { saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); trigger?.setAttribute('aria-expanded', 'false'); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
+    function close() { saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); triggers.forEach(button => button.setAttribute('aria-expanded', 'false')); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
     async function open() {
-        state.returnFocus = document.activeElement; state.open = true; panel.hidden = false; document.body.classList.add('assistant-open'); trigger?.setAttribute('aria-expanded', 'true');
+        state.returnFocus = document.activeElement; state.open = true; panel.hidden = false; document.body.classList.add('assistant-open'); triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
         // Close the notification overlay so two panels cannot cover each other.
         if ($('inbox-panel')?.classList.contains('open') && typeof toggleInbox === 'function') toggleInbox();
         mobileMode(); syncPage(); saveUI(); input.focus();
@@ -325,6 +336,12 @@
         if (state.conversation) await loadConversation(state.conversation.id); else renderMessages();
     }
     window.PrismaAssistant = Object.freeze({ open, close });
+    document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.isComposing && e.key.toLowerCase() === 'j') {
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (!e.repeat) state.open ? close() : open();
+        }
+    }, true);
     document.querySelectorAll('[data-assistant-open]').forEach(button => button.addEventListener('click', () => open()));
     trigger?.addEventListener('click', e => { e.preventDefault(); state.open ? close() : open(); });
     panel.addEventListener('click', e => {
@@ -375,6 +392,6 @@
     for (const id of ['task-modal', 'edit-request-modal']) if ($(id)) observer.observe($(id), { attributes: true, attributeFilter: ['class'] });
     const saved = read('ui', {}); state.fixed = Boolean(saved.fixed); state.context = saved.context || baseContext(); state.label = contextLabel(state.context);
     if (saved.id) state.conversation = { id: Number(saved.id) };
-    restoreDraft(); syncPage(); renderMessages();
+    restoreDraft(); syncPage(); renderMessages(); mobileMode();
     if (saved.open) open();
 })();

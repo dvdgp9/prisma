@@ -329,6 +329,7 @@ async function loadNotifications() {
 function updateInboxBadge(unreadCount) {
     const badge = document.getElementById('inbox-count');
     if (!badge) return;
+    badge.hidden = unreadCount <= 0;
     if (unreadCount > 0) {
         badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
         badge.style.display = 'flex';
@@ -478,12 +479,15 @@ function toggleInbox() {
     const panel = document.getElementById('inbox-panel');
     const overlay = document.getElementById('inbox-overlay');
 
+    const trigger = document.getElementById('inbox-nav-btn');
     if (panel.classList.contains('open')) {
+        trigger?.setAttribute('aria-expanded', 'false');
         panel.classList.remove('open');
         overlay.classList.remove('open');
-        const trigger = document.getElementById('inbox-nav-btn');
         if (trigger) trigger.focus();
     } else {
+        window.PrismaAssistant?.close();
+        trigger?.setAttribute('aria-expanded', 'true');
         loadNotifications();
         panel.classList.add('open');
         overlay.classList.add('open');

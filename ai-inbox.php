@@ -37,11 +37,12 @@ $userApps = get_user_apps();
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <div>
                     <h1 class="page-title">Crear con IA</h1>
                     <p class="text-muted">Pega tus apuntes de reunión y la IA propondrá mejoras y tareas. Tú revisas y decides.</p>
                 </div>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
             </div>
 
             <!-- Paso 1: Entrada de nota -->

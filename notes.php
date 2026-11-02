@@ -40,11 +40,12 @@ $noteApps = array_map(function ($app) {
         <?php $current_page = 'notes'; include __DIR__ . '/includes/sidebar.php'; ?>
 
         <main class="main-content notes-main">
-            <div class="content-header notes-header">
+            <div class="content-header content-header--workspace notes-header">
                 <div>
                     <h1 class="page-title">Notas</h1>
                     <p class="text-muted notes-subtitle">Guarda y comparte lo que el equipo necesita tener a mano</p>
                 </div>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="notes-header-actions">
                     <label class="notes-search">
                         <i class="iconoir-search" aria-hidden="true"></i>

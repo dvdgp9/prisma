@@ -43,8 +43,9 @@ $company_name = $user['company_name'] ?? '';
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header">
+            <div class="content-header content-header--workspace">
                 <h1 class="page-title" id="page-title">Vista global</h1>
+                <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="actions">
                     <button class="btn btn-outline" id="export-btn" onclick="openExportModal()">
                         <i class="iconoir-download"></i>
