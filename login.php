@@ -77,6 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+<script>
+    // Clear private drafts on every unauthenticated visit, including direct logout URLs.
+    try {
+        for (const key of Object.keys(localStorage)) if (key.startsWith('prisma_assistant:')) localStorage.removeItem(key);
+        localStorage.removeItem('prisma_assistant_actor');
+        localStorage.setItem('prisma_assistant_logout', String(Date.now()));
+    } catch (e) { /* Private browsing. */ }
+    </script>
 </body>
 
 </html>

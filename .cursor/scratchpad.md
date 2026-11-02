@@ -3558,3 +3558,118 @@ Documentación: `migrations/019_task_completed_by.sql`, `migrations/README.md`. 
 - [x] AE4 UI en "De todos"
 - [x] AE5 Verificación y entrega
 - [ ] Verificación del usuario en producción (cierra el Planner)
+
+---
+
+## Planner — Asistente unificado de Prisma (2 Nov 2026)
+
+### Background and Motivation
+
+El usuario quiere que la IA sea una parte unificada, interactiva y real de Prisma. Aprueba los tres primeros bloques: asistente contextual compartido, conversaciones que preparan y ejecutan cambios, y contexto real con continuidad. Aprueba también las sugerencias proactivas para una fase posterior. Solicita registrar el plan en este Scratchpad.
+
+Estado: **plan acordado y registrado; implementación pendiente**. Esta actualización es documental; no se han modificado funcionalidades ni ejecutado migraciones. Los checkboxes siguientes son el seguimiento de este proyecto; no implican autorización para desplegar ni que se haya completado la implementación.
+
+### Diagnóstico del código actual
+
+- `ai-inbox.php`, `assets/js/ai-inbox.js` y `api/ai-inbox.php`: notas en bruto → propuestas de mejoras/tareas. La creación, asignación y checklist se guardan con llamadas independientes desde el navegador. Hay que sustituir ese guardado por una ejecución con resultados fiables por tarjeta.
+- `api/ai-summary.php` y `summarizeComments()` en `assets/js/main.js`: resumen efímero de comentarios, sin conversación posterior ni persistencia.
+- Ambos endpoints repiten configuración y llamada a OpenRouter. Reutilizar la configuración de administración y extraer un servicio común.
+- `includes/auth.php` ya define capacidades de mejoras, tareas y notas. Reutilizarlas tanto al consultar como al ejecutar; mantener el saneado de campos de solicitantes según permisos.
+- `assets/js/work-helpers.js` y `assets/js/my-work.js` definen «Para mí» / «De todos». Reproducir sus reglas en las consultas del asistente; no confundir todo lo visible con trabajo propio.
+- Asignación de mejoras (`api/assignments.php`) y compartir tareas (`includes/task-shares.php`) son operaciones distintas; conservar sus reglas y avisos.
+- `includes/notes.php` ofrece funciones reutilizables y control de revisiones para notas. Extraer progresivamente lógica equivalente para las operaciones necesarias de mejoras/tareas, compartida con sus APIs normales.
+- Mantener PHP/MySQL y frontend actual. Las APIs son solo de red en `sw.js`; el asistente debe mostrar los estados de desconexión y permitir recuperar su trabajo sin duplicados.
+
+### Decisiones de producto
+
+1. Reemplazar «Crear con IA» por «Asistente» en la navegación. Panel compartido en pantallas autenticadas principales; lateral en escritorio y pantalla completa en móvil, con retorno claro a la aplicación.
+2. Cabecera con contexto visible, opción de fijarlo, nueva conversación e historial. El contexto sigue la pantalla por defecto: Mi trabajo, Trabajo del equipo, aplicación, mejora, tarea o nota. Filtros de persona/estado/fecha relevantes deben formar parte del contexto explícito.
+3. Cada mensaje y propuesta conserva el contexto con el que se generó. Navegar no cambia el destino de las tarjetas pendientes. El texto en edición y la conversación se conservan al navegar.
+4. Conversaciones privadas por usuario, persistentes, retomables, renombrables y eliminables. Registrar fuentes y propuestas; revalidar permisos al recuperar contexto, mostrar referencias y ejecutar acciones. Evitar conservar en el historial visible contenido derivado de fuentes cuyo acceso se haya revocado; definir y probar la estrategia de invalidación/redacción en IA1.
+5. Respuestas con enlaces a registros reales; diferenciar hechos de recomendaciones. Avisar si una consulta está limitada o solo cubre una parte de los resultados. No inferir bloqueo solo por antigüedad sin explicarlo como indicio.
+6. Tarjetas editables y seleccionables para cambios; mostrar antes/después en modificaciones. Preguntar dentro de la conversación cuando falte una app, una fecha concreta o una persona inequívoca.
+7. Consultar y preparar no escribe registros. «Aplicar» ejecuta exactamente la revisión presentada. Corregir una propuesta crea una nueva revisión e invalida la anterior.
+8. Estados por tarjeta: pendiente, aplicada, requiere revisión o fallida; resultado con enlaces, actualización de vistas y contadores, reintento de pendientes sin repetir las ya guardadas.
+9. Los accesos actuales de resumen y creación abren el mismo asistente con una petición preparada. Resolver la compatibilidad de la URL antigua al integrar la navegación.
+
+### Alcance funcional de la primera versión completa
+
+- Consultar mejoras, comentarios, tareas y notas mediante búsquedas/filtros por app, persona, estado y fecha, dentro del acceso real del usuario.
+- Resumir contexto, decisiones y pendientes, con referencias verificadas por el servidor.
+- Extraer de apuntes mejoras, tareas y subtareas/checklist; editar las propuestas manualmente o por conversación.
+- Preparar actualizaciones permitidas de títulos, descripciones, prioridad, fechas, estado y responsables/compartición, según las capacidades de cada entidad y rol.
+- Incorporar información a mejoras existentes mediante comentarios o checklist, mostrando la operación exacta. Consultar coincidencias antes de sugerir crear otra mejora cuando sea pertinente.
+- Proponer planificación y fechas; resolver referencias como «la segunda», «para el viernes» y «añádelo a la existente» sobre registros y tarjetas inequívocos. Interpretar fechas con fecha/zona horaria explícitas del usuario.
+- Excluir inicialmente eliminaciones masivas, automatizaciones recurrentes e integraciones externas. Las sugerencias proactivas pertenecen a IA6.
+
+### Arquitectura y contratos a concretar en IA1
+
+- Interfaz compartida: componente PHP y JS/CSS propios del asistente, con adaptadores para los cambios de vista y modales de cada pantalla. Evitar ampliar la concentración de responsabilidades en `main.js`.
+- Servicio IA: configuración existente, proveedor común, respuestas estructuradas, límites de entrada/salida, tiempos de espera, errores recuperables y registro acotado de uso sin claves ni contenido sensible en logs.
+- Herramientas de consulta: operaciones permitidas explícitas y parametrizadas; datos recuperados por servidor, filtrados por permisos antes de enviarlos al modelo. Empezar con búsquedas SQL y detalle bajo demanda, con límites y paginación.
+- Servicio de acciones: lista cerrada de operaciones y campos; validación servidor de IDs, fechas, estados, personas elegibles y capacidades. Compartir lógica de dominio con las APIs normales y conservar efectos de negocio/notificaciones. El modelo propone; el servidor valida y ejecuta.
+- Persistencia: tablas/migración nuevas para conversaciones, mensajes y propuestas/revisiones/resultados. Definir propiedad, referencias, versión, estados e identificador de ejecución; numeración de migración según el repositorio al implementar.
+- Ejecución idempotente: reintentar una acción ya guardada devuelve su resultado, sin duplicar registros ni notificaciones. Validar la revisión confirmada y detectar cambios concurrentes sobre los campos afectados.
+- Atomicidad por tarjeta: mejora + responsables + checklist se guarda como unidad de BD. Un lote permite resultados por tarjeta y reintento de pendientes. Definir notificaciones tras la confirmación de BD y su deduplicación; no confundir fallo de aviso con fallo de guardado.
+- Contenido de notas/comentarios y respuestas del modelo se trata como datos; no puede ampliar herramientas, permisos o ámbito. Renderizado escapado y referencias verificadas, sin SQL generado libremente.
+- Prueba temprana de compatibilidad con el hosting PHP actual: empezar con peticiones acotadas; decidir respuesta progresiva solo tras verificar buffering/servidor. Controlar solicitudes duplicadas, respuestas tardías y bloqueo de sesión durante llamadas largas.
+
+### Project Status Board — Asistente unificado
+
+- [x] IA0 Diagnóstico, acuerdo de alcance y registro del plan.
+- [x] IA1 Base compartida y contratos: servicio común IA, funciones de dominio necesarias, diseño de persistencia y estrategia de permisos/historial. Conservar y verificar los flujos actuales durante la transición.
+- [x] IA2 Panel y continuidad: acceso global, contexto visible/fijable, historial, persistencia y borrador al navegar; escritorio y móvil.
+- [ ] IA3 Consultas con contexto: búsqueda y lectura de registros, reglas «Para mí»/«De todos», resúmenes con fuentes y recuperación de conversaciones con permisos vigentes.
+- [ ] IA4 Propuestas y ejecución: tarjetas editables, seguimiento conversacional, creación/actualización, revisiones, conflictos, idempotencia y resultados por tarjeta.
+- [ ] IA5 Integración completa y verificación: migrar creación/resumen al asistente, actualizar navegación, listas/contadores y caché de assets; documentar migraciones y archivos de despliegue.
+- [ ] IA6 Fase posterior: posibles duplicados al crear, extracción de acciones en notas, borradores de changelog al cerrar y pendientes relevantes en Inicio. Sugerencias situadas y sin interrupciones repetitivas.
+
+IA1–IA5 completan los tres bloques aprobados. Primer hito utilizable: panel persistente + consultas reales + creación de mejoras/tareas; continuar hasta completar las actualizaciones e integración, sin dar por terminado el alcance en ese hito.
+
+### Criterios de aceptación y validación
+
+- Recorrido principal: abrir una nota → extraer mejoras/tareas → consultar una mejora existente → incorporar parte de la nota a ella → corregir fechas/responsables por conversación → aplicar → navegar a Tareas → continuar la conversación.
+- Verificar matriz por rol, acceso por aplicación/empresa, tareas y notas privadas/compartidas, conversaciones de otros usuarios y revocación de acceso a fuentes. No ampliar permisos de la aplicación para facilitar la IA.
+- «Mi trabajo» y «Trabajo del equipo» coinciden con los conjuntos que muestran las vistas actuales.
+- Aplicar ejecuta los campos de la revisión visible. Doble clic, reintento tras timeout/recarga y dos pestañas no duplican registros ni efectos.
+- Un cambio concurrente obliga a revisar la tarjeta afectada; el resto del lote presenta resultados correctos. No quedan mejoras parcialmente creadas sin advertencia.
+- Fuentes, consultas parciales, ambigüedades y errores del proveedor se presentan con estados claros; respuesta estructurada inválida no ejecuta nada.
+- Navegar, cerrar/abrir panel y recargar conservan el trabajo; una respuesta tardía no se muestra en otra conversación ni cambia su contexto.
+- Verificación funcional con proveedor simulado para consultas/propuestas/ejecución y pruebas de BD aisladas; comprobación real del proveedor cuando exista entorno configurado, informando cualquier limitación.
+- Pruebas de navegador en escritorio y móvil: teclado, foco, modales/panel de notificaciones, ausencia de scroll horizontal, actualización de vistas y recuperación de errores.
+- Ejecutar los tests existentes afectados, sintaxis PHP/JS y los nuevos tests de comportamiento para persistencia, permisos, revisión y ejecución. Documentar migraciones y orden de despliegue al entregar.
+
+### Current Status / Progress Tracking
+
+- 2 Nov 2026: IA0 completado. Siguiente trabajo: IA1. No se han iniciado cambios funcionales ni despliegue.
+- 2 Nov 2026 — IA1 completado en local: `includes/ai.php` centraliza configuración y llamada a OpenRouter, límites, validación de esquemas y errores sin exponer cuerpos del proveedor; creación/resumen/prueba de admin lo utilizan. Se libera el bloqueo de sesión antes de la llamada lenta.
+- `includes/work-records.php` extrae creación de mejora, tarea y checklist sin gestionar transacciones ni respuestas HTTP; las APIs normales ya lo usan y conservan sus comprobaciones y notificaciones. IA4 añadirá la orquestación autorizada de tarjetas y extraerá la lógica restante de actualizaciones/asignaciones.
+- Persistencia diseñada en `migrations/020_ai_assistant.sql` (conversaciones, mensajes, dependencias de fuentes y revisiones de propuestas). Sin ejecutar. `docs/ai-assistant.md` concreta propiedad, contexto, invalidación de historial por pérdida de acceso, concurrencia, idempotencia y efectos de negocio. README de migraciones actualizado.
+- Verificación local: 38 tests existentes + 2 nuevos (`tests/ai-service.php`, `tests/work-records.php`) en verde. Cubren proveedor simulado, JSON/esquema inválido, respuestas incompletas, límites, errores, cifrado/configuración, liberación de sesión y rollback de creación+checklist. Sintaxis PHP y diff sin errores. Test de fecha actualizado para localizar el INSERT en el helper extraído.
+- SSH comprobado en LucusHost con `~/.ssh/id_ed25519`, usuario `umilpdfe`, host `wthfox.lucusvirtual.es`, puerto 22, comprobación estricta de host. El archivo temporal de la antigua sesión `nimbus-diagnostico` ya no está disponible; no hace falta para esta conexión. No almacenar claves privadas en el repositorio.
+- Producción inspeccionada solo en lectura: ruta `/home/umilpdfe/prisma.wthefox.com`, PHP CLI 8.3.36, MariaDB 11.4.13, extensiones curl/pdo_mysql/mbstring/openssl disponibles; tablas de dominio InnoDB y `users.id` INT con signo. Tablas 020 todavía ausentes. Los límites PHP observados son de CLI; pendiente comprobar los de HTTP al integrar el panel.
+- Cliente nuevo ejecutado en memoria por stdin/SSH con una consulta sintética: respuesta estructurada válida `ok=true`, 61 tokens totales. No se instalaron archivos, ejecutaron migraciones ni enviaron datos de usuarios al proveedor.
+- Siguiente trabajo: IA2 (panel y persistencia); continuar IA3–IA5 para completar el alcance. Antes de activar persistencia, ejecutar/verificar 020 en una BD de pruebas equivalente y después preparar su despliegue. No se ha hecho commit, push o despliegue de IA1.
+
+
+### Current Status / Progress Tracking — IA2 (2 Nov 2026)
+
+- IA2 completado en local. Panel compartido desde sidebar (`includes/assistant-panel.php`, `assets/js/assistant.js`, `assets/css/assistant.css`), con accesos contextuales en los detalles de mejoras/tareas, seguimiento de pantalla y opción de fijar contexto. Historial, renombrado, borrado y borradores por usuario/empresa/conversación; recuperación al navegar y recargar.
+- APIs nuevas `api/ai-conversations.php` y `api/ai-messages.php`; persistencia y ciclo de turnos en `includes/ai-assistant.php`; autenticación/permisos/CSRF en `includes/ai-assistant-http.php`. Cuenta activa, rol y empresa revalidados desde BD antes y después de la llamada IA. Sesión liberada durante el proveedor. Idempotencia de envío y revisión de cada intento (`turn_revision` añadido al SQL 020, que aún no se había desplegado).
+- La IA conversa sobre el texto que comparte el usuario. La referencia de navegación identifica el contexto, sin consultar aún el contenido de registros: eso corresponde a IA3. Las acciones/tarjetas corresponden a IA4. El enlace al flujo anterior de creación sigue en el estado inicial hasta IA5.
+- Privacidad: propiedad estricta de conversaciones incluso para superadmin; revalidación de fuentes y capacidades antes de devolver datos; redacción de título/mensajes/propuestas al perder acceso; limpieza de borradores al salir o cambiar de usuario y comunicación entre pestañas. Login también limpia por si se entra tras un logout directo.
+- UX: escritorio con página utilizable junto al panel; móvil con diálogo completo, fondo inerte, foco contenido y Escape. Atajos del asistente aislados de los editores. Estados de carga/error/reintento; una respuesta de una selección anterior no invade otro chat.
+- Verificación: 42 scripts en verde (40 anteriores + `tests/ai-assistant.php` y `tests/ai-assistant-access.php`). Persistencia probada en SQLite y en MariaDB 12.2.2 temporal con prepares nativos y migración 020 real, ejecutada dos veces. Sin tocar BD de producción; la versión de producción es MariaDB 11.4.
+- Integración HTTP con PHP reales en un arnés aislado: CSRF, propiedad, rol de equipo, envío/reintento sin duplicados, renombrado/borrado, revocación de una nota compartida y cuenta inactiva. Transporte IA simulado; sin secretos o datos reales.
+- Navegador (datos ficticios): continuidad Inicio → Tareas → Notas; contexto de tarea/nota; fijar y navegar; historial/renombrado; fallo IA y reintento con un único mensaje; cambio de chat durante una respuesta lenta sin mezclarla; cambio de usuario con borrador vacío; escritorio 1440×1000 y móvil 375×812 sin scroll lateral, Tab circular y Escape. Consola sin errores en la pasada comprobada. Capturas `prisma-assistant-desktop.jpg` y `prisma-assistant-mobile.jpg` en artefactos de esta conversación (fuera del repo).
+- Caché PWA: prisma-v48 / runtime-v36. Tests de navegación/caché adaptados al nombre «Asistente» y a la versión. Los scripts existentes de tareas/notas/main.js mantienen sus versiones porque no se han modificado.
+- Documentación/orden de despliegue en `docs/ai-assistant.md` y README de migraciones. Migración 020 y todo IA1+IA2 siguen pendientes de despliegue; no hay commit/push ni cambios en producción.
+- Siguiente bloque: IA3, consultas a registros con permisos, filtros y referencias verificadas.
+
+- Cierre IA2: sintaxis de los 33 PHP modificados/nuevos y de assistant.js válida; diff sin errores. Pruebas ampliadas de paginación y borrado en cascada también en MariaDB temporal. Servicios locales de prueba cerrados al terminar; las capturas y archivos del arnés quedan disponibles para revisión.
+
+### Despliegue IA1 + IA2 — 2 Nov 2026
+
+- Usuario: «despliega y sigue». Tras verificar que `dvdgp9/prisma` es público, confirma expresamente «Sí, publicar IA1 e IA2 en dvdgp9/prisma y desplegar». Se publica solo código/documentación/tests, sin claves ni config/database.php.
+- Base coincidente local/GitHub/servidor `0c9a555`, rama `main`. Sin cambios tracked en producción; se conservan sus untracked. Backup privado previo: `/home/umilpdfe/.prisma-deploy-backups/ia2-20261102-170820-056592` (database.sql 212.165 bytes y code.tar.gz 914.773 bytes). Opciones temporales de MySQL eliminadas después del dump.
+- 42 tests pasan antes de desplegar. Migración 020 aplicada y verificada en MariaDB 11.4 de producción: cuatro tablas y turn_revision; SQL SHA-256 `9e9e5d951e5a4a61bf25472232362bb0843604b645d86dafc68eaa9bff880636`. Publicación y comprobación HTTP en curso.

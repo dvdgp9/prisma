@@ -8,7 +8,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/encryption.php';
+require_once __DIR__ . '/../includes/ai.php';
 
 header('Content-Type: application/json');
 
@@ -38,7 +38,7 @@ switch ($method) {
     case 'GET':
         try {
             success_response([
-                'model' => get_setting($db, 'ai_model') ?? 'google/gemini-3.1-flash-lite',
+                'model' => get_setting($db, 'ai_model') ?? PRISMA_AI_DEFAULT_MODEL,
                 'key_set' => !empty(get_setting($db, 'openrouter_api_key'))
             ]);
         } catch (Exception $e) {
@@ -50,46 +50,12 @@ switch ($method) {
         if (($_GET['action'] ?? '') === 'test') {
             // Probar conexión con una llamada mínima real
             try {
-                $encrypted = get_setting($db, 'openrouter_api_key');
-                if (empty($encrypted)) {
-                    error_response('No hay API key guardada. Guárdala primero.');
-                }
-                $apiKey = decrypt($encrypted);
-                $model = get_setting($db, 'ai_model') ?? 'google/gemini-3.1-flash-lite';
-
-                $payload = json_encode([
-                    'model' => $model,
-                    'messages' => [['role' => 'user', 'content' => 'Responde solo: OK']],
-                    'max_tokens' => 10
-                ]);
-
-                $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => $payload,
-                    CURLOPT_TIMEOUT => 30,
-                    CURLOPT_HTTPHEADER => [
-                        'Content-Type: application/json',
-                        'Authorization: Bearer ' . $apiKey,
-                        'X-OpenRouter-Title: Prisma'
-                    ]
-                ]);
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlError = curl_error($ch);
-                curl_close($ch);
-
-                if ($response === false) {
-                    error_response('Error de conexión con OpenRouter: ' . $curlError, 502);
-                }
-                if ($httpCode !== 200) {
-                    $body = json_decode($response, true);
-                    $msg = $body['error']['message'] ?? ('HTTP ' . $httpCode);
-                    error_response('OpenRouter rechazó la petición: ' . $msg, 502);
-                }
-
-                success_response(['model' => $model], 'Conexión correcta con ' . $model);
+                $config = prisma_ai_config($db);
+                prisma_ai_release_session();
+                $result = prisma_ai_complete($config, [['role' => 'user', 'content' => 'Responde solo: OK']], null, 10);
+                success_response(['model' => $result['model']], 'Conexión correcta con ' . $result['model']);
+            } catch (PrismaAIException $e) {
+                error_response($e->getMessage(), $e->httpStatus());
             } catch (Exception $e) {
                 error_response('Test failed: ' . $e->getMessage(), 500);
             }

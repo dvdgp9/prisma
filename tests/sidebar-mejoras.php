@@ -42,12 +42,12 @@ assert_file_contains('includes/sidebar.php', [
 ], 'sidebar has Vista global, Tareas and Mejoras entries');
 assert_true(strpos($sidebar, '<span>Mis tareas</span>') === false, 'sidebar no longer says "Mis tareas"');
 
-$positions = array_map(fn($label) => strpos($sidebar, "<span>{$label}</span>"), ['Vista global', 'Tareas', 'Mejoras', 'Notas', 'Crear con IA']);
+$positions = array_map(fn($label) => strpos($sidebar, "<span>{$label}</span>"), ['Vista global', 'Tareas', 'Mejoras', 'Notas', 'Asistente']);
 $inOrder = !in_array(false, $positions, true);
 for ($i = 1; $inOrder && $i < count($positions); $i++) {
     $inOrder = $positions[$i - 1] < $positions[$i];
 }
-assert_true($inOrder, 'sidebar order is Vista global, Tareas, Mejoras, Notas, Crear con IA');
+assert_true($inOrder, 'sidebar order is Vista global, Tareas, Mejoras, Notas, Asistente');
 
 // Vista global = "Mi trabajo" (tareas + mejoras, plan MT5); Mejoras = listado con filtros.
 assert_file_contains('index.php', [
@@ -73,6 +73,6 @@ assert_file_contains('assets/js/my-work.js', ['isTask ? `/tasks.php?task='], 'ta
 foreach (['index.php', 'tasks.php', 'notes.php', 'ai-inbox.php', 'changelog.php', 'admin.php', 'manage-apps.php', 'login.php', 'solicitud.php', 'releases.php'] as $page) {
     assert_file_contains($page, ['/assets/css/styles.css?v=5.4'], "{$page} loads the new styles.css");
 }
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v47';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v48';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Sidebar Mejoras contract completed successfully.\n");

@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/work-records.php';
 require_once __DIR__ . '/../includes/task-shares.php';
 
 header('Content-Type: application/json');
@@ -114,22 +115,7 @@ switch ($method) {
             error_response('El título es obligatorio');
         }
         
-        $stmt = $db->prepare("
-            INSERT INTO tasks (user_id, company_id, app_id, title, description, due_date, is_shared)
-            VALUES (:user_id, :company_id, :app_id, :title, :description, :due_date, :is_shared)
-        ");
-        
-        $stmt->execute([
-            ':user_id' => $user['id'],
-            ':company_id' => $user['company_id'],
-            ':app_id' => $input['app_id'] ?? null,
-            ':title' => trim($input['title']),
-            ':description' => $input['description'] ?? null,
-            ':due_date' => $input['due_date'] ?? null,
-            ':is_shared' => $input['is_shared'] ?? false
-        ]);
-        
-        $taskId = $db->lastInsertId();
+        $taskId = create_task_record($db, $user, $input);
 
         // Assigned while creating it ("para Ana" / "+ana" in quick add): same flow as
         // "Compartir con", so the person gets the notice and the "seen" mark starts empty.

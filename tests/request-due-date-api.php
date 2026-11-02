@@ -69,7 +69,7 @@ assert_file_contains('api/requests.php', [
 ], 'requests API validates and stores the due date with the right capability');
 
 $api = file_get_contents(__DIR__ . '/../api/requests.php');
-assert_same(1, preg_match('/INSERT INTO requests \([^)]*due_date/s', $api), 'new requests can be created with a due date');
+assert_same(1, preg_match('/INSERT INTO requests \([^)]*due_date/s', file_get_contents(__DIR__ . '/../includes/work-records.php')), 'new requests can be created with a due date');
 assert_same(false, strpos($api, '$isStatusOnlyChange') !== false, 'old status-only check is gone');
 
 fwrite(STDOUT, "Request due date API completed successfully.\n");

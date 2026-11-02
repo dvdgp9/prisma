@@ -78,9 +78,9 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
                 <span>Notas</span>
             </a>
 
-            <a href="/ai-inbox.php" class="nav-item <?php echo $current_page === 'ai-inbox' ? 'active' : ''; ?>" data-nav="ai-inbox">
+            <a href="/ai-inbox.php" class="nav-item" id="assistant-nav-btn" data-nav="assistant" aria-controls="prisma-assistant" aria-expanded="false">
                 <i class="iconoir-sparks"></i>
-                <span>Crear con IA</span>
+                <span>Asistente</span>
             </a>
 
             <a href="javascript:void(0)" class="nav-item" onclick="toggleInbox()" id="inbox-nav-btn" data-nav="inbox">
@@ -207,3 +207,5 @@ if ($current_page === 'index' && !isset($_GET['app']) && !isset($_GET['app_id'])
 </div>
 
 <script src="/assets/js/sidebar.js?v=2.1"></script>
+
+<?php include __DIR__ . '/assistant-panel.php'; ?>

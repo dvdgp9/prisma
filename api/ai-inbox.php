@@ -10,7 +10,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/encryption.php';
+require_once __DIR__ . '/../includes/ai.php';
 
 header('Content-Type: application/json');
 
@@ -31,17 +31,6 @@ if ($note === '') {
 if (mb_strlen($note) > 10000) {
     error_response('La nota es demasiado larga (máximo 10.000 caracteres)');
 }
-
-// --- Configuración IA ---
-$stmt = $db->prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('openrouter_api_key', 'ai_model')");
-$stmt->execute();
-$settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-if (empty($settings['openrouter_api_key'])) {
-    error_response('La IA no está configurada. Un superadmin debe añadir la API key en el panel de administración.', 503);
-}
-$apiKey = decrypt($settings['openrouter_api_key']);
-$model = $settings['ai_model'] ?? 'google/gemini-3.1-flash-lite';
 
 // --- Apps del usuario para que el modelo clasifique contra apps reales ---
 $apps = get_user_apps();
@@ -136,55 +125,17 @@ $schema = [
     'additionalProperties' => false
 ];
 
-$payload = json_encode([
-    'model' => $model,
-    'messages' => [
+try {
+    $config = prisma_ai_config($db);
+    prisma_ai_release_session();
+    $result = prisma_ai_structured($config, [
         ['role' => 'system', 'content' => $systemPrompt],
         ['role' => 'user', 'content' => $note]
-    ],
-    'response_format' => [
-        'type' => 'json_schema',
-        'json_schema' => [
-            'name' => 'inbox_items',
-            'strict' => true,
-            'schema' => $schema
-        ]
-    ]
-]);
-
-// --- Llamada a OpenRouter ---
-$ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_TIMEOUT => 60,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey,
-        'X-OpenRouter-Title: Prisma'
-    ]
-]);
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
-
-if ($response === false) {
-    error_response('No se pudo conectar con el servicio de IA: ' . $curlError, 502);
-}
-if ($httpCode !== 200) {
-    $body = json_decode($response, true);
-    $msg = $body['error']['message'] ?? ('HTTP ' . $httpCode);
-    error_response('El servicio de IA devolvió un error: ' . $msg, 502);
-}
-
-$body = json_decode($response, true);
-$content = $body['choices'][0]['message']['content'] ?? null;
-$parsed = $content ? json_decode($content, true) : null;
-
-if (!is_array($parsed) || !isset($parsed['items']) || !is_array($parsed['items'])) {
-    error_response('La IA devolvió una respuesta no válida. Vuelve a intentarlo.', 502);
+    ], 'inbox_items', $schema, 8192);
+    $parsed = $result['data'];
+    $model = $result['model'];
+} catch (PrismaAIException $e) {
+    error_response($e->getMessage(), $e->httpStatus());
 }
 
 // --- Validación servidor: app_ids reales y campos saneados ---

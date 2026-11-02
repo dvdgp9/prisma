@@ -140,6 +140,16 @@ SHOW COLUMNS FROM tasks LIKE 'completed_by';
 SELECT COUNT(*) AS completadas, SUM(completed_by IS NOT NULL) AS con_persona FROM tasks WHERE is_completed = 1;
 ```
 
+## Migración 020: Base del asistente de IA
+
+**Archivo**: `020_ai_assistant.sql`.
+
+Añade `ai_conversations`, `ai_messages`, `ai_message_sources` y `ai_proposals` para conversaciones privadas, referencias a fuentes y revisiones de tarjetas con ejecución idempotente. No modifica registros actuales ni activa la interfaz. El refactor IA1 de creación/resumen funciona sin estas tablas; son necesarias antes de desplegar IA2. El esquema final incluye `ai_messages.turn_revision` para proteger los reintentos de respuestas tardías.
+
+Antes de ejecutar, comprobar InnoDB y que `users.id` sea `INT` con signo, y disponer de una copia de seguridad. Ejecutar el SQL en la BD de Prisma desde phpMyAdmin. Las tablas se pueden crear de nuevo con `IF NOT EXISTS`, pero eso no actualiza estructuras divergentes.
+
+Verificar con `SHOW TABLES LIKE 'ai_%';` y `SHOW CREATE TABLE ai_proposals;`. Contratos de permisos, persistencia y ejecución: `docs/ai-assistant.md`. Ejecutada y repetida correctamente en MariaDB 12.2.2 temporal y local durante IA2. Sigue pendiente de aplicación en producción (MariaDB 11.4); comprobar allí el resultado al desplegar.
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

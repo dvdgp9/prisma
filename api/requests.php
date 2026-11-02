@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/work-records.php';
 require_once __DIR__ . '/../includes/request-notifications.php';
 
 header('Content-Type: application/json');
@@ -222,27 +223,8 @@ switch ($method) {
         }
 
         try {
-            $stmt = $db->prepare("
-                INSERT INTO requests (
-                    app_id, title, description, priority, difficulty, status, created_by,
-                    requester_name, requester_email, due_date
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $input['app_id'],
-                $input['title'],
-                $input['description'] ?? null,
-                $input['priority'] ?? 'medium',
-                $input['difficulty'] ?? null,
-                $input['status'] ?? 'pending',
-                $user['id'],
-                $input['requester_name'] ?? null,
-                $input['requester_email'] ?? null,
-                $dueDate['value']
-            ]);
-
-            $request_id = $db->lastInsertId();
+            $input['due_date'] = $dueDate['value'];
+            $request_id = create_request_record($db, $user, $input);
 
             success_response(['id' => $request_id], 'Request created successfully');
         } catch (Exception $e) {

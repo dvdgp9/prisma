@@ -8,7 +8,7 @@
  */
 
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/encryption.php';
+require_once __DIR__ . '/../includes/ai.php';
 
 header('Content-Type: application/json');
 
@@ -48,17 +48,6 @@ $comments = $stmt->fetchAll();
 if (count($comments) < 2) {
     error_response('No hay suficientes comentarios para resumir');
 }
-
-// --- Configuración IA (mismo patrón que ai-inbox.php) ---
-$stmt = $db->prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('openrouter_api_key', 'ai_model')");
-$stmt->execute();
-$settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-if (empty($settings['openrouter_api_key'])) {
-    error_response('La IA no está configurada. Un superadmin debe añadir la API key en el panel de administración.', 503);
-}
-$apiKey = decrypt($settings['openrouter_api_key']);
-$model = $settings['ai_model'] ?? 'google/gemini-3.1-flash-lite';
 
 // --- Transcript acotado (los comentarios más recientes pesan más) ---
 $lines = [];
@@ -105,55 +94,17 @@ $schema = [
     'additionalProperties' => false
 ];
 
-$payload = json_encode([
-    'model' => $model,
-    'messages' => [
+try {
+    $config = prisma_ai_config($db);
+    prisma_ai_release_session();
+    $result = prisma_ai_structured($config, [
         ['role' => 'system', 'content' => $systemPrompt],
         ['role' => 'user', 'content' => $context . "\n\nComentarios:\n\n" . $transcript]
-    ],
-    'response_format' => [
-        'type' => 'json_schema',
-        'json_schema' => [
-            'name' => 'comments_summary',
-            'strict' => true,
-            'schema' => $schema
-        ]
-    ]
-]);
-
-// --- Llamada a OpenRouter ---
-$ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_TIMEOUT => 60,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey,
-        'X-OpenRouter-Title: Prisma'
-    ]
-]);
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
-
-if ($response === false) {
-    error_response('No se pudo conectar con el servicio de IA: ' . $curlError, 502);
-}
-if ($httpCode !== 200) {
-    $body = json_decode($response, true);
-    $msg = $body['error']['message'] ?? ('HTTP ' . $httpCode);
-    error_response('El servicio de IA devolvió un error: ' . $msg, 502);
-}
-
-$body = json_decode($response, true);
-$content = $body['choices'][0]['message']['content'] ?? null;
-$parsed = $content ? json_decode($content, true) : null;
-
-if (!is_array($parsed) || !isset($parsed['points']) || !is_array($parsed['points'])) {
-    error_response('La IA devolvió una respuesta no válida. Vuelve a intentarlo.', 502);
+    ], 'comments_summary', $schema, 2048);
+    $parsed = $result['data'];
+    $model = $result['model'];
+} catch (PrismaAIException $e) {
+    error_response($e->getMessage(), $e->httpStatus());
 }
 
 $points = array_values(array_filter(array_map('trim', $parsed['points']), fn($p) => $p !== ''));

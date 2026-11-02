@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/work-records.php';
 
 header('Content-Type: application/json');
 require_login();
@@ -43,17 +44,9 @@ switch ($method) {
             error_response('La subtarea no puede superar los 500 caracteres');
         }
 
-        $stmt = $db->prepare('SELECT COALESCE(MAX(position), 0) + 1 FROM request_checklist_items WHERE request_id = ?');
-        $stmt->execute([$requestId]);
-        $position = (int) $stmt->fetchColumn();
+        $itemId = create_request_checklist_record($db, $user, $requestId, $title);
 
-        $stmt = $db->prepare('
-            INSERT INTO request_checklist_items (request_id, title, is_completed, position, created_by)
-            VALUES (?, ?, 0, ?, ?)
-        ');
-        $stmt->execute([$requestId, $title, $position, $user['id']]);
-
-        success_response(['id' => $db->lastInsertId()], 'Checklist item created');
+        success_response(['id' => $itemId], 'Checklist item created');
         break;
 
     case 'PUT':
