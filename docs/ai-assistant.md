@@ -104,3 +104,36 @@ Tests y fixtures no son necesarios en producción. IA3 es el siguiente bloque de
 ## Despliegue IA1 + IA2 — 2 Nov 2026
 
 Base local/GitHub/servidor: `0c9a555` en `main`. Copia privada previa en `/home/umilpdfe/.prisma-deploy-backups/ia2-20261102-170820-056592`: `database.sql`, `code.tar.gz` y `manifest.json`, con permisos restringidos. El usuario autoriza expresamente publicar IA1+IA2 en el repositorio público `dvdgp9/prisma` y desplegar. La migración 020 se ha aplicado en MariaDB 11.4 de producción y se han verificado las cuatro tablas y `ai_messages.turn_revision`. Publicación del código y verificación HTTP en curso.
+
+### Resultado de producción IA1 + IA2
+
+Commit `bdae3f2`, publicado y desplegado el 2 Nov 2026 mediante fast-forward desde `0c9a555`. La migración 020 se ha aplicado en MariaDB 11.4.13 de LucusHost y se han comprobado las cuatro tablas, `turn_revision` y la sintaxis de 17 archivos PHP. Los archivos untracked previos del servidor se han conservado.
+
+Comprobación por HTTPS con sesión temporal: carga de página y assets, respuesta 401 sin sesión, 403 sin CSRF, creación de conversación, respuesta del proveedor real («Prisma está listo.»), reintento sin duplicados y recuperación del historial. Conversación y sesión sintéticas eliminadas al terminar. No se alteraron registros de trabajo del usuario.
+
+## IA3 — consultas con evidencia
+
+Implementación en `includes/ai-queries.php` y `includes/ai-assistant-response.php`, integrada en el envío de mensajes. El primer paso transforma la pregunta en una consulta estructurada de lectura; el servidor ejecuta SQL parametrizado y filtros cerrados; el segundo redacta usando los registros autorizados. No hay SQL generado por IA ni escrituras de dominio. Sigue pendiente IA4 para tarjetas y aplicación de cambios.
+
+- Recursos: mejoras, tareas y notas. El detalle de una mejora añade comentarios y checklist. Las notas privadas y las tareas privadas ajenas no entran en las consultas.
+- Alcance: «Mi trabajo» reproduce asignaciones y destinatarios de la vista actual, excluyendo tareas delegadas y de equipo; «Trabajo del equipo» conserva la visibilidad real, incluyendo delegadas/equipo. Apps acotan resultados a esa app; desde un registro se consulta el detalle o registros relacionados de su app. Un registro sin app no permite ampliar arbitrariamente la búsqueda.
+- Filtros: texto (incluye comentarios autorizados), aplicación por nombre, persona, estado, fechas de vencimiento/creación/actividad/finalización, vencidas/hoy/próximos siete días y orden. En mejoras, la última actividad tiene en cuenta comentarios recientes; no se interpreta antigüedad como bloqueo confirmado.
+- Límites: 20 filas por tipo y una adicional para saber si hay más; offset hasta 200. No se presentan esos recuentos como totales globales. La fila adicional también se registra como dependencia de acceso. Presupuesto de datos de 28.000 caracteres; notas hasta 12.000, comentarios recientes hasta 20 con 400 caracteres cada uno y checklist hasta 30 pasos con texto acotado. Se señala cobertura parcial, texto recortado o página posterior.
+- Evidencia: las keys `request:ID`, `task:ID`, `note:ID` se validan contra los registros recuperados. Los títulos y URLs se construyen en servidor. El panel muestra referencias inline y una lista de enlaces, junto con el alcance de la consulta. Una key inventada nunca se convierte en enlace.
+- Privacidad: dependencias registradas antes de enviar datos al proveedor y revalidadas al terminar. Los campos de contacto de solicitantes no se seleccionan. Cambios de permiso redactan también los metadatos de fuentes. Las dependencias de ámbito de IA2 se actualizan al nuevo fingerprint con el conjunto de apps accesibles, conservando el historial previo sin consultas a registros.
+- Continuidad: referencias y consulta de respuestas anteriores se incorporan como datos del historial para preguntas como «la segunda» o «los siguientes resultados». Una referencia ambigua debe pedir aclaración. El proveedor recibe historial acotado y no afirma haber aplicado cambios.
+- Tiempo: planificación hasta 20 segundos y respuesta hasta 50, dentro de un presupuesto de 75 segundos; sin transacción ni bloqueo de sesión mientras espera al proveedor.
+
+### Datos y validación IA3
+
+`migrations/021_ai_message_metadata.sql` añade `ai_messages.metadata_json`, donde se guardan solo referencias verificadas, cobertura y consulta normalizada. Los endpoints nuevos deben desplegarse después de esa migración. El cliente usa assistant.js/css v2 y la caché PWA prisma-v49 / runtime-v37.
+
+43 scripts pasan en local. Nuevo `tests/ai-queries.php`: alcance personal/equipo, permisos por app, tareas delegadas, notas privadas/compartidas, filtro por persona/estado/fecha, búsqueda en comentarios, última actividad, aislamiento por app, IDs inaccesibles, texto malicioso tratado como parámetro, límites/paginación y referencias inventadas. Persistencia ampliada para fuentes de consultas, metadatos, actualización de fingerprints de IA2 y redacción. Consultas y migraciones probadas también en MariaDB temporal con prepares nativos.
+
+Integración HTTP local sobre PHP reales y transporte simulado: conserva creación/reintento/propiedad/CSRF y revocación. Navegador: resumen de nota con referencias inline y enlaces que abren el registro, persistencia tras navegar, consulta parcial de trabajo, siguiente página, desktop/móvil y ancho 375 sin scroll lateral. Capturas `prisma-ia3-desktop.jpg` y `prisma-ia3-mobile.jpg` fuera del repositorio. Consola sin errores en la pasada de comprobación.
+
+Además, se ejecutaron en memoria en LucusHost las dos llamadas de IA3 contra el proveedor real usando una nota sintética: el plan identificó `detail/note/12` y la respuesta citó `note:12` con URL reconstruida en servidor. No se enviaron registros reales de trabajo en esa prueba.
+
+### Despliegue IA3 en curso
+
+Copia privada previa: `/home/umilpdfe/.prisma-deploy-backups/ia3-20261102-173829-722d1f`, con base `bdae3f2`, dump de 217.322 bytes y código de 956.426 bytes. Orden: aplicar 021, publicar y actualizar PHP/JS/CSS, verificar el recorrido HTTPS y registrar el resultado. La migración es aditiva; el código IA2 sigue funcionando con la columna nueva.

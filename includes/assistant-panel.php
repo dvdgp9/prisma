@@ -3,7 +3,7 @@
 if (empty($_SESSION['assistant_csrf'])) $_SESSION['assistant_csrf'] = bin2hex(random_bytes(32));
 $assistant_attr = static function ($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); };
 ?>
-<link rel="stylesheet" href="/assets/css/assistant.css?v=1">
+<link rel="stylesheet" href="/assets/css/assistant.css?v=2">
 <section id="prisma-assistant" class="prisma-assistant" role="complementary" aria-labelledby="assistant-heading" hidden
     data-user-id="<?php echo (int) $user['id']; ?>" data-company-id="<?php echo (int) $user['company_id']; ?>"
     data-role="<?php echo $assistant_attr($user['role']); ?>" data-csrf="<?php echo $assistant_attr($_SESSION['assistant_csrf']); ?>">
@@ -46,4 +46,4 @@ $assistant_attr = static function ($value) { return htmlspecialchars((string) $v
     </form>
     <p class="assistant-footnote">La IA puede equivocarse. Revisa sus respuestas.</p>
 </section>
-<script src="/assets/js/assistant.js?v=1" defer></script>
+<script src="/assets/js/assistant.js?v=2" defer></script>

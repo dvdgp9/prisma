@@ -150,6 +150,14 @@ Antes de ejecutar, comprobar InnoDB y que `users.id` sea `INT` con signo, y disp
 
 Verificar con `SHOW TABLES LIKE 'ai_%';` y `SHOW CREATE TABLE ai_proposals;`. Contratos de permisos, persistencia y ejecución: `docs/ai-assistant.md`. Ejecutada y repetida correctamente en MariaDB 12.2.2 temporal y local durante IA2. Sigue pendiente de aplicación en producción (MariaDB 11.4); comprobar allí el resultado al desplegar.
 
+## Migración 021: Referencias y cobertura de IA3
+
+**Archivo**: `021_ai_message_metadata.sql`.
+
+Añade `ai_messages.metadata_json` (`LONGTEXT NULL`) para referencias verificadas, cobertura de consultas y seguimiento de las consultas anteriores. No duplica contenido completo de registros ni modifica mensajes existentes.
+
+Ejecutar **una vez antes de desplegar IA3**, después de la 020 y con copia de seguridad. Una repetición da «Duplicate column name» si la columna ya existe; comprobar su estructura antes de continuar. Verificación: `SHOW COLUMNS FROM ai_messages LIKE 'metadata_json';`. Probada en MariaDB temporal junto con el ciclo de persistencia. Detalles de despliegue y comportamiento en `docs/ai-assistant.md`.
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

@@ -3619,7 +3619,7 @@ Estado: **plan acordado y registrado; implementación pendiente**. Esta actualiz
 - [x] IA0 Diagnóstico, acuerdo de alcance y registro del plan.
 - [x] IA1 Base compartida y contratos: servicio común IA, funciones de dominio necesarias, diseño de persistencia y estrategia de permisos/historial. Conservar y verificar los flujos actuales durante la transición.
 - [x] IA2 Panel y continuidad: acceso global, contexto visible/fijable, historial, persistencia y borrador al navegar; escritorio y móvil.
-- [ ] IA3 Consultas con contexto: búsqueda y lectura de registros, reglas «Para mí»/«De todos», resúmenes con fuentes y recuperación de conversaciones con permisos vigentes.
+- [x] IA3 Consultas con contexto: búsqueda y lectura de registros, reglas «Para mí»/«De todos», resúmenes con fuentes y recuperación de conversaciones con permisos vigentes.
 - [ ] IA4 Propuestas y ejecución: tarjetas editables, seguimiento conversacional, creación/actualización, revisiones, conflictos, idempotencia y resultados por tarjeta.
 - [ ] IA5 Integración completa y verificación: migrar creación/resumen al asistente, actualizar navegación, listas/contadores y caché de assets; documentar migraciones y archivos de despliegue.
 - [ ] IA6 Fase posterior: posibles duplicados al crear, extracción de acciones en notas, borradores de changelog al cerrar y pendientes relevantes en Inicio. Sugerencias situadas y sin interrupciones repetitivas.
@@ -3673,3 +3673,14 @@ IA1–IA5 completan los tres bloques aprobados. Primer hito utilizable: panel pe
 - Usuario: «despliega y sigue». Tras verificar que `dvdgp9/prisma` es público, confirma expresamente «Sí, publicar IA1 e IA2 en dvdgp9/prisma y desplegar». Se publica solo código/documentación/tests, sin claves ni config/database.php.
 - Base coincidente local/GitHub/servidor `0c9a555`, rama `main`. Sin cambios tracked en producción; se conservan sus untracked. Backup privado previo: `/home/umilpdfe/.prisma-deploy-backups/ia2-20261102-170820-056592` (database.sql 212.165 bytes y code.tar.gz 914.773 bytes). Opciones temporales de MySQL eliminadas después del dump.
 - 42 tests pasan antes de desplegar. Migración 020 aplicada y verificada en MariaDB 11.4 de producción: cuatro tablas y turn_revision; SQL SHA-256 `9e9e5d951e5a4a61bf25472232362bb0843604b645d86dafc68eaa9bff880636`. Publicación y comprobación HTTP en curso.
+
+
+### Current Status / Progress Tracking — despliegue e IA3 (2 Nov 2026)
+
+- IA1+IA2 publicados y desplegados como `bdae3f2` en `main`. Migración 020 aplicada y verificada en LucusHost. HTTPS real: página/assets, 401 sin sesión, 403 sin CSRF, creación, proveedor real, reintento sin duplicados e historial. Conversación y sesión temporales eliminadas. Untracked previos del servidor conservados.
+- IA3 implementado: `includes/ai-queries.php` (SQL propio, parametrizado y acotado) y `includes/ai-assistant-response.php` (plan estructurado + respuesta con evidencia). Mejora/tarea/nota, comentarios/checklist de mejora, filtros por app/persona/estado/fechas y orden. «Mi trabajo» coincide con work-helpers; no incluye delegadas/equipo. «Trabajo del equipo» mantiene visibilidad, sin privadas ajenas. Referencias inventadas no se convierten en enlaces.
+- Metadatos y enlaces persistentes mediante migración 021. Fuentes registradas antes del proveedor y revalidadas después. Historial IA2 conservado al actualizar fingerprints de ámbito. Respuestas y metadatos se redactan si se pierde acceso. Sin seleccionar datos de contacto de solicitantes.
+- 20 filas por tipo + una para detectar más, offset hasta 200; presupuesto de 28.000 caracteres, contenido de detalles acotado y aviso explícito de recortes/cobertura. No se presentan páginas como totales globales. Actividad de mejoras incluye comentarios recientes.
+- 43 scripts pasan; consultas y ciclo de persistencia/021 también comprobados en MariaDB temporal con prepares nativos. Integración HTTP en arnés aislado conserva permisos/CSRF/reintentos/revocación. Navegador: enlaces a nota, persistencia, consulta parcial y siguiente página, desktop/móvil sin scroll horizontal y consola sin errores. Capturas IA3 en artefactos de esta conversación.
+- Proveedor real de LucusHost: plan y respuesta nuevos ejecutados en memoria con una nota sintética, sin instalar código ni enviar registros reales. Plan `detail/note/12` y cita `note:12` correctos.
+- Despliegue de esta continuación preparado en el mismo repositorio: backup privado `/home/umilpdfe/.prisma-deploy-backups/ia3-20261102-173829-722d1f`, base `bdae3f2`. Migración/publicación/verificación de IA3 en curso. Assets assistant v2, caché PWA v49/runtime37. Siguiente bloque funcional: IA4, tarjetas y ejecución de acciones.

@@ -16,15 +16,15 @@ function assistant_actor($db)
     return array_merge($sessionUser, $current);
 }
 
-function assistant_access_resolver($db, $user)
+function assistant_access_resolver($db, $user, array $appScope = [])
 {
-    return static function ($type, $id) use ($db, $user) {
+    return static function ($type, $id) use ($db, $user, $appScope) {
         $caps = [];
         if ($type === 'scope_mine' || $type === 'scope_team') {
             if ($id !== (int) $user['id']) return null;
             if ($type === 'scope_team' && !in_array($user['role'], ['programador', 'admin', 'superadmin'], true)) return null;
             $label = $type === 'scope_mine' ? 'Mi trabajo' : 'Trabajo del equipo';
-            $caps = [$user['role'], $user['company_id']];
+            $caps = [$user['role'], $user['company_id'], $appScope];
         } elseif ($type === 'app') {
             if (!can_access_app($id)) return null;
             $stmt = $db->prepare('SELECT name, company_id, is_active FROM apps WHERE id = ?');
@@ -46,14 +46,21 @@ function assistant_access_resolver($db, $user)
             $label = ($type === 'task' ? 'Tarea · ' : 'Nota · ') . $access[$type]['title'];
             $caps = [$access[$type]['company_id'], $access['capabilities']];
         } else return null;
-        return ['label' => $label, 'access_fingerprint' => hash('sha256', json_encode([$type, $id, $user['id'], $user['company_id'], $user['role'], $caps]))];
+        $result = ['label' => $label, 'access_fingerprint' => hash('sha256', json_encode([$type, $id, $user['id'], $user['company_id'], $user['role'], $caps]))];
+        if ($type === 'scope_mine' || $type === 'scope_team') {
+            // IA2 scope references had no app set and contained no queried record data.
+            $result['legacy_fingerprints'] = [hash('sha256', json_encode([$type, $id, $user['id'], $user['company_id'], $user['role'], [$user['role'], $user['company_id']]]))];
+        }
+        return $result;
     };
 }
 
 function assistant_store($db)
 {
     $actor = assistant_actor($db);
-    return new PrismaAssistantStore($db, $actor, assistant_access_resolver($db, $actor));
+    $appIds = array_map('intval', array_column(get_user_apps(), 'id'));
+    sort($appIds, SORT_NUMERIC);
+    return new PrismaAssistantStore($db, $actor, assistant_access_resolver($db, $actor, $appIds));
 }
 
 function assistant_http_start()
@@ -67,7 +74,7 @@ function assistant_http_start()
     }
     $db = getDB();
     // Fail gracefully when deploying the UI before migration 020.
-    try { $db->query('SELECT id FROM ai_proposals LIMIT 0'); }
+    try { $db->query('SELECT id FROM ai_proposals LIMIT 0'); $db->query('SELECT metadata_json FROM ai_messages LIMIT 0'); }
     catch (PDOException $e) { throw new PrismaAssistantException('El asistente estará disponible cuando termine su configuración.', 503); }
     return $db;
 }

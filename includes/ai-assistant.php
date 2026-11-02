@@ -20,6 +20,7 @@ function assistant_context($input, $role)
     $timezone = $input['timezone'] ?? 'Europe/Madrid';
     if (!is_string($timezone) || !in_array($timezone, DateTimeZone::listIdentifiers(), true)) throw new PrismaAssistantException('La zona horaria no es válida.');
     $filters = $input['filters'] ?? [];
+    if ($filters instanceof stdClass) $filters = get_object_vars($filters);
     if (!is_array($filters)) throw new PrismaAssistantException('Los filtros no son válidos.');
     $clean = [];
     foreach ($filters as $key => $value) {
@@ -91,11 +92,16 @@ class PrismaAssistantStore
         $valid = $this->resolve($source['entity_type'], $source['entity_id']) !== null;
         foreach ($sources as $ref) {
             $access = $this->resolve($ref['entity_type'], $ref['entity_id']);
-            if (!$access || !hash_equals($ref['access_fingerprint'], $access['access_fingerprint'])) { $valid = false; break; }
+            if (!$access) { $valid = false; break; }
+            if (!hash_equals($ref['access_fingerprint'], $access['access_fingerprint'])) {
+                if (in_array($ref['access_fingerprint'], $access['legacy_fingerprints'] ?? [], true)) {
+                    $this->query('UPDATE ai_message_sources SET access_fingerprint = ? WHERE conversation_id = ? AND entity_type = ? AND entity_id = ? AND access_fingerprint = ?', [$access['access_fingerprint'], $row['id'], $ref['entity_type'], $ref['entity_id'], $ref['access_fingerprint']]);
+                } else { $valid = false; break; }
+            }
         }
         if ($valid) return $row;
         $reset = $this->json(assistant_context([], $this->user['role']));
-        $this->query("UPDATE ai_messages SET content = '', context_json = ?, state = 'redacted', usage_json = NULL WHERE conversation_id = ?", [$reset, $row['id']]);
+        $this->query("UPDATE ai_messages SET content = '', context_json = ?, state = 'redacted', usage_json = NULL, metadata_json = NULL WHERE conversation_id = ?", [$reset, $row['id']]);
         $this->query("UPDATE ai_proposals SET payload_json = '{}', expected_json = NULL, result_json = NULL, state = 'superseded' WHERE conversation_id = ?", [$row['id']]);
         $this->query('DELETE FROM ai_message_sources WHERE conversation_id = ?', [$row['id']]);
         $this->query("UPDATE ai_conversations SET title = 'Conversación sin acceso', context_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [$reset, $row['id']]);
@@ -132,13 +138,14 @@ class PrismaAssistantStore
         return $this->transaction(function () use ($id, $before) {
             $row = $this->revalidate($this->owned($id));
             $this->expirePending($id);
-            $messages = $this->query('SELECT id, role, content, state, context_json, created_at, client_key FROM ai_messages WHERE conversation_id = ? AND (? = 0 OR id < ?) ORDER BY id DESC LIMIT 51', [$id, (int) $before, (int) $before])->fetchAll(PDO::FETCH_ASSOC);
+            $messages = $this->query('SELECT id, role, content, state, context_json, metadata_json, created_at, client_key FROM ai_messages WHERE conversation_id = ? AND (? = 0 OR id < ?) ORDER BY id DESC LIMIT 51', [$id, (int) $before, (int) $before])->fetchAll(PDO::FETCH_ASSOC);
             $more = count($messages) > 50;
             $messages = array_reverse(array_slice($messages, 0, 50));
             foreach ($messages as &$message) {
                 $message['id'] = (int) $message['id'];
                 $message['context'] = json_decode($message['context_json'], true);
-                unset($message['context_json']);
+                $message['metadata'] = json_decode($message['metadata_json'] ?? 'null', true);
+                unset($message['context_json'], $message['metadata_json']);
             }
             return ['conversation' => $this->summary($row), 'messages' => $messages, 'next_cursor' => $more ? $messages[0]['id'] : null];
         });
@@ -194,8 +201,14 @@ class PrismaAssistantStore
             $this->query('DELETE FROM ai_message_sources WHERE message_id = ?', [$messageId]);
             foreach ($unique as $ref) $this->query('INSERT INTO ai_message_sources (message_id, conversation_id, entity_type, entity_id, access_fingerprint) VALUES (?, ?, ?, ?, ?)', [$messageId, $id, $ref['entity_type'], $ref['entity_id'], $ref['access_fingerprint']]);
             $this->query('UPDATE ai_conversations SET context_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [$contextJson, $id]);
-            $history = $this->query("SELECT role, content FROM ai_messages WHERE conversation_id = ? AND (state = 'complete' OR id = ?) ORDER BY id DESC LIMIT 20", [$id, $messageId])->fetchAll(PDO::FETCH_ASSOC);
+            $history = $this->query("SELECT role, content, metadata_json FROM ai_messages WHERE conversation_id = ? AND (state = 'complete' OR id = ?) ORDER BY id DESC LIMIT 20", [$id, $messageId])->fetchAll(PDO::FETCH_ASSOC);
             $history = array_reverse($history);
+            foreach ($history as &$historyMessage) {
+                $metadata = json_decode($historyMessage['metadata_json'] ?? 'null', true);
+                if ($metadata) $historyMessage['content'] .= "\n\nReferencias y consulta de esta respuesta (datos del servidor): " . $this->json($metadata);
+                unset($historyMessage['metadata_json']);
+            }
+            unset($historyMessage);
             $bytes = 0;
             $bounded = [];
             foreach (array_reverse($history) as $message) {
@@ -204,6 +217,22 @@ class PrismaAssistantStore
                 array_unshift($bounded, $message);
             }
             return ['replay' => false, 'message_id' => $messageId, 'revision' => (int) $row['revision'] + 1, 'client_key' => $key, 'context' => $info['context'], 'label' => $info['label'], 'history' => $bounded];
+        });
+    }
+    /** Register every retrieved dependency before sending its content to the provider. */
+    public function attachSources($id, $turn, array $sources)
+    {
+        return $this->transaction(function () use ($id, $turn, $sources) {
+            $row = $this->revalidate($this->owned($id));
+            $message = $this->query('SELECT state, turn_revision FROM ai_messages WHERE id = ? AND conversation_id = ?', [$turn['message_id'], $id])->fetch(PDO::FETCH_ASSOC);
+            if (!$message || $message['state'] !== 'pending' || (int) $message['turn_revision'] !== $turn['revision'] || (int) $row['revision'] !== $turn['revision']) return false;
+            foreach ($sources as $source) {
+                if (!in_array($source['entity_type'] ?? '', ['request', 'task', 'note', 'app'], true) || empty($source['entity_id']) || !preg_match('/^[a-f0-9]{64}$/D', $source['access_fingerprint'] ?? '')) throw new PrismaAssistantException('Referencia de consulta no válida.');
+                $exists = $this->query('SELECT access_fingerprint FROM ai_message_sources WHERE message_id = ? AND entity_type = ? AND entity_id = ?', [$turn['message_id'], $source['entity_type'], (int) $source['entity_id']])->fetchColumn();
+                if (!$exists) $this->query('INSERT INTO ai_message_sources (message_id, conversation_id, entity_type, entity_id, access_fingerprint) VALUES (?, ?, ?, ?, ?)', [$turn['message_id'], $id, $source['entity_type'], (int) $source['entity_id'], $source['access_fingerprint']]);
+            }
+            $checked = $this->revalidate($this->owned($id));
+            return (int) $checked['revision'] === $turn['revision'];
         });
     }
     public function finish($id, $turn, $result = null)
@@ -216,7 +245,7 @@ class PrismaAssistantStore
                 return false; // Redaction or a newer turn won; never revive its response.
             }
             if ($result === null) { $this->query("UPDATE ai_messages SET state = 'failed' WHERE id = ?", [$message['id']]); return true; }
-            $this->query("INSERT INTO ai_messages (conversation_id, role, client_key, content, context_json, model, usage_json) VALUES (?, 'assistant', ?, ?, ?, ?, ?)", [$id, 'reply_' . $turn['client_key'], $result['content'], $message['context_json'], $result['model'], $this->json($result['usage'])]);
+            $this->query("INSERT INTO ai_messages (conversation_id, role, client_key, content, context_json, model, usage_json, metadata_json) VALUES (?, 'assistant', ?, ?, ?, ?, ?, ?)", [$id, 'reply_' . $turn['client_key'], $result['content'], $message['context_json'], $result['model'], $this->json($result['usage']), isset($result['metadata']) ? $this->json($result['metadata']) : null]);
             $replyId = (int) $this->db->lastInsertId();
             $this->query('INSERT INTO ai_message_sources (message_id, conversation_id, entity_type, entity_id, access_fingerprint) SELECT ?, conversation_id, entity_type, entity_id, access_fingerprint FROM ai_message_sources WHERE message_id = ?', [$replyId, $message['id']]);
             $this->query("UPDATE ai_messages SET state = 'complete' WHERE id = ?", [$message['id']]);

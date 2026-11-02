@@ -44,7 +44,7 @@ function prisma_ai_release_session()
     }
 }
 
-function prisma_ai_http($payload, $apiKey)
+function prisma_ai_http($payload, $apiKey, $timeout = 60)
 {
     $body = '';
     $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
@@ -52,7 +52,7 @@ function prisma_ai_http($payload, $apiKey)
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
         CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 60,
+        CURLOPT_TIMEOUT => max(1, min(60, (int) $timeout)),
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Authorization: Bearer ' . $apiKey,
@@ -116,7 +116,7 @@ function prisma_ai_schema_matches($value, array $schema, $depth = 0)
 }
 
 /** Injectable transport for isolated tests. Result contains content, model, usage only. */
-function prisma_ai_complete(array $config, array $messages, $format = null, $maxTokens = 4096, $transport = null)
+function prisma_ai_complete(array $config, array $messages, $format = null, $maxTokens = 4096, $transport = null, $timeout = 60)
 {
     if (empty($config['api_key']) || empty($config['model'])) {
         throw new PrismaAIException('La IA no está configurada.', 503);
@@ -142,7 +142,7 @@ function prisma_ai_complete(array $config, array $messages, $format = null, $max
         throw new PrismaAIException('El mensaje contiene texto no válido.', 400);
     }
     try {
-        $response = ($transport ?? 'prisma_ai_http')($encoded, $config['api_key']);
+        $response = ($transport ?? 'prisma_ai_http')($encoded, $config['api_key'], $timeout);
     } catch (Throwable $e) {
         throw new PrismaAIException('No se pudo conectar con el servicio de IA. Vuelve a intentarlo.');
     }
@@ -171,7 +171,7 @@ function prisma_ai_complete(array $config, array $messages, $format = null, $max
     return ['content' => $content, 'model' => $config['model'], 'usage' => $usage];
 }
 
-function prisma_ai_structured(array $config, array $messages, $name, array $schema, $maxTokens = 4096, $transport = null)
+function prisma_ai_structured(array $config, array $messages, $name, array $schema, $maxTokens = 4096, $transport = null, $timeout = 60)
 {
     if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/D', $name)) {
         throw new InvalidArgumentException('Invalid AI schema name');
@@ -179,7 +179,7 @@ function prisma_ai_structured(array $config, array $messages, $name, array $sche
     $result = prisma_ai_complete($config, $messages, [
         'type' => 'json_schema',
         'json_schema' => ['name' => $name, 'strict' => true, 'schema' => $schema]
-    ], $maxTokens, $transport);
+    ], $maxTokens, $transport, $timeout);
     $value = json_decode($result['content']);
     if (json_last_error() !== JSON_ERROR_NONE || !prisma_ai_schema_matches($value, $schema)) {
         throw new PrismaAIException('La IA devolvió una respuesta no válida. Vuelve a intentarlo.');

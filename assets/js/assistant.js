@@ -94,13 +94,54 @@
         $('assistant-composer').setAttribute('aria-busy', String(state.busy || state.loading || state.pending));
         input.disabled = state.loading || state.stopped;
     }
+    function trustedReference(ref) {
+        return ref && /^(request|task|note):[1-9][0-9]*$/.test(ref.key) && /^\/(index\.php\?open_request=|tasks\.php\?task=|notes\.php\?id=)[1-9][0-9]*$/.test(ref.url);
+    }
+    function messageText(message) {
+        const paragraph = element('p', 'assistant-message-text');
+        const refs = new Map((message.metadata?.references || []).filter(trustedReference).map(ref => [ref.key, ref]));
+        const pattern = /\[\[((?:request|task|note):[1-9][0-9]*)\]\]/g;
+        let end = 0;
+        for (const match of message.content.matchAll(pattern)) {
+            paragraph.append(document.createTextNode(message.content.slice(end, match.index)));
+            const ref = refs.get(match[1]);
+            if (ref) {
+                const link = element('a', 'assistant-inline-reference', `${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id}`);
+                link.href = ref.url; link.title = ref.title; paragraph.append(link);
+            } else paragraph.append(document.createTextNode('[referencia no disponible]'));
+            end = match.index + match[0].length;
+        }
+        paragraph.append(document.createTextNode(message.content.slice(end)));
+        return paragraph;
+    }
+    function appendEvidence(article, metadata) {
+        if (!metadata) return;
+        const refs = (metadata.references || []).filter(trustedReference);
+        if (refs.length) {
+            const links = element('div', 'assistant-references'); links.setAttribute('aria-label', 'Registros de esta respuesta');
+            for (const ref of refs) {
+                const link = element('a', '', `${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id} · ${ref.title}`);
+                link.href = ref.url; links.append(link);
+            }
+            article.append(links);
+        }
+        if (metadata.coverage?.length) {
+            const count = metadata.coverage.reduce((sum, page) => sum + page.reviewed, 0);
+            const hasMore = metadata.coverage.some(page => page.has_more);
+            const laterPage = metadata.coverage.some(page => page.offset > 0);
+            const suffix = hasMore ? ' · Consulta parcial. Puedes afinarla o pedir los siguientes resultados.' : metadata.partial ? (laterPage ? ' · Consulta acotada a esta página.' : ' · Parte del contenido se ha recortado.') : ' en esta consulta.';
+            const text = `${count} ${count === 1 ? 'registro revisado' : 'registros revisados'}` + suffix;
+            article.append(element('p', 'assistant-coverage', text));
+        }
+    }
     function renderMessages(scroll = true) {
         messages.replaceChildren();
         if (state.cursor) messages.append(textButton('Ver mensajes anteriores', olderMessages));
         if (!state.messages.length) {
             const empty = element('div', 'assistant-empty');
-            empty.append(element('span', 'assistant-eyebrow', 'TU ESPACIO DE TRABAJO'), element('h3', '', 'Dale forma a tu próximo paso.'), element('p', '', 'Comparte tus apuntes, ordena una idea o prepara un plan. Puedes retomar la conversación cuando quieras.'));
-            for (const [label, prompt] of [['Ordenar mis apuntes', 'Ayúdame a ordenar estos apuntes y separar las acciones pendientes:\n\n'], ['Preparar un plan de trabajo', 'Ayúdame a preparar un plan de trabajo. Primero te explico el objetivo:\n\n']]) {
+            empty.append(element('span', 'assistant-eyebrow', 'TU ESPACIO DE TRABAJO'), element('h3', '', 'Dale forma a tu próximo paso.'), element('p', '', 'Pregunta por tu trabajo, consulta una mejora o comparte tus apuntes. Las respuestas enlazan los registros consultados.'));
+            const contextual = { request: ['Resumir esta mejora', 'Resume esta mejora, sus comentarios y los próximos pasos.'], task: ['Revisar esta tarea', 'Resume esta tarea y propón el siguiente paso.'], note: ['Resumir esta nota', 'Resume esta nota y separa las acciones pendientes.'], app: ['Ver pendientes de esta app', '¿Qué tenemos pendiente en esta aplicación?'], team: ['Revisar el trabajo del equipo', 'Resume los pendientes del equipo y destaca qué necesita atención.'], mine: ['Qué necesita mi atención', '¿Qué necesita mi atención hoy?'] }[state.context?.scope || 'mine'];
+            for (const [label, prompt] of [contextual, ['Ordenar mis apuntes', 'Ayúdame a ordenar estos apuntes y separar las acciones pendientes:\n\n']]) {
                 const b = element('button', 'assistant-suggestion', label); b.type = 'button'; b.append(element('i', 'iconoir-arrow-up-right')); b.addEventListener('click', () => { input.value = prompt; saveDraft(); updateSend(); input.focus(); }); empty.append(b);
             }
             const legacy = element('a', 'assistant-text-button', 'Crear mejoras y tareas desde apuntes'); legacy.href = '/ai-inbox.php'; empty.append(legacy);
@@ -113,7 +154,8 @@
             article.append(label);
             if (message.state === 'redacted') article.append(element('p', 'assistant-message-state', 'Este mensaje ya no está disponible porque cambió el acceso a su contexto.'));
             else {
-                article.append(element('p', 'assistant-message-text', message.content));
+                article.append(messageText(message));
+                appendEvidence(article, message.metadata);
                 if (message.role === 'user') article.append(element('p', 'assistant-message-context', contextLabel(message.context)));
                 if (message.state === 'pending') article.append(element('p', 'assistant-message-state', 'Preparando la respuesta… Puedes seguir navegando.'));
                 if (message.state === 'failed') {
