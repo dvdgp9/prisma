@@ -148,7 +148,7 @@ Añade `ai_conversations`, `ai_messages`, `ai_message_sources` y `ai_proposals` 
 
 Antes de ejecutar, comprobar InnoDB y que `users.id` sea `INT` con signo, y disponer de una copia de seguridad. Ejecutar el SQL en la BD de Prisma desde phpMyAdmin. Las tablas se pueden crear de nuevo con `IF NOT EXISTS`, pero eso no actualiza estructuras divergentes.
 
-Verificar con `SHOW TABLES LIKE 'ai_%';` y `SHOW CREATE TABLE ai_proposals;`. Contratos de permisos, persistencia y ejecución: `docs/ai-assistant.md`. Ejecutada y repetida correctamente en MariaDB 12.2.2 temporal y local durante IA2. Sigue pendiente de aplicación en producción (MariaDB 11.4); comprobar allí el resultado al desplegar.
+Verificar con `SHOW TABLES LIKE 'ai_%';` y `SHOW CREATE TABLE ai_proposals;`. Contratos de permisos, persistencia y ejecución: `docs/ai-assistant.md`. Ejecutada y repetida correctamente en MariaDB 12.2.2 temporal y local durante IA2. Aplicada y verificada en producción (MariaDB 11.4) el 2 Nov 2026, antes de desplegar IA1+IA2.
 
 ## Migración 021: Referencias y cobertura de IA3
 
@@ -156,7 +156,7 @@ Verificar con `SHOW TABLES LIKE 'ai_%';` y `SHOW CREATE TABLE ai_proposals;`. Co
 
 Añade `ai_messages.metadata_json` (`LONGTEXT NULL`) para referencias verificadas, cobertura de consultas y seguimiento de las consultas anteriores. No duplica contenido completo de registros ni modifica mensajes existentes.
 
-Ejecutar **una vez antes de desplegar IA3**, después de la 020 y con copia de seguridad. Una repetición da «Duplicate column name» si la columna ya existe; comprobar su estructura antes de continuar. Verificación: `SHOW COLUMNS FROM ai_messages LIKE 'metadata_json';`. Probada en MariaDB temporal junto con el ciclo de persistencia. Detalles de despliegue y comportamiento en `docs/ai-assistant.md`.
+Ejecutar **una vez antes de desplegar IA3**, después de la 020 y con copia de seguridad. Una repetición da «Duplicate column name» si la columna ya existe; comprobar su estructura antes de continuar. Verificación: `SHOW COLUMNS FROM ai_messages LIKE 'metadata_json';`. Probada en MariaDB temporal y aplicada/verificada en producción MariaDB 11.4 el 2 Nov 2026 antes de desplegar IA3. Detalles de despliegue y comportamiento en `docs/ai-assistant.md`.
 
 ## 🔒 Comportamiento de Permisos
 

@@ -1,6 +1,6 @@
 # Asistente de Prisma — contratos IA1
 
-Estado: IA1 e IA2 implementados y verificados; IA3–IA5 completarán las consultas y acciones sobre registros.
+Estado: IA1, IA2 e IA3 desplegados y verificados en LucusHost. IA4 e IA5 completarán las acciones y la integración de los accesos existentes.
 Plan y seguimiento: `.cursor/scratchpad.md`, bloque «Planner — Asistente unificado».
 
 ## Componentes disponibles
@@ -8,7 +8,7 @@ Plan y seguimiento: `.cursor/scratchpad.md`, bloque «Planner — Asistente unif
 - `includes/ai.php`: configuración cifrada existente, cliente OpenRouter con transporte sustituible en tests, límites de contexto/salida, errores públicos sin cuerpos del proveedor, uso de tokens y validación local de respuestas estructuradas. No ejecuta herramientas ni escribe en BD.
 - `api/ai-inbox.php`, `api/ai-summary.php`, `api/ai-settings.php?action=test`: usan ese cliente con sus contratos de respuesta existentes. Cierran el bloqueo de sesión después de resolver usuario/datos y antes de contactar al proveedor.
 - `includes/work-records.php`: primitivas de creación de mejora, tarea y checklist utilizadas por las APIs existentes. Reciben campos validados; los controladores conservan sus comprobaciones y avisos. No hacen commit ni envían respuestas HTTP, para poder participar en una tarjeta atómica en IA4. No constituyen por sí solas una API autorizada del asistente.
-- `migrations/020_ai_assistant.sql`: persistencia aditiva, todavía sin consumidores en producción. No es necesaria para el refactor de los tres endpoints actuales.
+- `migrations/020_ai_assistant.sql`: persistencia de conversaciones, mensajes, fuentes y propuestas, desplegada en producción. No es necesaria para el refactor aislado de los tres endpoints anteriores.
 
 ## Contrato de contexto (IA2–IA3)
 
@@ -52,7 +52,7 @@ IA1 puede desplegar su refactor de endpoints sin la migración 020. Para habilit
 
 Usar peticiones acotadas sin streaming por ahora. Comprobar con el hosting real el tiempo de respuesta, buffering y extensiones cURL/mbstring/OpenSSL/PDO. No cambiar modelo ni claves de administración durante el refactor. Pruebas locales con proveedor simulado, SQLite para primitivas de dominio y regresión de la suite existente. Prueba real del proveedor solo con entorno configurado y sin exponer credenciales o datos de usuarios en el informe.
 
-### Comprobación de LucusHost — 2 Nov 2026
+### Comprobación previa de LucusHost en IA1 — 2 Nov 2026
 
 Acceso SSH verificado con la clave local `~/.ssh/id_ed25519`, usuario `umilpdfe`, host `wthfox.lucusvirtual.es`, puerto 22, comprobación estricta de host. Aplicación: `/home/umilpdfe/prisma.wthefox.com`. No se ha guardado ninguna clave en el repositorio.
 
@@ -137,3 +137,12 @@ Además, se ejecutaron en memoria en LucusHost las dos llamadas de IA3 contra el
 ### Despliegue IA3 en curso
 
 Copia privada previa: `/home/umilpdfe/.prisma-deploy-backups/ia3-20261102-173829-722d1f`, con base `bdae3f2`, dump de 217.322 bytes y código de 956.426 bytes. Orden: aplicar 021, publicar y actualizar PHP/JS/CSS, verificar el recorrido HTTPS y registrar el resultado. La migración es aditiva; el código IA2 sigue funcionando con la columna nueva.
+
+
+### Resultado de producción IA3 — 2 Nov 2026
+
+Commit funcional `f351a5d`, publicado en GitHub y desplegado mediante fast-forward desde `bdae3f2`. Migración 021 aplicada en MariaDB 11.4.13 y verificada como `metadata_json LONGTEXT NULL`, SHA-256 del SQL `8cde5738ef196416c9c4f01ad3910cf54a2a5e31c90dcbe589962c4199103c84`. Siete PHP nuevos/modificados pasan la comprobación de sintaxis en el servidor; untracked previos conservados.
+
+Recorrido HTTPS real: página y assets, 401/403 esperados, nota privada sintética, conversación contextual, plan y respuesta del proveedor real, referencia validada que abre esa nota, persistencia y reintento sin duplicados. Además, consultas SQL de mejoras+tareas ejecutadas en la BD real con un término aleatorio sin coincidencias, sin enviar registros reales de trabajo al modelo. Conversación, nota sintética y sesión temporal eliminadas al finalizar; ningún registro de trabajo existente se ha modificado.
+
+IA1–IA3 quedan operativos en `https://prisma.wthefox.com`. Las copias privadas anteriores quedan disponibles para recuperación. El siguiente bloque funcional es IA4 (tarjetas y aplicación de cambios), seguido de IA5 (integración de creación/resumen existentes).
