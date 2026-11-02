@@ -3717,3 +3717,11 @@ Desplegado como `a97d01b` en `main`, mediante fast-forward desde `74c9411`. Copi
 
 
 Despliegue completado el 2 Nov 2026: commit funcional `4c4ae28`, publicado en `dvdgp9/prisma` y actualizado en LucusHost mediante fast-forward desde `eecac9c`. Copia privada previa: `/home/umilpdfe/.prisma-deploy-backups/sidebar-ux-20261102-224313-45bbed` (975.235 bytes). Sintaxis PHP correcta en servidor. Smoke HTTPS autenticado correcto en las ocho páginas, estructura de navegación, assets/versiones/PWA y lectura de aplicaciones autorizadas. Sesión temporal eliminada; sin cambios de BD ni registros de negocio. Untracked previos del servidor conservados. Versión disponible para revisión del usuario en `https://prisma.wthefox.com`.
+
+### Revisión del panel del asistente (aclaración de alcance) — 2 Nov 2026
+
+- El usuario aclara que «barra lateral» se refería al panel del asistente. Los cambios siguientes corresponden a ese panel derecho.
+- `design-taste-frontend`: panel 460 px, texto 14 px, Conversación/Historial/Nueva visibles; contexto compacto junto al compositor con selector/fijación desplegables. Fuentes agrupadas, citas y avisos parciales visibles. Escritura autoajustable, Enviar etiquetado, borrador, pregunta visible durante respuesta y último mensaje.
+- Historial útil también para chats existentes: título derivado de la primera pregunta solo cuando no hay nombre personalizado, con revalidación previa y longitud/Unicode acotados. Representación de lectura, sin reescribir registros ni llamar al modelo. Gestión/renombrado/cancelación, cargas de historial con protección ante cambios de vista, vacío/error/reintento y foco.
+- 43 scripts pasan; tests de persistencia ampliados para etiquetas y privacidad; sintaxis/diff. Navegador local con proveedor simulado, desktop 1440×900/móvil 375×812: consulta/fuentes, historial/renombrado/borrador/contexto, lectura larga/último mensaje, reintento sin duplicado, vacío/error, aislamiento de usuario, Tab/Escape y sin scroll lateral. Sin errores nuevos de consola en pasada final. Capturas `prisma-assistant-ux-desktop.jpg` y `prisma-assistant-ux-mobile.jpg` en artefactos.
+- Assistant v4, PWA v52/runtime40, sin migración. Documentación en docs/ai-assistant.md. Despliegue al destino autorizado en preparación. IA4 sigue pendiente.

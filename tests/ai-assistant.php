@@ -30,6 +30,8 @@ fails(fn() => assistant_context(['filters' => ['from' => '2026-02-30']], 'admin'
 fails(fn() => assistant_context(['filters' => ['raw_sql' => 'SELECT 1']], 'admin'), 400, 'unknown filter rejected');
 $turn = $store->reserve($id, 'Organiza estos apuntes', 'turn_000000000001', $context, 1);
 same(1, count($turn['history']), 'user turn stored before calling provider');
+same('Organiza estos apuntes', $store->detail($id)['conversation']['title'], 'untitled chat uses the first question as a readable label');
+same('Organiza estos apuntes', $store->listing()['items'][0]['title'], 'history exposes the same readable label');
 same('note', $turn['context']['scope'], 'turn has immutable context');
 same(true, $store->detail($id)['messages'][0]['state'] === 'pending', 'pending turn survives reload');
 fails(fn() => $store->reserve($id, 'Otro mensaje', 'turn_000000000002', [], 2), 409, 'second tab cannot reserve another concurrent turn');
@@ -43,6 +45,7 @@ fails(fn() => $store->reserve($id, 'Cambiar el contenido', 'turn_000000000001', 
 fails(fn() => $store->reserve($id, 'Más', 'turn_000000000003', [], 1), 409, 'stale conversation revision rejected');
 $renamed = $store->rename($id, 'Reunión de diseño', $detail['conversation']['revision']);
 same('Reunión de diseño', $renamed['title'], 'conversation renamed');
+same('Reunión de diseño', $store->detail($id)['conversation']['title'], 'custom title takes priority over the first question');
 $second = $store->reserve($id, 'Prepara un esquema', 'turn_000000000004', ['scope' => 'app', 'entity_id' => 3], $renamed['revision']);
 same(true, $store->finish($id, $second), 'provider failure marks the turn failed');
 same('failed', $store->detail($id)['messages'][2]['state'], 'failed turn retained for retry');
@@ -51,6 +54,7 @@ same(3, count($store->detail($id)['messages']), 'retry reuses the existing user 
 same('app', $retry['context']['scope'], 'retry keeps original context instead of current screen');
 same(false, $store->finish($id, $second, $result), 'older attempt cannot complete a retried turn');
 same(true, $store->finish($id, $retry, $result), 'new retry can complete');
+same('Reunión de diseño', $store->detail($id)['conversation']['title'], 'later turns cannot replace a custom title');
 $rows = $db->query('SELECT DISTINCT entity_type FROM ai_message_sources ORDER BY entity_type')->fetchAll(PDO::FETCH_COLUMN);
 same(['app', 'note'], $rows, 'later turns inherit earlier dependencies');
 
@@ -117,6 +121,14 @@ same('complete', $legacyStore->detail($legacyChat['id'])['messages'][1]['state']
 $legacyValue='revoked';
 same('redacted', $legacyStore->detail($legacyChat['id'])['messages'][1]['state'], 'upgraded scope still detects later access changes');
 same(null, $legacyStore->detail($legacyChat['id'])['messages'][1]['metadata'], 'redaction also erases verified-reference metadata');
+$labelChat = $legacyStore->create([]);
+$labelText = "  Revisión\n\n" . str_repeat('área técnica ', 12);
+$legacyStore->reserve($labelChat['id'], $labelText, 'turn_000000000009', [], 1);
+$autoTitle = $legacyStore->detail($labelChat['id'])['conversation']['title'];
+same(80, mb_strlen($autoTitle), 'derived title is bounded in Unicode characters');
+same(false, str_contains($autoTitle, "\n"), 'derived title normalizes whitespace');
+same('…', mb_substr($autoTitle, -1), 'long derived titles indicate truncation');
+same('Nueva conversación', $db->query('SELECT title FROM ai_conversations WHERE id=' . (int) $labelChat['id'])->fetchColumn(), 'derived labels do not rewrite existing conversation records');
 $db->exec('DELETE FROM users WHERE id=7');
 same(0, (int) $db->query('SELECT COUNT(*) FROM ai_messages')->fetchColumn(), 'owner deletion cascades through conversation history');
 same(0, (int) $db->query('SELECT COUNT(*) FROM ai_message_sources')->fetchColumn(), 'owner deletion clears source dependencies');

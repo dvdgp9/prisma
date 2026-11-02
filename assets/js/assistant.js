@@ -16,7 +16,7 @@
     const identity = `${panel.dataset.userId}:${panel.dataset.companyId}`;
     const prefix = `prisma_assistant:${identity}:`;
     const mobile = matchMedia('(max-width: 767px)');
-    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, generation: 0, busy: false, loading: false, pending: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
+    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, outgoing: null, generation: 0, busy: false, loading: false, pending: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
     const baseContext = () => ({ version: 1, scope: 'mine', entity_id: null, filters: {}, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', fixed: false });
     function read(key, fallback) { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch { return fallback; } }
     function write(key, value) { if (state.stopped) return; try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch { $('assistant-save-state').textContent = 'Este navegador no permite conservar el borrador.'; } }
@@ -76,8 +76,13 @@
         choices.forEach((item, i) => { const opt = new Option(item.label, String(i)); opt.selected = contextKey(item.context) === contextKey(state.context); select.add(opt); });
         select._choices = choices;
         $('assistant-pin').setAttribute('aria-pressed', String(state.fixed));
-        $('assistant-pin').querySelector('span').textContent = state.fixed ? 'Fijado' : 'Fijar';
-        $('assistant-context-caption').textContent = state.fixed ? 'Este contexto se mantiene mientras navegas.' : 'Sigue la pantalla que estás viendo.';
+        $('assistant-pin').querySelector('span').textContent = state.fixed ? 'Contexto fijado' : 'Fijar contexto';
+        $('assistant-pin').title = state.fixed ? 'Dejar de fijar y seguir la pantalla' : 'Mantener este contexto al navegar';
+        $('assistant-context-label').textContent = state.label;
+        $('assistant-context-mode').textContent = state.fixed ? 'Contexto fijado' : 'Sigue esta pantalla';
+        $('assistant-context-icon').className = { mine: 'iconoir-task-list', team: 'iconoir-group', app: 'iconoir-app-window', request: 'iconoir-light-bulb', task: 'iconoir-task-list', note: 'iconoir-page' }[state.context?.scope] || 'iconoir-page';
+        $('assistant-context-caption').textContent = state.fixed ? 'Se mantiene al navegar. Desactiva la fijación para seguir la pantalla.' : 'El contexto cambia con la pantalla que estás viendo.';
+        if (!state.messages.length && !state.loading && !state.busy && !state.pending) renderMessages(false);
     }
     async function setContext(info, validate = true) {
         const epoch = ++state.contextEpoch;
@@ -99,6 +104,8 @@
         $('assistant-send').disabled = state.busy || state.loading || state.pending || state.stopped || !input.value.trim();
         $('assistant-composer').setAttribute('aria-busy', String(state.busy || state.loading || state.pending));
         input.disabled = state.loading || state.stopped;
+        input.style.height = 'auto'; input.style.height = `${Math.max(46, input.scrollHeight)}px`;
+        $('assistant-save-state').textContent = state.busy || state.pending ? 'Preparando respuesta…' : input.value.trim() ? 'Borrador guardado en este dispositivo' : `${isMac ? '⌘' : 'Ctrl'} + Enter para enviar`;
     }
     function trustedReference(ref) {
         return ref && /^(request|task|note):[1-9][0-9]*$/.test(ref.key) && /^\/(index\.php\?open_request=|tasks\.php\?task=|notes\.php\?id=)[1-9][0-9]*$/.test(ref.url);
@@ -124,12 +131,15 @@
         if (!metadata) return;
         const refs = (metadata.references || []).filter(trustedReference);
         if (refs.length) {
-            const links = element('div', 'assistant-references'); links.setAttribute('aria-label', 'Registros de esta respuesta');
+            const disclosure = element('details', 'assistant-references');
+            const summary = element('summary', '', `${refs.length} ${refs.length === 1 ? 'fuente consultada' : 'fuentes consultadas'}`);
+            const icon = element('i', 'iconoir-link'); icon.setAttribute('aria-hidden', 'true'); summary.prepend(icon);
+            const links = element('div', 'assistant-reference-links'); links.setAttribute('aria-label', 'Registros de esta respuesta');
             for (const ref of refs) {
-                const link = element('a', '', `${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id} · ${ref.title}`);
+                const link = element('a', '', `${ref.title} · ${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id}`);
                 link.href = ref.url; links.append(link);
             }
-            article.append(links);
+            disclosure.append(summary, links); article.append(disclosure);
         }
         if (metadata.coverage?.length) {
             const count = metadata.coverage.reduce((sum, page) => sum + page.reviewed, 0);
@@ -137,21 +147,23 @@
             const laterPage = metadata.coverage.some(page => page.offset > 0);
             const suffix = hasMore ? ' · Consulta parcial. Puedes afinarla o pedir los siguientes resultados.' : metadata.partial ? (laterPage ? ' · Consulta acotada a esta página.' : ' · Parte del contenido se ha recortado.') : ' en esta consulta.';
             const text = `${count} ${count === 1 ? 'registro revisado' : 'registros revisados'}` + suffix;
-            article.append(element('p', 'assistant-coverage', text));
+            const coverage = element('p', 'assistant-coverage', text);
+            const sources = article.querySelector('.assistant-references');
+            if (sources && !hasMore && !metadata.partial) sources.append(coverage); else article.append(coverage);
         }
     }
     function renderMessages(scroll = true) {
         messages.replaceChildren();
         if (state.cursor) messages.append(textButton('Ver mensajes anteriores', olderMessages));
-        if (!state.messages.length) {
+        if (!state.messages.length && !state.busy && !state.pending) {
             const empty = element('div', 'assistant-empty');
-            empty.append(element('span', 'assistant-eyebrow', 'TU ESPACIO DE TRABAJO'), element('h3', '', 'Dale forma a tu próximo paso.'), element('p', '', 'Pregunta por tu trabajo, consulta una mejora o comparte tus apuntes. Las respuestas enlazan los registros consultados.'));
+            empty.append(element('span', 'assistant-eyebrow', 'Empieza una conversación'), element('h3', '', '¿Qué quieres resolver?'), element('p', '', 'Consulta lo que estás viendo o comparte tus apuntes. Puedes empezar por aquí:'));
             const contextual = { request: ['Resumir esta mejora', 'Resume esta mejora, sus comentarios y los próximos pasos.'], task: ['Revisar esta tarea', 'Resume esta tarea y propón el siguiente paso.'], note: ['Resumir esta nota', 'Resume esta nota y separa las acciones pendientes.'], app: ['Ver pendientes de esta app', '¿Qué tenemos pendiente en esta aplicación?'], team: ['Revisar el trabajo del equipo', 'Resume los pendientes del equipo y destaca qué necesita atención.'], mine: ['Qué necesita mi atención', '¿Qué necesita mi atención hoy?'] }[state.context?.scope || 'mine'];
             for (const [label, prompt] of [contextual, ['Ordenar mis apuntes', 'Ayúdame a ordenar estos apuntes y separar las acciones pendientes:\n\n']]) {
-                const b = element('button', 'assistant-suggestion', label); b.type = 'button'; b.append(element('i', 'iconoir-arrow-up-right')); b.addEventListener('click', () => { input.value = prompt; saveDraft(); updateSend(); input.focus(); }); empty.append(b);
+                const b = element('button', 'assistant-suggestion', label); b.type = 'button'; b.append(element('i', 'iconoir-arrow-up-right')); b.addEventListener('click', () => { input.value = input.value.trim() ? input.value + '\n\n' + prompt : prompt; saveDraft(); updateSend(); input.focus(); }); empty.append(b);
             }
-            const legacy = element('a', 'assistant-text-button', 'Crear mejoras y tareas desde apuntes'); legacy.href = '/ai-inbox.php'; empty.append(legacy);
-        messages.append(empty);
+            const legacy = element('a', 'assistant-legacy-link', 'Crear tareas y mejoras desde apuntes'); legacy.href = '/ai-inbox.php'; legacy.addEventListener('click', event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) close(); }); empty.append(legacy);
+            messages.append(empty);
         }
         for (const message of state.messages) {
             const article = element('article', `assistant-message assistant-message--${message.role}`);
@@ -163,7 +175,6 @@
                 article.append(messageText(message));
                 appendEvidence(article, message.metadata);
                 if (message.role === 'user') article.append(element('p', 'assistant-message-context', contextLabel(message.context)));
-                if (message.state === 'pending') article.append(element('p', 'assistant-message-state', 'Preparando la respuesta… Puedes seguir navegando.'));
                 if (message.state === 'failed') {
                     article.append(element('p', 'assistant-message-state', 'La respuesta no se completó.'));
                     // Retry only the last turn; older failed turns are not reordered into history.
@@ -172,16 +183,22 @@
             }
             messages.append(article);
         }
+        if (state.outgoing && state.busy && !state.messages.some(message => message.client_key === state.outgoing.key)) {
+            const outgoing = element('article', 'assistant-message assistant-message--user');
+            outgoing.append(element('div', 'assistant-message-label', 'Tú'), messageText(state.outgoing), element('p', 'assistant-message-context', contextLabel(state.outgoing.context)));
+            messages.append(outgoing);
+        }
         if (state.pending || state.busy) {
-            const skeleton = element('div', 'assistant-loading'); skeleton.setAttribute('aria-label', 'Preparando respuesta');
-            for (let i = 0; i < 3; i++) skeleton.append(element('span')); messages.append(skeleton);
+            const skeleton = element('div', 'assistant-loading'); skeleton.setAttribute('role', 'status'); skeleton.append(element('p', 'assistant-message-state', 'Consultando Prisma…'));
+            for (let i = 0; i < 3; i++) { const line = element('span'); line.setAttribute('aria-hidden', 'true'); skeleton.append(line); } messages.append(skeleton);
         }
         if (scroll) messages.scrollTop = messages.scrollHeight;
         const conversation = state.conversation;
         $('assistant-conversation-bar').hidden = !conversation;
         $('assistant-conversation-title').textContent = conversation?.title || '';
-        updateSend();
+        updateSend(); updateLatest();
     }
+    function updateLatest() { $('assistant-latest').hidden = !state.messages.length || messages.scrollHeight - messages.scrollTop - messages.clientHeight < 120; }
     function contextLabel(context) {
         const labels = { mine: 'Mi trabajo', team: 'Trabajo del equipo', app: 'Aplicación', request: 'Mejora', task: 'Tarea', note: 'Nota' };
         return (labels[context?.scope] || 'Mi trabajo') + (context?.entity_id ? ` #${context.entity_id}` : '');
@@ -205,9 +222,9 @@
         }, 2500);
     }
     async function loadConversation(id, restoreContext = false) {
-        saveDraft(); const epoch = ++state.generation; clearTimeout(state.poll); state.busy = false; state.loading = true; updateSend();
+        saveDraft(); const epoch = ++state.generation; clearTimeout(state.poll); state.busy = false; state.outgoing = null; state.loading = true; updateSend();
         $('assistant-manage').hidden = true; error('');
-        messages.replaceChildren(element('p', 'assistant-message-state', 'Abriendo conversación…'));
+        messages.replaceChildren(element('p', 'assistant-message-state', 'Abriendo conversación…')); $('assistant-latest').hidden = true;
         try {
             const data = await api(`/api/ai-conversations.php?id=${id}`);
             if (epoch !== state.generation) return;
@@ -228,30 +245,58 @@
             if (epoch !== state.generation) return;
             // A redaction can happen between pages. Reload rather than combining old private text.
             if (data.conversation.revision !== state.conversation.revision || data.messages.some(m => m.state === 'redacted')) { await loadConversation(id); return; }
+            const oldHeight = messages.scrollHeight, oldTop = messages.scrollTop;
             state.messages = [...data.messages, ...state.messages]; state.cursor = data.next_cursor; renderMessages(false);
+            messages.scrollTop = oldTop + messages.scrollHeight - oldHeight; updateLatest();
         } catch (e) { error(e.message, olderMessages); }
     }
+    function collapseContext() { $('assistant-context-controls').hidden = true; $('assistant-context-toggle').setAttribute('aria-expanded', 'false'); }
+    function historyView(visible) {
+        if (visible) { collapseContext(); $('assistant-manage').hidden = true; }
+        $('assistant-history').hidden = !visible; $('assistant-chat').hidden = visible;
+        for (const id of ['assistant-composer', 'assistant-context', 'assistant-footnote']) $(id).hidden = visible;
+        panel.querySelector('[data-assistant-action="history"]').setAttribute('aria-pressed', String(visible));
+        panel.querySelector('[data-assistant-action="chat"]').setAttribute('aria-pressed', String(!visible));
+    }
     async function showHistory(append = false) {
-        saveDraft(); $('assistant-history').hidden = false; $('assistant-chat').hidden = true; $('assistant-composer').hidden = true;
-        panel.querySelector('[data-assistant-action="history"]').setAttribute('aria-expanded', 'true');
-        const list = $('assistant-history-list');
-        if (!append) { list.replaceChildren(element('p', 'assistant-message-state', 'Cargando conversaciones…')); state.historyCursor = null; }
+        if (append && state.historyBusy) return;
+        saveDraft(); historyView(true);
+        if ($('assistant-error').contains(document.activeElement)) panel.querySelector('[data-assistant-action="history"]').focus();
+        error('');
+        const epoch = ++state.historyEpoch, list = $('assistant-history-list');
+        state.historyBusy = true; list.setAttribute('aria-busy', 'true'); $('assistant-history-more').disabled = true;
+        if (!append) {
+            list.replaceChildren(element('p', 'assistant-message-state', 'Cargando conversaciones…'));
+            state.historyCursor = null; $('assistant-history-more').hidden = true;
+        }
         try {
             const data = await api('/api/ai-conversations.php' + (append && state.historyCursor ? `?before=${state.historyCursor}` : ''));
+            if (epoch !== state.historyEpoch) return;
             if (!append) list.replaceChildren();
-            if (!data.items.length && !append) list.append(element('p', 'assistant-message-state', 'Tus conversaciones aparecerán aquí cuando empieces una.'));
+            if (!data.items.length && !append) {
+                list.append(element('p', 'assistant-message-state', 'Aquí encontrarás las conversaciones que empieces con Prisma.'), textButton('Empezar una conversación', newConversation));
+            }
             for (const conversation of data.items) {
                 const button = element('button', 'assistant-history-item'); button.type = 'button';
-                button.append(element('strong', '', conversation.title), element('span', '', conversation.context_label));
+                button.setAttribute('aria-current', String(conversation.id === state.conversation?.id));
+                const updated = new Date(conversation.updated_at.replace(' ', 'T'));
+                const date = Number.isNaN(updated.getTime()) ? '' : ' · ' + new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' }).format(updated);
+                button.append(element('strong', '', conversation.title), element('span', '', conversation.context_label + date));
                 button.addEventListener('click', () => { hideHistory(); loadConversation(conversation.id, true); }); list.append(button);
             }
             state.historyCursor = data.next_cursor; $('assistant-history-more').hidden = !data.next_cursor;
-        } catch (e) { list.replaceChildren(); error(e.message, () => showHistory()); }
+        } catch (e) {
+            if (epoch !== state.historyEpoch) return;
+            if (!append) list.replaceChildren();
+            error(e.message, () => showHistory(append));
+        } finally {
+            if (epoch === state.historyEpoch) { state.historyBusy = false; list.setAttribute('aria-busy', 'false'); $('assistant-history-more').disabled = false; }
+        }
     }
-    function hideHistory() { $('assistant-history').hidden = true; $('assistant-chat').hidden = false; $('assistant-composer').hidden = false; panel.querySelector('[data-assistant-action="history"]').setAttribute('aria-expanded', 'false'); }
+    function hideHistory() { error(''); ++state.historyEpoch; state.historyBusy = false; historyView(false); updateSend(); updateLatest(); }
     function newConversation() {
-        saveDraft(); ++state.generation; clearTimeout(state.poll); state.conversation = null; state.messages = []; state.cursor = null; state.pending = false; state.busy = false; state.loading = false;
-        $('assistant-manage').hidden = true; hideHistory(); error(''); restoreDraft(); renderMessages(); saveUI(); input.focus();
+        saveDraft(); ++state.generation; clearTimeout(state.poll); state.conversation = null; state.messages = []; state.cursor = null; state.pending = false; state.busy = false; state.loading = false; state.outgoing = null;
+        $('assistant-manage').hidden = true; collapseContext(); hideHistory(); error(''); restoreDraft(); renderMessages(); saveUI(); input.focus();
     }
     async function send(retry = null) {
         if (state.busy || state.loading || state.pending || state.stopped) return;
@@ -260,7 +305,7 @@
         const previous = target ? read(`attempt:${target}`, null) : null;
         const key = retry?.client_key || (previous?.content === content ? previous.key : crypto.randomUUID());
         const context = retry?.context || (previous?.content === content ? previous.context : { ...state.context, fixed: state.fixed });
-        state.busy = true; error(''); renderMessages(); saveDraft();
+        state.busy = true; state.outgoing = retry ? null : { content, context, key }; error(''); renderMessages(); saveDraft(); input.focus();
         try {
             if (!target) {
                 const conversation = await api('/api/ai-conversations.php', { method: 'POST', body: JSON.stringify({ context }) });
@@ -271,11 +316,11 @@
             write(`attempt:${target}`, { key, content, context });
             const data = await api('/api/ai-messages.php', { method: 'POST', body: JSON.stringify({ conversation_id: target, content, client_key: key, context, revision: state.conversation.revision }) });
             if (epoch !== state.generation || state.conversation?.id !== target) return;
-            state.busy = false; write(`attempt:${target}`, null); applyDetail(data);
+            state.busy = false; state.outgoing = null; write(`attempt:${target}`, null); applyDetail(data);
             if (!retry && input.value.trim() === content) { input.value = ''; saveDraft(); } updateSend();
         } catch (e) {
             if (epoch !== state.generation) return;
-            state.busy = false;
+            state.busy = false; state.outgoing = null;
             // If the response was lost, read the stored turn before offering a retry.
             if (target) {
                 try { const data = await api(`/api/ai-conversations.php?id=${target}`); if (epoch !== state.generation) return; applyDetail(data); }
@@ -293,7 +338,7 @@
         try {
             const data = await api('/api/ai-conversations.php', { method: 'PUT', body: JSON.stringify({ id, title: $('assistant-rename').value, revision: state.conversation.revision }) });
             if (epoch !== state.generation) return;
-            state.conversation = data; $('assistant-manage').hidden = true; renderMessages(false); error(''); saveUI();
+            state.conversation = data; $('assistant-manage').hidden = true; renderMessages(false); error(''); saveUI(); panel.querySelector('[data-assistant-action="manage"]').focus();
         } catch (e) { error(e.message, () => loadConversation(id)); }
     }
     async function deleteConversation() {
@@ -325,13 +370,14 @@
         }
         if (mobile.matches && state.open) { panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); }
         else { panel.setAttribute('role', 'complementary'); panel.removeAttribute('aria-modal'); }
+        updateSend(); updateLatest();
     }
-    function close() { saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); triggers.forEach(button => button.setAttribute('aria-expanded', 'false')); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
+    function close() { collapseContext(); $('assistant-manage').hidden = true; ++state.historyEpoch; state.historyBusy = false; saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); triggers.forEach(button => button.setAttribute('aria-expanded', 'false')); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
     async function open() {
         state.returnFocus = document.activeElement; state.open = true; panel.hidden = false; document.body.classList.add('assistant-open'); triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
         // Close the notification overlay so two panels cannot cover each other.
         if ($('inbox-panel')?.classList.contains('open') && typeof toggleInbox === 'function') toggleInbox();
-        mobileMode(); syncPage(); saveUI(); input.focus();
+        hideHistory(); mobileMode(); syncPage(); saveUI(); input.focus();
         setContext({ context: state.context, label: state.label });
         if (state.conversation) await loadConversation(state.conversation.id); else renderMessages();
     }
@@ -348,15 +394,24 @@
         const action = e.target.closest('[data-assistant-action]')?.dataset.assistantAction;
         if (action === 'close') close();
         if (action === 'new') newConversation();
-        if (action === 'history') $('assistant-history').hidden ? showHistory() : hideHistory();
+        if (action === 'history') showHistory();
+        if (action === 'chat') { hideHistory(); error(''); input.focus(); }
+        if (action === 'cancel-manage') { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
         if (action === 'manage') { $('assistant-manage').hidden = !$('assistant-manage').hidden; $('assistant-rename').value = state.conversation?.title || ''; $('assistant-delete-confirm').hidden = true; if (!$('assistant-manage').hidden) $('assistant-rename').focus(); }
         if (action === 'delete') $('assistant-delete-confirm').hidden = false;
         if (action === 'confirm-delete') deleteConversation();
     });
     $('assistant-manage').addEventListener('submit', rename);
     $('assistant-history-more').addEventListener('click', () => showHistory(true));
-    $('assistant-composer').addEventListener('submit', e => { e.preventDefault(); send(); });
+    $('assistant-composer').addEventListener('submit', e => { e.preventDefault(); send(); input.focus(); });
     panel.addEventListener('keydown', e => e.stopPropagation());
+    $('assistant-context-toggle').addEventListener('click', () => {
+        const controls = $('assistant-context-controls'); controls.hidden = !controls.hidden;
+        $('assistant-context-toggle').setAttribute('aria-expanded', String(!controls.hidden));
+        if (!controls.hidden) $('assistant-context-select').focus();
+    });
+    messages.addEventListener('scroll', updateLatest);
+    $('assistant-latest').addEventListener('click', () => { messages.scrollTop = messages.scrollHeight; updateLatest(); input.focus({ preventScroll: true }); });
     input.addEventListener('input', () => { saveDraft(); updateSend(); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) { e.preventDefault(); send(); } });
     $('assistant-pin').addEventListener('click', () => { state.fixed = !state.fixed; if (!state.fixed) syncPage(); else setContext({ context: state.context, label: state.label }); renderContext(); saveUI(); });
@@ -364,7 +419,14 @@
     // Capture shortcuts so Escape inside the assistant doesn't close an underlying editor.
     document.addEventListener('keydown', e => {
         if (!state.open) return;
-        if (e.key === 'Escape' && (panel.contains(e.target) || mobile.matches)) { e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
+        if (e.key === 'Escape' && (panel.contains(e.target) || mobile.matches)) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (!$('assistant-context-controls').hidden) { collapseContext(); $('assistant-context-toggle').focus(); }
+            else if (!$('assistant-manage').hidden) { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
+            else if (!$('assistant-history').hidden) { hideHistory(); panel.querySelector('[data-assistant-action="history"]').focus(); }
+            else close();
+            return;
+        }
         if (e.key === 'Tab' && mobile.matches) {
             const focusable = [...panel.querySelectorAll('button, input, textarea, select, a[href]')].filter(el => !el.disabled && el.getClientRects().length);
             const first = focusable[0], last = focusable.at(-1);

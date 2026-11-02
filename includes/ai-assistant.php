@@ -112,7 +112,16 @@ class PrismaAssistantStore
         $context = json_decode($row['context_json'], true);
         $source = $this->contextSource($context);
         $label = $this->resolve($source['entity_type'], $source['entity_id']);
-        return ['id' => (int) $row['id'], 'title' => $row['title'], 'revision' => (int) $row['revision'], 'context' => $context, 'context_label' => $label['label'] ?? 'Mi trabajo', 'updated_at' => $row['updated_at']];
+        $title = $row['title'];
+        if ($title === 'Nueva conversación') {
+            // Derive a readable label for existing chats too, after their access was revalidated.
+            $first = $this->query("SELECT content FROM ai_messages WHERE conversation_id = ? AND role = 'user' AND state <> 'redacted' ORDER BY id ASC LIMIT 1", [$row['id']])->fetchColumn();
+            if (is_string($first) && trim($first) !== '') {
+                $plain = trim(preg_replace('/\s+/u', ' ', $first));
+                $title = mb_strlen($plain) > 80 ? mb_substr($plain, 0, 79) . '…' : $plain;
+            }
+        }
+        return ['id' => (int) $row['id'], 'title' => $title, 'revision' => (int) $row['revision'], 'context' => $context, 'context_label' => $label['label'] ?? 'Mi trabajo', 'updated_at' => $row['updated_at']];
     }
     public function create($context)
     {

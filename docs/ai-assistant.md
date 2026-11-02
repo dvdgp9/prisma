@@ -162,3 +162,18 @@ Sin cambios de BD ni migraciones. Assets assistant v3, sidebar.js v2.2 y caché 
 
 
 Desplegado como `a97d01b` en `main`, mediante fast-forward desde `74c9411`. Copia privada del código anterior: `/home/umilpdfe/.prisma-deploy-backups/header-tools-20261102-222537-d0c189` (972.979 bytes). Once PHP pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas: botones únicos en cabecera, accesos antiguos ausentes del menú y versiones de assets/caché correctas. Sesión temporal eliminada; sin cambios de BD. Los untracked previos del servidor se conservan.
+
+## Revisión UX del panel del asistente — 2 Nov 2026
+
+El usuario aclara que su revisión se refiere al panel derecho del asistente. Se aplica `design-taste-frontend` a la conversación, contexto, historial y compositor, conservando PHP/JS/CSS y el sistema visual de Prisma.
+
+- Panel de 460 px, lectura a 14 px y más espacio para mensajes. Accesos visibles a Conversación, Historial y Nueva.
+- El contexto pasa junto al compositor: una fila muestra el registro/ámbito y si sigue la pantalla o está fijado. Se despliegan selector y fijación cuando se necesitan. Escape cierra primero el control abierto, la gestión o el historial, y después el panel.
+- Fuentes agrupadas en un desplegable nativo; las citas inline siguen disponibles. La cobertura completa queda dentro del desplegable; los avisos de consulta parcial o contenido recortado permanecen visibles.
+- Compositor que crece con el texto, botón Enviar con etiqueta, atajo y borrador. La pregunta aparece mientras se espera al proveedor. Las sugerencias conservan el texto que ya había escrito el usuario. El enlace de creación desde apuntes cierra el panel para mostrar su pantalla.
+- Historial con fecha y nombres reconocibles: si el título almacenado es «Nueva conversación», el servidor deriva una etiqueta de hasta 80 caracteres Unicode a partir del primer mensaje del usuario, después de revalidar el acceso. Es una representación de lectura; no reescribe registros ni utiliza IA adicional. Los nombres personalizados y la redacción por pérdida de acceso tienen prioridad.
+- Retorno al último mensaje al leer hacia atrás, continuidad del borrador y carga de mensajes anteriores sin desplazar el punto de lectura. Cargas de historial protegidas frente a cambios de vista; error/reintento, vacío, renombrado y cancelación explícitos.
+
+Verificación: 43 scripts pasan; `tests/ai-assistant.php` amplía cobertura de etiquetas derivadas, nombres personalizados, normalización, longitud Unicode y ausencia de reescritura. Sintaxis PHP/JS y diff correctos. Navegador con proveedor simulado: consulta/citas/fuentes, historial/renombrado/borradores, fijación y selector de contexto, conversación larga y último mensaje, fallo y reintento sin duplicar, historial vacío y error recuperable inducidos, cambio de usuario con conversaciones sin acceso, móvil 375×812 sin scroll horizontal, Tab y Escape. Consola sin errores nuevos en la pasada final. Capturas con datos ficticios fuera del repositorio: `prisma-assistant-ux-desktop.jpg` y `prisma-assistant-ux-mobile.jpg`.
+
+Assets assistant v4, caché PWA v52/runtime40. Sin migración. Publicación y despliegue en el mismo destino autorizado, con copia privada del código y smoke HTTPS de ocho pantallas, assets e historial.
