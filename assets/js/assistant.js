@@ -16,7 +16,7 @@
     const identity = `${panel.dataset.userId}:${panel.dataset.companyId}`;
     const prefix = `prisma_assistant:${identity}:`;
     const mobile = matchMedia('(max-width: 767px)');
-    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, outgoing: null, generation: 0, busy: false, loading: false, pending: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
+    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, outgoing: null, composeMode: 'question', generation: 0, busy: false, loading: false, pending: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
     const baseContext = () => ({ version: 1, scope: 'mine', entity_id: null, filters: {}, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', fixed: false });
     function read(key, fallback) { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch { return fallback; } }
     function write(key, value) { if (state.stopped) return; try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch { $('assistant-save-state').textContent = 'Este navegador no permite conservar el borrador.'; } }
@@ -28,9 +28,9 @@
         localStorage.setItem('prisma_assistant_actor', identity);
     } catch { /* The panel still works without storage. */ }
     function draftKey() { return `draft:${state.conversation?.id || 'new'}`; }
-    function saveDraft() { write(draftKey(), input.value); }
+    function saveDraft() { write(draftKey(), input.value); write(draftKey() + ':mode', state.composeMode); }
     function saveUI() { write('ui', { open: state.open, id: state.conversation?.id || null, fixed: state.fixed, context: state.context }); }
-    function restoreDraft() { input.value = read(draftKey(), ''); updateSend(); }
+    function restoreDraft() { input.value = read(draftKey(), ''); state.composeMode = read(draftKey() + ':mode', 'question') === 'notes' ? 'notes' : 'question'; updateSend(); }
     function element(tag, className, text) { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; }
     function textButton(text, action) { const b = element('button', 'assistant-text-button', text); b.type = 'button'; b.addEventListener('click', action); return b; }
     function error(message, retry) {
@@ -67,21 +67,36 @@
     }
     function contextKey(c) { return JSON.stringify([c?.scope, c?.entity_id, Object.entries(c?.filters || {}).sort(([a], [b]) => a.localeCompare(b))]); }
     function renderContext() {
-        const select = $('assistant-context-select'); select.replaceChildren();
-        const choices = [{ context: baseContext(), label: 'Mi trabajo' }];
-        if (['programador', 'admin', 'superadmin'].includes(panel.dataset.role)) choices.push({ context: { ...baseContext(), scope: 'team' }, label: 'Trabajo del equipo' });
-        for (const item of [state.context ? { context: state.context, label: state.label } : null, state.page]) {
-            if (item && !choices.some(x => contextKey(x.context) === contextKey(item.context))) choices.push(item);
+        const group = $('assistant-scope-options');
+        const choices = [{ context: baseContext(), label: 'Mi trabajo', fixed: true }];
+        if (['programador', 'admin', 'superadmin'].includes(panel.dataset.role)) choices.push({ context: { ...baseContext(), scope: 'team' }, label: 'Equipo', fixed: true });
+        const page = state.page;
+        if (page && !choices.some(choice => contextKey(choice.context) === contextKey(page.context))) {
+            choices.push({ ...page, label: { note: 'Esta nota', task: 'Esta tarea', request: 'Esta mejora', app: 'Esta app' }[page.context.scope] || 'Esta vista', fixed: false });
         }
-        choices.forEach((item, i) => { const opt = new Option(item.label, String(i)); opt.selected = contextKey(item.context) === contextKey(state.context); select.add(opt); });
-        select._choices = choices;
-        $('assistant-pin').setAttribute('aria-pressed', String(state.fixed));
-        $('assistant-pin').querySelector('span').textContent = state.fixed ? 'Contexto fijado' : 'Fijar contexto';
-        $('assistant-pin').title = state.fixed ? 'Dejar de fijar y seguir la pantalla' : 'Mantener este contexto al navegar';
-        $('assistant-context-label').textContent = state.label;
-        $('assistant-context-mode').textContent = state.fixed ? 'Contexto fijado' : 'Sigue esta pantalla';
-        $('assistant-context-icon').className = { mine: 'iconoir-task-list', team: 'iconoir-group', app: 'iconoir-app-window', request: 'iconoir-light-bulb', task: 'iconoir-task-list', note: 'iconoir-page' }[state.context?.scope] || 'iconoir-page';
-        $('assistant-context-caption').textContent = state.fixed ? 'Se mantiene al navegar. Desactiva la fijación para seguir la pantalla.' : 'El contexto cambia con la pantalla que estás viendo.';
+        if (state.context && !choices.some(choice => contextKey(choice.context) === contextKey(state.context))) {
+            choices.push({ context: state.context, label: { note: 'Nota elegida', task: 'Tarea elegida', request: 'Mejora elegida', app: 'App elegida' }[state.context.scope] || 'Vista elegida', fixed: true });
+        }
+        group._choices = choices;
+        const signature = JSON.stringify(choices.map(choice => [contextKey(choice.context), choice.label]));
+        // Keep native radio focus stable when validation only updates the selected record's label.
+        if (group.dataset.signature !== signature) {
+            group.dataset.signature = signature; group.replaceChildren();
+            choices.forEach((choice, i) => {
+                const label = element('label', 'assistant-scope-choice');
+                const radio = element('input'); radio.type = 'radio'; radio.name = 'assistant-scope'; radio.value = String(i);
+                radio.addEventListener('change', () => {
+                    const selected = group._choices[Number(radio.value)];
+                    state.fixed = selected.fixed; setContext(selected);
+                });
+                label.append(radio, element('span', '', choice.label)); group.append(label);
+            });
+        }
+        group.querySelectorAll('input').forEach((radio, i) => { radio.checked = contextKey(choices[i].context) === contextKey(state.context); radio.disabled = state.loading || state.stopped; });
+        const scope = state.context?.scope || 'mine';
+        $('assistant-scope-help').textContent = scope === 'mine' ? 'Tus tareas y mejoras asignadas; tus notas accesibles.'
+            : scope === 'team' ? (state.context.filters?.person ? 'Trabajo del equipo con el filtro de persona de esta vista.' : 'Tareas, mejoras y notas del equipo que tienes permiso para ver.')
+            : state.label + (scope === 'app' ? '. Trabajo de esta aplicación.' : '. Puedes consultar este registro y trabajo relacionado de su app.');
         if (!state.messages.length && !state.loading && !state.busy && !state.pending) renderMessages(false);
     }
     async function setContext(info, validate = true) {
@@ -101,22 +116,77 @@
         else renderContext();
     }
     function updateSend() {
-        $('assistant-send').disabled = state.busy || state.loading || state.pending || state.stopped || !input.value.trim();
-        $('assistant-composer').setAttribute('aria-busy', String(state.busy || state.loading || state.pending));
+        const busy = state.busy || state.loading || state.pending || state.stopped;
+        const notes = state.composeMode === 'notes';
+        const history = !$('assistant-history').hidden;
+        const start = !state.messages.length && !state.busy && !state.pending && !state.loading && !history;
+        panel.classList.toggle('assistant-start', start);
+        panel.classList.toggle('assistant-notes-mode', notes);
+        $('assistant-intro').hidden = !start || notes;
+        $('assistant-create').hidden = history;
+        $('assistant-create').classList.toggle('assistant-create--compact', !start && !notes);
+        $('assistant-create-label').textContent = !input.value.trim() && lastNotes() ? 'Crear tareas y mejoras de estos apuntes' : 'Crear tareas y mejoras';
+        $('assistant-context').hidden = history || notes;
+        $('assistant-send').disabled = busy || !input.value.trim();
+        $('assistant-send').setAttribute('aria-label', notes ? 'Organizar apuntes' : 'Enviar pregunta');
+        $('assistant-send').querySelector('span').textContent = notes ? 'Organizar' : 'Enviar';
+        $('assistant-composer').setAttribute('aria-busy', String(busy));
+        $('assistant-input-label').textContent = notes ? 'Tus apuntes' : 'Tu pregunta';
+        input.placeholder = notes ? 'Pega aquí el texto que quieres organizar…' : 'Escribe tu pregunta…';
+        $('assistant-notes-help').hidden = !notes;
+        $('assistant-cancel-notes').hidden = !notes;
+        $('assistant-text-mode').hidden = notes;
+        panel.querySelectorAll('[data-assistant-prompt]').forEach(button => { button.disabled = busy; });
         input.disabled = state.loading || state.stopped;
+        $('assistant-text-mode').disabled = state.loading || state.stopped;
+        $('assistant-scope-options').querySelectorAll('input').forEach(radio => { radio.disabled = state.loading || state.stopped; });
         input.style.height = 'auto'; input.style.height = `${Math.max(46, input.scrollHeight)}px`;
-        $('assistant-save-state').textContent = state.busy || state.pending ? 'Preparando respuesta…' : input.value.trim() ? 'Borrador guardado en este dispositivo' : `${isMac ? '⌘' : 'Ctrl'} + Enter para enviar`;
+        $('assistant-save-state').textContent = state.busy || state.pending ? 'Preparando respuesta…' : mobile.matches ? `Intro añade líneas · Pulsa ${notes ? 'Organizar' : 'Enviar'}` : notes ? `${isMac ? '⌘' : 'Ctrl'} + Enter organiza · Enter añade líneas` : 'Enter envía · Mayús+Enter añade una línea';
+    }
+    function composeMode(mode) {
+        state.composeMode = mode; saveDraft(); renderMessages(false); updateSend(); input.focus();
+    }
+    function quickActions(scope) {
+        const actions = {
+            mine: [
+                ['Qué vence hoy', 'Tareas y mejoras con vencimiento hoy.', '¿Qué tareas y mejoras mías vencen hoy?'],
+                ['Ver mis pendientes', 'Tareas y mejoras que siguen abiertas.', '¿Qué tareas y mejoras tengo pendientes?']
+            ],
+            team: [
+                ['Pendientes del equipo', 'Trabajo abierto y quién lo tiene asignado.', 'Resume el trabajo pendiente del equipo con sus responsables.'],
+                ['Próximos vencimientos', 'Qué vence durante los próximos siete días.', '¿Qué tareas y mejoras del equipo vencen durante los próximos siete días?']
+            ],
+            note: [
+                ['Resumir esta nota', 'Ideas principales y decisiones.', 'Resume esta nota.'],
+                ['Extraer próximos pasos', 'Acciones que se desprenden del texto.', 'Extrae los próximos pasos de esta nota.']
+            ],
+            task: [
+                ['Revisar esta tarea', 'Qué hay que hacer y qué falta aclarar.', 'Resume esta tarea y lo que falta aclarar.'],
+                ['Proponer el siguiente paso', 'Una propuesta basada en su descripción.', 'Propón el siguiente paso para esta tarea.']
+            ],
+            request: [
+                ['Resumir esta mejora', 'Decisiones, comentarios y pendientes.', 'Resume esta mejora, sus comentarios y checklist.'],
+                ['Revisar qué falta', 'Próximos pasos apoyados en los registros.', '¿Qué queda por hacer en esta mejora?']
+            ],
+            app: [
+                ['Ver pendientes de esta app', 'Tareas y mejoras abiertas.', '¿Qué tareas y mejoras hay pendientes en esta aplicación?'],
+                ['Revisar actividad reciente', 'Las mejoras con movimientos más recientes.', 'Resume la actividad reciente de las mejoras de esta aplicación.']
+            ]
+        };
+        return actions[scope] || actions.mine;
     }
     function trustedReference(ref) {
         return ref && /^(request|task|note):[1-9][0-9]*$/.test(ref.key) && /^\/(index\.php\?open_request=|tasks\.php\?task=|notes\.php\?id=)[1-9][0-9]*$/.test(ref.url);
     }
+    function lastNotes() { return [...state.messages].reverse().find(message => message.role === 'user' && message.metadata?.input_mode === 'notes' && message.state !== 'redacted'); }
     function messageText(message) {
         const paragraph = element('p', 'assistant-message-text');
+        const content = message.content;
         const refs = new Map((message.metadata?.references || []).filter(trustedReference).map(ref => [ref.key, ref]));
         const pattern = /\[\[((?:request|task|note):[1-9][0-9]*)\]\]/g;
         let end = 0;
-        for (const match of message.content.matchAll(pattern)) {
-            paragraph.append(document.createTextNode(message.content.slice(end, match.index)));
+        for (const match of content.matchAll(pattern)) {
+            paragraph.append(document.createTextNode(content.slice(end, match.index)));
             const ref = refs.get(match[1]);
             if (ref) {
                 const link = element('a', 'assistant-inline-reference', `${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id}`);
@@ -124,7 +194,7 @@
             } else paragraph.append(document.createTextNode('[referencia no disponible]'));
             end = match.index + match[0].length;
         }
-        paragraph.append(document.createTextNode(message.content.slice(end)));
+        paragraph.append(document.createTextNode(content.slice(end)));
         return paragraph;
     }
     function appendEvidence(article, metadata) {
@@ -155,26 +225,27 @@
     function renderMessages(scroll = true) {
         messages.replaceChildren();
         if (state.cursor) messages.append(textButton('Ver mensajes anteriores', olderMessages));
-        if (!state.messages.length && !state.busy && !state.pending) {
+        if (!state.messages.length && !state.busy && !state.pending && state.composeMode !== 'notes') {
             const empty = element('div', 'assistant-empty');
-            empty.append(element('span', 'assistant-eyebrow', 'Empieza una conversación'), element('h3', '', '¿Qué quieres resolver?'), element('p', '', 'Consulta lo que estás viendo o comparte tus apuntes. Puedes empezar por aquí:'));
-            const contextual = { request: ['Resumir esta mejora', 'Resume esta mejora, sus comentarios y los próximos pasos.'], task: ['Revisar esta tarea', 'Resume esta tarea y propón el siguiente paso.'], note: ['Resumir esta nota', 'Resume esta nota y separa las acciones pendientes.'], app: ['Ver pendientes de esta app', '¿Qué tenemos pendiente en esta aplicación?'], team: ['Revisar el trabajo del equipo', 'Resume los pendientes del equipo y destaca qué necesita atención.'], mine: ['Qué necesita mi atención', '¿Qué necesita mi atención hoy?'] }[state.context?.scope || 'mine'];
-            for (const [label, prompt] of [contextual, ['Ordenar mis apuntes', 'Ayúdame a ordenar estos apuntes y separar las acciones pendientes:\n\n']]) {
-                const b = element('button', 'assistant-suggestion', label); b.type = 'button'; b.append(element('i', 'iconoir-arrow-up-right')); b.addEventListener('click', () => { input.value = input.value.trim() ? input.value + '\n\n' + prompt : prompt; saveDraft(); updateSend(); input.focus(); }); empty.append(b);
+            empty.append(element('p', 'assistant-actions-label', 'Consulta en un clic'));
+            for (const [title, description, prompt] of quickActions(state.context?.scope || 'mine')) {
+                const button = element('button', 'assistant-suggestion'); button.type = 'button'; button.dataset.assistantPrompt = prompt;
+                const copy = element('span', 'assistant-suggestion-copy'); copy.append(element('strong', '', title), element('span', '', description));
+                const icon = element('i', 'iconoir-arrow-right'); icon.setAttribute('aria-hidden', 'true'); button.append(copy, icon);
+                button.addEventListener('click', () => send(null, prompt)); empty.append(button);
             }
-            const legacy = element('a', 'assistant-legacy-link', 'Crear tareas y mejoras desde apuntes'); legacy.href = '/ai-inbox.php'; legacy.addEventListener('click', event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) close(); }); empty.append(legacy);
             messages.append(empty);
         }
         for (const message of state.messages) {
             const article = element('article', `assistant-message assistant-message--${message.role}`);
-            const label = element('div', 'assistant-message-label', message.role === 'user' ? 'Tú' : 'Prisma');
+            const label = element('div', 'assistant-message-label', message.role === 'user' ? (message.metadata?.input_mode === 'notes' ? 'Tus apuntes' : 'Tú') : 'Prisma');
             if (message.role === 'assistant') label.prepend(element('i', 'iconoir-sparks'));
             article.append(label);
             if (message.state === 'redacted') article.append(element('p', 'assistant-message-state', 'Este mensaje ya no está disponible porque cambió el acceso a su contexto.'));
             else {
                 article.append(messageText(message));
                 appendEvidence(article, message.metadata);
-                if (message.role === 'user') article.append(element('p', 'assistant-message-context', contextLabel(message.context)));
+                if (message.role === 'user') article.append(element('p', 'assistant-message-context', message.metadata?.input_mode === 'notes' ? 'Texto compartido' : contextLabel(message.context)));
                 if (message.state === 'failed') {
                     article.append(element('p', 'assistant-message-state', 'La respuesta no se completó.'));
                     // Retry only the last turn; older failed turns are not reordered into history.
@@ -185,7 +256,7 @@
         }
         if (state.outgoing && state.busy && !state.messages.some(message => message.client_key === state.outgoing.key)) {
             const outgoing = element('article', 'assistant-message assistant-message--user');
-            outgoing.append(element('div', 'assistant-message-label', 'Tú'), messageText(state.outgoing), element('p', 'assistant-message-context', contextLabel(state.outgoing.context)));
+            outgoing.append(element('div', 'assistant-message-label', state.outgoing.metadata?.input_mode === 'notes' ? 'Tus apuntes' : 'Tú'), messageText(state.outgoing), element('p', 'assistant-message-context', state.outgoing.metadata?.input_mode === 'notes' ? 'Texto compartido' : contextLabel(state.outgoing.context)));
             messages.append(outgoing);
         }
         if (state.pending || state.busy) {
@@ -205,6 +276,8 @@
     }
     function applyDetail(data, scroll = true) {
         state.conversation = data.conversation; state.messages = data.messages; state.cursor = data.next_cursor;
+        const attempt = read(`attempt:${data.conversation.id}`, null);
+        if (attempt && data.messages.some(message => message.client_key === attempt.key && message.state === 'complete')) write(`attempt:${data.conversation.id}`, null);
         if (data.messages.at(-1)?.state === 'redacted') {
             state.fixed = false; state.context = baseContext(); state.label = 'Mi trabajo'; ++state.contextEpoch;
             write(`attempt:${data.conversation.id}`, null); renderContext();
@@ -230,7 +303,7 @@
             if (epoch !== state.generation) return;
             state.loading = false; applyDetail(data); restoreDraft();
             if (restoreContext && state.fixed) await setContext({ context: data.conversation.context, label: data.conversation.context_label });
-            if (state.open && document.activeElement === document.body) input.focus();
+            if (state.open && document.activeElement === document.body) (mobile.matches ? panel.querySelector('[data-assistant-action="close"]') : input).focus();
         } catch (e) {
             if (epoch !== state.generation) return;
             if (e.status === 404) { state.conversation = null; state.messages = []; state.pending = false; state.cursor = null; restoreDraft(); renderMessages(); saveUI(); }
@@ -250,13 +323,12 @@
             messages.scrollTop = oldTop + messages.scrollHeight - oldHeight; updateLatest();
         } catch (e) { error(e.message, olderMessages); }
     }
-    function collapseContext() { $('assistant-context-controls').hidden = true; $('assistant-context-toggle').setAttribute('aria-expanded', 'false'); }
     function historyView(visible) {
-        if (visible) { collapseContext(); $('assistant-manage').hidden = true; }
+        if (visible) $('assistant-manage').hidden = true;
         $('assistant-history').hidden = !visible; $('assistant-chat').hidden = visible;
         for (const id of ['assistant-composer', 'assistant-context', 'assistant-footnote']) $(id).hidden = visible;
         panel.querySelector('[data-assistant-action="history"]').setAttribute('aria-pressed', String(visible));
-        panel.querySelector('[data-assistant-action="chat"]').setAttribute('aria-pressed', String(!visible));
+        updateSend();
     }
     async function showHistory(append = false) {
         if (append && state.historyBusy) return;
@@ -296,28 +368,34 @@
     function hideHistory() { error(''); ++state.historyEpoch; state.historyBusy = false; historyView(false); updateSend(); updateLatest(); }
     function newConversation() {
         saveDraft(); ++state.generation; clearTimeout(state.poll); state.conversation = null; state.messages = []; state.cursor = null; state.pending = false; state.busy = false; state.loading = false; state.outgoing = null;
-        $('assistant-manage').hidden = true; collapseContext(); hideHistory(); error(''); restoreDraft(); renderMessages(); saveUI(); input.focus();
+        $('assistant-manage').hidden = true; hideHistory(); error(''); restoreDraft(); renderMessages(); saveUI(); (mobile.matches ? panel.querySelector('[data-assistant-action="new"]') : input).focus();
     }
-    async function send(retry = null) {
+    async function send(retry = null, quickPrompt = null) {
         if (state.busy || state.loading || state.pending || state.stopped) return;
-        const content = retry ? retry.content : input.value.trim(); if (!content) return;
+        const submittedDraft = input.value, submittedMode = state.composeMode;
+        const content = retry ? retry.content : quickPrompt || input.value.trim();
+        if ((!retry && !quickPrompt && !input.value.trim()) || !content) return;
+        if (Array.from(content).length > 10000) { error('El texto debe ocupar como máximo 10.000 caracteres.'); return; }
         const epoch = state.generation; let target = state.conversation?.id;
+        const inputMode = retry ? (retry.metadata?.input_mode || 'question') : quickPrompt ? 'question' : submittedMode;
+        const desiredContext = retry?.context || (inputMode === 'notes' ? baseContext() : { ...state.context, fixed: state.fixed });
         const previous = target ? read(`attempt:${target}`, null) : null;
-        const key = retry?.client_key || (previous?.content === content ? previous.key : crypto.randomUUID());
-        const context = retry?.context || (previous?.content === content ? previous.context : { ...state.context, fixed: state.fixed });
-        state.busy = true; state.outgoing = retry ? null : { content, context, key }; error(''); renderMessages(); saveDraft(); input.focus();
+        const sameAttempt = previous?.content === content && (previous.input_mode || 'question') === inputMode && contextKey(previous.context) === contextKey(desiredContext);
+        const key = retry?.client_key || (sameAttempt ? previous.key : crypto.randomUUID());
+        const context = sameAttempt && !retry ? previous.context : desiredContext;
+        state.busy = true; state.outgoing = retry ? null : { content, context, key, metadata: submittedMode === 'notes' && !quickPrompt ? { input_mode: 'notes' } : null }; error(''); renderMessages(); saveDraft(); (mobile.matches && quickPrompt ? messages : input).focus({ preventScroll: true });
         try {
             if (!target) {
                 const conversation = await api('/api/ai-conversations.php', { method: 'POST', body: JSON.stringify({ context }) });
                 if (epoch !== state.generation) return;
                 state.conversation = conversation; target = conversation.id;
-                write(`draft:${target}`, input.value); write('draft:new', ''); saveUI();
+                write(`draft:${target}`, input.value); write(`draft:${target}:mode`, state.composeMode); write('draft:new', ''); write('draft:new:mode', 'question'); saveUI();
             }
-            write(`attempt:${target}`, { key, content, context });
-            const data = await api('/api/ai-messages.php', { method: 'POST', body: JSON.stringify({ conversation_id: target, content, client_key: key, context, revision: state.conversation.revision }) });
+            write(`attempt:${target}`, { key, content, context, input_mode: inputMode });
+            const data = await api('/api/ai-messages.php', { method: 'POST', body: JSON.stringify({ conversation_id: target, content, input_mode: inputMode, client_key: key, context, revision: state.conversation.revision }) });
             if (epoch !== state.generation || state.conversation?.id !== target) return;
             state.busy = false; state.outgoing = null; write(`attempt:${target}`, null); applyDetail(data);
-            if (!retry && input.value.trim() === content) { input.value = ''; saveDraft(); } updateSend();
+            if (!retry && !quickPrompt && input.value === submittedDraft && state.composeMode === submittedMode) { input.value = ''; state.composeMode = 'question'; saveDraft(); } updateSend();
         } catch (e) {
             if (epoch !== state.generation) return;
             state.busy = false; state.outgoing = null;
@@ -327,7 +405,7 @@
                 catch { /* Keep original error and the local draft. */ }
             }
             const saved = state.messages.find(m => m.client_key === key);
-            if (saved?.state === 'complete') { write(`attempt:${target}`, null); if (!retry && input.value.trim() === content) { input.value = ''; saveDraft(); } error(''); }
+            if (saved?.state === 'complete') { write(`attempt:${target}`, null); if (!retry && !quickPrompt && input.value === submittedDraft && state.composeMode === submittedMode) { input.value = ''; state.composeMode = 'question'; saveDraft(); } error(''); }
             else error(e.message, saved?.state === 'failed' ? () => send(saved) : null);
             renderMessages();
         } finally { if (epoch === state.generation) { state.busy = false; updateSend(); pollPending(); } }
@@ -372,16 +450,25 @@
         else { panel.setAttribute('role', 'complementary'); panel.removeAttribute('aria-modal'); }
         updateSend(); updateLatest();
     }
-    function close() { collapseContext(); $('assistant-manage').hidden = true; ++state.historyEpoch; state.historyBusy = false; saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); triggers.forEach(button => button.setAttribute('aria-expanded', 'false')); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
+    function close() { $('assistant-manage').hidden = true; ++state.historyEpoch; state.historyBusy = false; saveDraft(); state.open = false; panel.hidden = true; document.body.classList.remove('assistant-open'); mobileMode(); triggers.forEach(button => button.setAttribute('aria-expanded', 'false')); clearTimeout(state.poll); saveUI(); state.returnFocus?.focus?.({ preventScroll: true }); }
     async function open() {
         state.returnFocus = document.activeElement; state.open = true; panel.hidden = false; document.body.classList.add('assistant-open'); triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
         // Close the notification overlay so two panels cannot cover each other.
         if ($('inbox-panel')?.classList.contains('open') && typeof toggleInbox === 'function') toggleInbox();
-        hideHistory(); mobileMode(); syncPage(); saveUI(); input.focus();
+        hideHistory(); mobileMode(); syncPage(); saveUI(); (mobile.matches ? panel.querySelector('[data-assistant-action="close"]') : input).focus();
         setContext({ context: state.context, label: state.label });
         if (state.conversation) await loadConversation(state.conversation.id); else renderMessages();
     }
-    window.PrismaAssistant = Object.freeze({ open, close });
+    function takeCreateDraft() {
+        if (state.stopped || location.hash !== '#desde-asistente') return '';
+        const key = prefix + 'create-handoff';
+        try {
+            const raw = sessionStorage.getItem(key); sessionStorage.removeItem(key);
+            const draft = JSON.parse(raw);
+            return draft && typeof draft.text === 'string' && draft.text.length <= 10000 && Date.now() - draft.at >= 0 && Date.now() - draft.at < 600000 ? draft.text : '';
+        } catch { return ''; }
+    }
+    window.PrismaAssistant = Object.freeze({ open, close, takeCreateDraft });
     document.addEventListener('keydown', e => {
         if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.isComposing && e.key.toLowerCase() === 'j') {
             e.preventDefault(); e.stopImmediatePropagation();
@@ -395,7 +482,7 @@
         if (action === 'close') close();
         if (action === 'new') newConversation();
         if (action === 'history') showHistory();
-        if (action === 'chat') { hideHistory(); error(''); input.focus(); }
+        if (action === 'chat') { hideHistory(); error(''); (mobile.matches ? panel.querySelector('[data-assistant-action="history"]') : input).focus(); }
         if (action === 'cancel-manage') { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
         if (action === 'manage') { $('assistant-manage').hidden = !$('assistant-manage').hidden; $('assistant-rename').value = state.conversation?.title || ''; $('assistant-delete-confirm').hidden = true; if (!$('assistant-manage').hidden) $('assistant-rename').focus(); }
         if (action === 'delete') $('assistant-delete-confirm').hidden = false;
@@ -405,30 +492,32 @@
     $('assistant-history-more').addEventListener('click', () => showHistory(true));
     $('assistant-composer').addEventListener('submit', e => { e.preventDefault(); send(); input.focus(); });
     panel.addEventListener('keydown', e => e.stopPropagation());
-    $('assistant-context-toggle').addEventListener('click', () => {
-        const controls = $('assistant-context-controls'); controls.hidden = !controls.hidden;
-        $('assistant-context-toggle').setAttribute('aria-expanded', String(!controls.hidden));
-        if (!controls.hidden) $('assistant-context-select').focus();
+    $('assistant-create-link').addEventListener('click', event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        const text = input.value.trim() ? input.value : lastNotes() ? lastNotes().content : '';
+        try { sessionStorage.setItem(prefix + 'create-handoff', JSON.stringify({ text, at: Date.now() })); }
+        catch { if (text.trim()) { event.preventDefault(); error('No se pudo trasladar el texto. Copia tus apuntes antes de abrir el editor.'); return; } }
+        close();
     });
+    $('assistant-text-mode').addEventListener('click', () => composeMode('notes'));
+    $('assistant-cancel-notes').addEventListener('click', () => composeMode('question'));
     messages.addEventListener('scroll', updateLatest);
     $('assistant-latest').addEventListener('click', () => { messages.scrollTop = messages.scrollHeight; updateLatest(); input.focus({ preventScroll: true }); });
     input.addEventListener('input', () => { saveDraft(); updateSend(); });
-    input.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) { e.preventDefault(); send(); } });
-    $('assistant-pin').addEventListener('click', () => { state.fixed = !state.fixed; if (!state.fixed) syncPage(); else setContext({ context: state.context, label: state.label }); renderContext(); saveUI(); });
-    $('assistant-context-select').addEventListener('change', e => { const choice = e.target._choices[Number(e.target.value)]; if (choice) { state.fixed = true; setContext(choice); } });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || (state.composeMode === 'question' && !mobile.matches)) && !e.shiftKey && !e.altKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } });
     // Capture shortcuts so Escape inside the assistant doesn't close an underlying editor.
     document.addEventListener('keydown', e => {
         if (!state.open) return;
         if (e.key === 'Escape' && (panel.contains(e.target) || mobile.matches)) {
             e.preventDefault(); e.stopImmediatePropagation();
-            if (!$('assistant-context-controls').hidden) { collapseContext(); $('assistant-context-toggle').focus(); }
-            else if (!$('assistant-manage').hidden) { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
+            if (!$('assistant-manage').hidden) { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
             else if (!$('assistant-history').hidden) { hideHistory(); panel.querySelector('[data-assistant-action="history"]').focus(); }
+            else if (state.composeMode === 'notes') composeMode('question');
             else close();
             return;
         }
         if (e.key === 'Tab' && mobile.matches) {
-            const focusable = [...panel.querySelectorAll('button, input, textarea, select, a[href]')].filter(el => !el.disabled && el.getClientRects().length);
+            const focusable = [...panel.querySelectorAll('button, input, textarea, select, summary, a[href]')].filter(el => !el.disabled && el.getClientRects().length);
             const first = focusable[0], last = focusable.at(-1);
             if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) { e.preventDefault(); last?.focus(); }
             else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }

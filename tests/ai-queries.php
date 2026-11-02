@@ -111,4 +111,21 @@ same(['request:11'],array_column($formatted['metadata']['references'],'key'),'on
 same('/index.php?open_request=11',$formatted['metadata']['references'][0]['url'],'server constructs record URL');
 same(false,strpos($formatted['content'],'[[task:999]]')!==false,'hallucinated reference marker removed');
 same(true,strpos($formatted['content'],'[referencia no disponible]')!==false,'missing evidence is explicit');
+$textTurn = ['input_mode'=>'notes','context'=>$mine,'label'=>'Mi trabajo','history'=>[
+    ['role'=>'assistant','content'=>'ANTERIOR_NO_INCLUIR'],
+    ['role'=>'user','content'=>"Probar en móvil y preparar la reunión."]
+]];
+$textPlan = assistant_query_plan(['api_key'=>'fixture','model'=>'fixture'], $textTurn, '2026-11-02', ['id'=>7,'name'=>'Prueba'], static function(){throw new RuntimeException('Notes must not call a query planner');});
+same('chat', $textPlan['data']['mode'], 'notes use a deterministic text-only plan');
+same([], $textPlan['usage'], 'notes do not incur a planning provider call');
+$textRetrieval = $q->run($textPlan['data'], $mine, '2026-11-02');
+same([], $textRetrieval['records'], 'notes mode retrieves no work records');
+same([], $textRetrieval['coverage'], 'notes mode does not pretend to have searched work');
+$textAnswer = assistant_grounded_answer(['api_key'=>'fixture','model'=>'fixture'], $textTurn, $textRetrieval, '2026-11-02', static function($payload){
+    $request=json_decode($payload,true);
+    same(false, str_contains($payload,'ANTERIOR_NO_INCLUIR'), 'notes answer excludes earlier conversation data');
+    same(2,count($request['messages']), 'notes answer receives only its system instruction and pasted text');
+    return ['status'=>200,'body'=>json_encode(['choices'=>[['finish_reason'=>'stop','message'=>['content'=>json_encode(['text'=>'Resumen y próximos pasos del texto compartido.','source_keys'=>[]])]]],'usage'=>['total_tokens'=>10]])];
+});
+same([], $textAnswer['metadata']['references'], 'notes answer has no fabricated record references');
 echo "Read-only assistant queries passed on " . $db->getAttribute(PDO::ATTR_DRIVER_NAME) . ".\n";

@@ -10,7 +10,7 @@ try {
     $store = assistant_store($db);
     $id = (int) ($input['conversation_id'] ?? 0);
     $config = prisma_ai_config($db);
-    $turn = $store->reserve($id, $input['content'] ?? '', $input['client_key'] ?? '', $input['context'] ?? [], $input['revision'] ?? 0);
+    $turn = $store->reserve($id, $input['content'] ?? '', $input['client_key'] ?? '', $input['context'] ?? [], $input['revision'] ?? 0, $input['input_mode'] ?? 'question');
     if (!$turn['replay']) {
         $actor = assistant_actor($db);
         $now = new DateTimeImmutable('now', new DateTimeZone($turn['context']['timezone']));

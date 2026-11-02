@@ -129,6 +129,18 @@ same(80, mb_strlen($autoTitle), 'derived title is bounded in Unicode characters'
 same(false, str_contains($autoTitle, "\n"), 'derived title normalizes whitespace');
 same('…', mb_substr($autoTitle, -1), 'long derived titles indicate truncation');
 same('Nueva conversación', $db->query('SELECT title FROM ai_conversations WHERE id=' . (int) $labelChat['id'])->fetchColumn(), 'derived labels do not rewrite existing conversation records');
+$textChat = $legacyStore->create([]);
+$textContent = "Revisar el formulario en móvil.";
+$textTurn = $legacyStore->reserve($textChat['id'], $textContent, 'turn_000000000010', [], 1, 'notes');
+same('notes', $textTurn['input_mode'], 'notes intent is part of the reserved turn');
+same($textContent, $textTurn['history'][0]['content'], 'internal input mode does not pollute provider history');
+same('notes', $legacyStore->detail($textChat['id'])['messages'][0]['metadata']['input_mode'], 'notes intent survives retrieval');
+same('Apuntes: Revisar el formulario en móvil.', $legacyStore->detail($textChat['id'])['conversation']['title'], 'notes chat has a title based on its content');
+$legacyStore->finish($textChat['id'], $textTurn);
+$textRetry = $legacyStore->reserve($textChat['id'], $textContent, 'turn_000000000010', [], $textTurn['revision'], 'question');
+same('notes', $textRetry['input_mode'], 'retry preserves original notes intent even when caller sends a different mode');
+same(1, count($legacyStore->detail($textChat['id'])['messages']), 'notes retry does not duplicate the user message');
+fails(fn() => $legacyStore->reserve($textChat['id'], 'Texto', 'turn_000000000011', [], $textRetry['revision'], 'unknown'), 400, 'unknown input mode is rejected');
 $db->exec('DELETE FROM users WHERE id=7');
 same(0, (int) $db->query('SELECT COUNT(*) FROM ai_messages')->fetchColumn(), 'owner deletion cascades through conversation history');
 same(0, (int) $db->query('SELECT COUNT(*) FROM ai_message_sources')->fetchColumn(), 'owner deletion clears source dependencies');

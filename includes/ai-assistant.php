@@ -115,7 +115,9 @@ class PrismaAssistantStore
         $title = $row['title'];
         if ($title === 'Nueva conversación') {
             // Derive a readable label for existing chats too, after their access was revalidated.
-            $first = $this->query("SELECT content FROM ai_messages WHERE conversation_id = ? AND role = 'user' AND state <> 'redacted' ORDER BY id ASC LIMIT 1", [$row['id']])->fetchColumn();
+            $firstMessage = $this->query("SELECT content, metadata_json FROM ai_messages WHERE conversation_id = ? AND role = 'user' AND state <> 'redacted' ORDER BY id ASC LIMIT 1", [$row['id']])->fetch(PDO::FETCH_ASSOC);
+            $first = $firstMessage['content'] ?? null;
+            if ((json_decode($firstMessage['metadata_json'] ?? 'null', true)['input_mode'] ?? '') === 'notes') $first = 'Apuntes: ' . $first;
             if (is_string($first) && trim($first) !== '') {
                 $plain = trim(preg_replace('/\s+/u', ' ', $first));
                 $title = mb_strlen($plain) > 80 ? mb_substr($plain, 0, 79) . '…' : $plain;
@@ -180,11 +182,12 @@ class PrismaAssistantStore
             if (strtotime($now) - strtotime($pending['created_at']) > 90) $this->query("UPDATE ai_messages SET state = 'failed' WHERE id = ? AND state = 'pending'", [$pending['id']]);
         }
     }
-    public function reserve($id, $content, $key, $inputContext, $revision)
+    public function reserve($id, $content, $key, $inputContext, $revision, $inputMode = 'question')
     {
+        if (!in_array($inputMode, ['question', 'notes'], true)) throw new PrismaAssistantException('El tipo de mensaje no es válido.');
         if (!is_string($content) || trim($content) === '' || mb_strlen($content) > 10000) throw new PrismaAssistantException('Escribe un mensaje de hasta 10.000 caracteres.');
         if (!is_string($key) || !preg_match('/^[a-zA-Z0-9_-]{16,48}$/D', $key)) throw new PrismaAssistantException('El identificador del mensaje no es válido.');
-        return $this->transaction(function () use ($id, $content, $key, $inputContext, $revision) {
+        return $this->transaction(function () use ($id, $content, $key, $inputContext, $revision, $inputMode) {
             $row = $this->revalidate($this->owned($id));
             $this->expirePending($id);
             $existing = $this->query('SELECT * FROM ai_messages WHERE conversation_id = ? AND client_key = ?', [$id, $key])->fetch(PDO::FETCH_ASSOC);
@@ -193,13 +196,14 @@ class PrismaAssistantStore
             if ($existing && $this->query('SELECT id FROM ai_messages WHERE conversation_id = ? AND id > ? LIMIT 1', [$id, $existing['id']])->fetchColumn()) throw new PrismaAssistantException('Continúa con un mensaje nuevo; esta conversación ya ha avanzado.', 409);
             if ($this->query("SELECT id FROM ai_messages WHERE conversation_id = ? AND state = 'pending' LIMIT 1", [$id])->fetchColumn()) throw new PrismaAssistantException('Hay una respuesta en curso en esta conversación.', 409);
             if ((int) $row['revision'] !== (int) $revision) throw new PrismaAssistantException('La conversación ha cambiado. Recárgala antes de enviar.', 409);
+            $inputMode = $existing ? (json_decode($existing['metadata_json'] ?? 'null', true)['input_mode'] ?? 'question') : $inputMode;
             $info = $this->describe($existing ? json_decode($existing['context_json'], true) : $inputContext);
             $contextJson = $this->json($info['context']);
             if ($existing) {
                 $messageId = (int) $existing['id'];
                 $this->query("UPDATE ai_messages SET state = 'pending', turn_revision = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?", [(int) $row['revision'] + 1, $messageId]);
             } else {
-                $this->query("INSERT INTO ai_messages (conversation_id, role, client_key, content, context_json, state, turn_revision) VALUES (?, 'user', ?, ?, ?, 'pending', ?)", [$id, $key, trim($content), $contextJson, (int) $row['revision'] + 1]);
+                $this->query("INSERT INTO ai_messages (conversation_id, role, client_key, content, context_json, state, turn_revision, metadata_json) VALUES (?, 'user', ?, ?, ?, 'pending', ?, ?)", [$id, $key, trim($content), $contextJson, (int) $row['revision'] + 1, $inputMode === 'notes' ? $this->json(['input_mode' => 'notes']) : null]);
                 $messageId = (int) $this->db->lastInsertId();
             }
             // All prior dependencies are inherited; a conversation is invalidated as a unit.
@@ -214,7 +218,7 @@ class PrismaAssistantStore
             $history = array_reverse($history);
             foreach ($history as &$historyMessage) {
                 $metadata = json_decode($historyMessage['metadata_json'] ?? 'null', true);
-                if ($metadata) $historyMessage['content'] .= "\n\nReferencias y consulta de esta respuesta (datos del servidor): " . $this->json($metadata);
+                if ($metadata && $historyMessage['role'] === 'assistant') $historyMessage['content'] .= "\n\nReferencias y consulta de esta respuesta (datos del servidor): " . $this->json($metadata);
                 unset($historyMessage['metadata_json']);
             }
             unset($historyMessage);
@@ -225,7 +229,7 @@ class PrismaAssistantStore
                 if ($bytes > 60000) break;
                 array_unshift($bounded, $message);
             }
-            return ['replay' => false, 'message_id' => $messageId, 'revision' => (int) $row['revision'] + 1, 'client_key' => $key, 'context' => $info['context'], 'label' => $info['label'], 'history' => $bounded];
+            return ['replay' => false, 'input_mode' => $inputMode, 'message_id' => $messageId, 'revision' => (int) $row['revision'] + 1, 'client_key' => $key, 'context' => $info['context'], 'label' => $info['label'], 'history' => $bounded];
         });
     }
     /** Register every retrieved dependency before sending its content to the provider. */

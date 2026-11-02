@@ -104,6 +104,6 @@ assert_file_contains('tasks.php', ['/assets/js/tasks.js?v=17'], 'tasks page load
 
 assert_file_contains('assets/css/work.css', ['.my-work-check', '.my-work-date-btn', '.work-menu', '.work-menu-item'], 'work.css styles the check, the date button and its menu');
 assert_file_contains('index.php', ['/assets/js/my-work.js?v=5', '/assets/js/task-parser.js'], 'index loads the new my-work.js and the date shortcuts');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v52';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v53';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "My work actions completed successfully.\n");

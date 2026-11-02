@@ -120,7 +120,7 @@ $userApps = get_user_apps();
             return ['id' => (int) $a['id'], 'name' => $a['name'], 'company' => $a['company_name']];
         }, $userApps), JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="/assets/js/ai-inbox.js?v=ai6"></script>
+    <script src="/assets/js/ai-inbox.js?v=ai7"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

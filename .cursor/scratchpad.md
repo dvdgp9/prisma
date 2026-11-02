@@ -3728,3 +3728,13 @@ Despliegue completado el 2 Nov 2026: commit funcional `4c4ae28`, publicado en `d
 
 
 Desplegado el 2 Nov 2026 como `f3a608d`, mediante fast-forward desde `251d590`. Copia privada previa del código: `/home/umilpdfe/.prisma-deploy-backups/assistant-panel-ux-20261102-231119-61ef79` (979.827 bytes). PHP válido en LucusHost. Smoke HTTPS correcto en las ocho páginas: nuevos controles del panel, assets assistant v4, PWA v52/runtime40 e historial autenticado con etiquetas legibles. Sesión temporal eliminada; sin cambios de BD ni llamadas adicionales al proveedor. Untracked previos conservados. Disponible para revisión en `https://prisma.wthefox.com`.
+
+### Acciones directas, alcance explícito y texto — 3 Nov 2026
+
+- Usuario señala cuatro fallos del panel: no explica su función, accesos que solo rellenan texto, selector de ámbito oculto/confuso y espacios vacíos. Replanteamiento con `design-taste-frontend`, centrado en comportamiento y primer uso.
+- Cabecera compacta, propósito concreto, composición en el flujo inicial; consultas contextuales en un clic con borrador preservado. Ámbitos en radios nativos visibles, explicación de qué se consulta y opciones según rol/pantalla, sin selector desplegable/fijación ocultos.
+- Modo de texto con campo Apuntes y Organizar, sin instrucciones prefabricadas en la caja. API opcional input_mode question/notes; notes persiste en metadata_json, no usa planificador ni recupera registros y limita el proveedor al texto actual. Una llamada IA. Reintentos conservan modo; título Apuntes; metadatos internos no se añaden al historial del proveedor.
+- Creación conectada al editor existente: traslado del borrador o los últimos apuntes, limitado a identidad/empresa, diez minutos y un solo uso. Sin analizar ni guardar automáticamente. La revisión/confirmación existente sigue gobernando las escrituras.
+- Teclado según uso (pregunta vs apuntes vs móvil), foco móvil sin abrir teclado al consultar, intentos recuperados según contenido/modo/ámbito y eliminados al completarse.
+- 43 tests y sintaxis; pruebas ampliadas de modos, persistencia/reintento/títulos, ausencia de recuperación de registros y de historial previo en notes. Navegador desktop/móvil con acciones directas/borrador, radios, notas, traslado a creación, roles/historial/Escape, 320/375 px sin desbordar y consola limpia en pasada final. Capturas v5 en artefactos del chat.
+- Sin migración; assistant v5, ai-inbox ai7, PWA v53/runtime41. Documentación en docs/ai-assistant.md. Despliegue al mismo destino autorizado en preparación; verificación posterior con proveedor real y datos sintéticos. IA4 no se implementa en esta revisión.

@@ -6,6 +6,8 @@ let aiUsers = []; // usuarios asignables (cargados de /api/users-list.php)
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('ai-note-input');
     const counter = document.getElementById('ai-note-counter');
+    const draft = window.PrismaAssistant?.takeCreateDraft?.();
+    if (draft && !input.value) { input.value = draft; counter.textContent = `${input.value.length.toLocaleString('es-ES')} / 10.000`; input.focus(); }
     input.addEventListener('input', () => {
         counter.textContent = `${input.value.length.toLocaleString('es-ES')} / 10.000`;
     });
