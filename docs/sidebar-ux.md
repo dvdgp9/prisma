@@ -24,3 +24,6 @@ La carga de aplicaciones tiene un esqueleto, estado vacío y error con reintento
 Capturas con datos ficticios fuera del repositorio: `prisma-sidebar-desktop.jpg` y `prisma-sidebar-mobile.jpg`.
 
 Assets: `sidebar.css?v=1`, `sidebar.js?v=3`, `main.js?v=5.7`, `pending-approvals.js?v=2`. Caché PWA `prisma-v51` / `prisma-runtime-v39`. No requiere migraciones ni cambios de permisos o registros de negocio. El despliegue usa copia privada previa del código, fast-forward y comprobación HTTP de las ocho páginas autenticadas y assets.
+
+
+Despliegue completado el 2 Nov 2026: commit funcional `4c4ae28`, publicado en `dvdgp9/prisma` y actualizado en LucusHost mediante fast-forward desde `eecac9c`. Copia privada previa: `/home/umilpdfe/.prisma-deploy-backups/sidebar-ux-20261102-224313-45bbed` (975.235 bytes). Sintaxis PHP correcta en servidor. Smoke HTTPS autenticado correcto en las ocho páginas, estructura de navegación, assets/versiones/PWA y lectura de aplicaciones autorizadas. Sesión temporal eliminada; sin cambios de BD ni registros de negocio. Untracked previos del servidor conservados. Versión disponible para revisión del usuario en `https://prisma.wthefox.com`.
