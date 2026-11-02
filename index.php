@@ -1015,12 +1015,12 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=5"></script>
-    <script src="/assets/js/main.js?v=5.6"></script>
+    <script src="/assets/js/main.js?v=5.7"></script>
     <script src="/assets/js/my-work.js?v=5"></script>
     <script src="/assets/js/request-create-helpers.js?v=1"></script>
     <script src="/assets/js/request-create.js?v=1"></script>
     <?php if (has_role('admin')): ?>
-        <script src="/assets/js/pending-approvals.js"></script>
+        <script src="/assets/js/pending-approvals.js?v=2"></script>
     <?php endif; ?>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>

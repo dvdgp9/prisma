@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     updateViewLayout();
 
+    if (urlParams.get('profile') === '1') openProfileModal();
+
     // Load apps first, then update UI
     await loadApps();
 
@@ -1073,6 +1075,7 @@ async function loadApps() {
         const response = await fetch('/api/apps.php?grouped=1');
         const data = await response.json();
 
+        if (!response.ok || !data.success || !Array.isArray(data.data)) throw new Error('Apps unavailable');
         if (data.success) {
             appsGrouped = data.data;
             // Flatten for compatibility with existing code
@@ -1085,6 +1088,7 @@ async function loadApps() {
             renderAppsNav();
         }
     } catch (error) {
+        sidebarAppState('error');
         console.error('Error loading apps:', error);
     }
 }
@@ -1094,44 +1098,7 @@ function renderAppsNav() {
     const appsNav = document.getElementById('apps-nav');
     if (!appsNav) return;
 
-    let navContent = '';
-
-    if (appsGrouped.length > 0) {
-        navContent += appsGrouped.map(group => `
-            <div class="company-group ${appsGrouped.length === 1 ? 'single-company' : ''}" data-company-id="${group.id}">
-                <div class="company-group-header">
-                    <a href="javascript:void(0)" class="company-nav-item" onclick="event.preventDefault(); loadView('company', ${group.id}, event); return false;" data-company-id="${group.id}">
-                        <div class="company-group-title">
-                            <i class="iconoir-building"></i>
-                            <span>${escapeHtml(group.name)}</span>
-                        </div>
-                    </a>
-                    <button type="button" class="company-group-toggle-btn" onclick="event.stopPropagation(); toggleCompanyGroup(${group.id})" title="Expandir/contraer apps">
-                        <i class="iconoir-nav-arrow-down company-group-toggle"></i>
-                    </button>
-                </div>
-                <div class="company-group-apps" style="max-height: none;">
-                    ${group.apps.map(app => `
-                        <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
-                            <i class="iconoir-app-window"></i>
-                            <span>${escapeHtml(app.name)}</span>
-                            <span class="nav-count" data-app-count="${app.id}" hidden></span>
-                        </a>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
-    } else {
-        navContent += apps.map(app => `
-            <a href="javascript:void(0)" class="nav-item" onclick="event.preventDefault(); loadView('app', ${app.id}, event); return false;" data-app-id="${app.id}">
-                <i class="iconoir-app-window"></i>
-                <span>${escapeHtml(app.name)}</span>
-                <span class="nav-count" data-app-count="${app.id}" hidden></span>
-            </a>
-        `).join('');
-    }
-
-    appsNav.innerHTML = navContent;
+    renderSidebarAppGroups(appsGrouped, apps);
     updateAppCounters();
 }
 
@@ -1160,36 +1127,6 @@ async function loadAppCounters() {
         }
     } catch (error) {
         console.error('Error loading global app counters:', error);
-    }
-}
-
-function toggleSidebarUserMenu(event) {
-    if (event) event.stopPropagation();
-    const wrap = document.getElementById('sidebar-user');
-    const menu = document.getElementById('sidebar-user-menu');
-    if (!wrap || !menu) return;
-    const isOpen = wrap.classList.toggle('is-open');
-    menu.hidden = !isOpen;
-    const trigger = wrap.querySelector('.sidebar-user-trigger');
-    if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    if (isOpen) {
-        const closeOnOutside = (e) => {
-            if (!wrap.contains(e.target)) {
-                wrap.classList.remove('is-open');
-                menu.hidden = true;
-                if (trigger) trigger.setAttribute('aria-expanded', 'false');
-                document.removeEventListener('click', closeOnOutside);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
-    }
-}
-
-// Toggle company group collapse/expand
-function toggleCompanyGroup(companyId) {
-    const group = document.querySelector(`.company-group[data-company-id="${companyId}"]`);
-    if (group) {
-        group.classList.toggle('collapsed');
     }
 }
 

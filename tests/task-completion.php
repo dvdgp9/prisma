@@ -128,6 +128,6 @@ assert_file_contains('assets/js/sidebar.js', [
     "task_completion: { iconClass: 'completion', iconName: 'iconoir-check-circle' }",
     "n.type === 'completion' || n.type === 'status_change' || n.type === 'task_completion'",
 ], 'the bell shows task completions under "Estado"');
-assert_file_contains('includes/sidebar.php', ['/assets/js/sidebar.js?v=2.2'], 'sidebar loads the new sidebar.js');
+assert_file_contains('includes/sidebar.php', ['/assets/js/sidebar.js?v=3'], 'sidebar loads the new sidebar.js');
 
 fwrite(STDOUT, "Task completion completed successfully.\n");

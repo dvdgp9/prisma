@@ -1,180 +1,276 @@
-// Sidebar - Common functionality for all pages
-// Note: On index.php, main.js handles the sidebar instead
-
+// Shared navigation for every authenticated page, including the index app view.
 let sidebarAppsGrouped = [];
 let sidebarApps = [];
+const sidebarMobile = matchMedia('(max-width: 768px)');
+const sidebarInertBefore = new Map();
+const sidebarIdentity = document.querySelector('.sidebar')?.dataset;
+const sidebarCollapseKey = `prisma_sidebar:${sidebarIdentity?.userId}:${sidebarIdentity?.companyId}:collapsed`;
+let sidebarCollapsed = {};
+try { sidebarCollapsed = JSON.parse(sessionStorage.getItem(sidebarCollapseKey) || '{}') || {}; } catch { /* Storage can be unavailable. */ }
 
-// Load apps on page load (skip if main.js will handle it)
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on index.php where main.js handles the sidebar
-    const isIndexPage = window.location.pathname === '/' || 
-                        window.location.pathname.includes('index.php');
-    
-    // Only load if not on index page (main.js handles it there)
-    if (!isIndexPage) {
-        loadAppsForSidebar();
+function sidebarAppState(state) {
+    const target = document.getElementById('apps-nav');
+    if (!target) return;
+    target.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+    const status = document.getElementById('sidebar-search-status');
+    if (status) status.textContent = '';
+    if (state === 'loading') {
+        target.innerHTML = '<div class="sidebar-apps-loading" aria-hidden="true"><span></span><span></span><span></span></div><span class="sidebar-sr-only">Cargando aplicaciones</span>';
+    } else if (state === 'error') {
+        target.innerHTML = '<div class="sidebar-apps-message" role="status"><p>No se han podido cargar las aplicaciones.</p><button type="button" onclick="retrySidebarApps()">Reintentar</button></div>';
     }
-});
+}
 
-// Load all apps (grouped by company) for sidebar
+function retrySidebarApps() {
+    document.getElementById('sidebar-search-input')?.focus();
+    sidebarAppState('loading');
+    if (typeof loadApps === 'function') loadApps(); else loadAppsForSidebar();
+}
+
 async function loadAppsForSidebar() {
     try {
         const response = await fetch('/api/apps.php?grouped=1');
         const data = await response.json();
-
-        if (data.success) {
-            sidebarAppsGrouped = data.data;
-            // Flatten for compatibility
-            sidebarApps = [];
-            sidebarAppsGrouped.forEach(group => {
-                if (group.apps) {
-                    sidebarApps.push(...group.apps);
-                }
-            });
-            renderSidebarApps();
-        }
+        if (!response.ok || !data.success || !Array.isArray(data.data)) throw new Error('Apps unavailable');
+        sidebarAppsGrouped = data.data;
+        sidebarApps = sidebarAppsGrouped.flatMap(group => group.apps || []);
+        renderSidebarApps();
     } catch (error) {
+        sidebarAppState('error');
         console.error('Error loading apps for sidebar:', error);
     }
 }
 
-// Render apps in sidebar navigation (grouped by company)
-function renderSidebarApps() {
-    const appsNav = document.getElementById('apps-nav');
-    if (!appsNav) return;
-    
-    let navContent = '';
+function renderSidebarApps() { renderSidebarAppGroups(sidebarAppsGrouped, sidebarApps); }
 
-    if (sidebarAppsGrouped.length > 0) {
-        navContent += sidebarAppsGrouped.map(group => `
-            <div class="company-group ${sidebarAppsGrouped.length === 1 ? 'single-company' : ''}" data-company-id="${group.id}">
-                <div class="company-group-header">
-                    <div class="company-nav-item">
-                        <div class="company-group-title">
-                            <i class="iconoir-building"></i>
-                            <span>${escapeHtml(group.name)}</span>
-                        </div>
-                    </div>
-                    <button type="button" class="company-group-toggle-btn" onclick="event.stopPropagation(); toggleCompanyGroup(${group.id})" title="Expandir/contraer apps">
-                        <i class="iconoir-nav-arrow-down company-group-toggle"></i>
-                    </button>
-                </div>
-                <div class="company-group-apps" style="max-height: none;">
-                    ${group.apps.map(app => `
-                        <a href="${getAppLink(app.id)}" class="nav-item" data-app-id="${app.id}">
-                            <i class="iconoir-app-window"></i>
-                            <span>${escapeHtml(app.name)}</span>
-                        </a>
-                    `).join('')}
-                </div>
+// The same real links and group controls on Inicio, Notas, Tareas and administration.
+function renderSidebarAppGroups(groups, flatApps = []) {
+    const target = document.getElementById('apps-nav');
+    if (!target) return;
+    const onIndex = location.pathname === '/' || location.pathname.endsWith('/index.php');
+    const params = new URLSearchParams(location.search);
+    const activeApp = params.get('app') || params.get('app_id');
+    const activeCompany = params.get('company');
+    const localLink = (kind, id) => onIndex ? ` onclick="return navigateSidebarView(event, '${kind}', ${id})"` : '';
+    const appMarkup = app => {
+        const id = Number(app.id);
+        return `<a href="/index.php?app=${id}" class="nav-item${onIndex && activeApp == id ? ' active' : ''}" data-app-id="${id}"${localLink('app', id)} title="${sidebarEscapeHtml(app.name)}">
+            <i class="iconoir-app-window" aria-hidden="true"></i><span>${sidebarEscapeHtml(app.name)}</span><span class="nav-count" data-app-count="${id}" hidden></span>
+        </a>`;
+    };
+    target.innerHTML = groups.length ? groups.map(group => {
+        const id = Number(group.id);
+        const containsActive = onIndex && (group.apps || []).some(app => app.id == activeApp);
+        const collapsed = Boolean(sidebarCollapsed[id]) && !containsActive;
+        return `<div class="company-group${collapsed ? ' collapsed' : ''}" data-company-id="${id}">
+            <div class="company-group-header">
+                <a href="/index.php?company=${id}" class="company-nav-item${onIndex && activeCompany == id ? ' active' : ''}" data-company-id="${id}"${localLink('company', id)} title="${sidebarEscapeHtml(group.name)} · Ver todas sus mejoras">
+                    <span class="company-group-title"><i class="iconoir-building" aria-hidden="true"></i><span>${sidebarEscapeHtml(group.name)}</span></span>
+                </a>
+                <button type="button" class="company-group-toggle-btn" onclick="toggleCompanyGroup(${id})" aria-expanded="${!collapsed}" aria-controls="sidebar-company-${id}" aria-label="${collapsed ? 'Mostrar' : 'Ocultar'} aplicaciones de ${sidebarEscapeHtml(group.name)}" data-company-name="${sidebarEscapeHtml(group.name)}">
+                    <i class="iconoir-nav-arrow-down company-group-toggle" aria-hidden="true"></i>
+                </button>
             </div>
-        `).join('');
-    } else {
-        navContent += sidebarApps.map(app => `
-            <a href="${getAppLink(app.id)}" class="nav-item" data-app-id="${app.id}">
-                <i class="iconoir-app-window"></i>
-                <span>${escapeHtml(app.name)}</span>
-            </a>
-        `).join('');
-    }
-
-    appsNav.innerHTML = navContent;
+            <div class="company-group-apps" id="sidebar-company-${id}"${collapsed ? ' hidden' : ''}>
+                ${(group.apps || []).length ? group.apps.map(appMarkup).join('') : '<p class="sidebar-group-empty">Sin aplicaciones</p>'}
+            </div>
+        </div>`;
+    }).join('') : flatApps.map(appMarkup).join('');
+    if (!target.children.length) target.innerHTML = '<p class="sidebar-apps-message">Todavía no tienes aplicaciones disponibles.</p>';
+    target.setAttribute('aria-busy', 'false');
+    filterSidebarApps(document.getElementById('sidebar-search-input')?.value || '');
+    syncSidebarCurrent();
 }
 
-// Get link for app based on current page
-function getAppLink(appId) {
-    // Always return direct link - index.php will handle the app parameter
-    return `/index.php?app=${appId}`;
+function navigateSidebarView(event, kind, id) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return true;
+    event.preventDefault();
+    loadView(kind, id, event);
+    return false;
 }
 
-// Toggle company group collapse/expand
+function setSidebarGroupExpanded(group, expanded) {
+    group.classList.toggle('collapsed', !expanded);
+    group.querySelector('.company-group-apps').hidden = !expanded;
+    const button = group.querySelector('.company-group-toggle-btn');
+    button.setAttribute('aria-expanded', String(expanded));
+    button.setAttribute('aria-label', `${expanded ? 'Ocultar' : 'Mostrar'} aplicaciones de ${button.dataset.companyName}`);
+}
+
 function toggleCompanyGroup(companyId) {
     const group = document.querySelector(`.company-group[data-company-id="${companyId}"]`);
-    if (group) {
-        group.classList.toggle('collapsed');
+    if (!group) return;
+    const expanded = group.classList.contains('collapsed');
+    setSidebarGroupExpanded(group, expanded);
+    // Searching temporarily expands matches without replacing the saved browsing preference.
+    if (!document.getElementById('sidebar-search-input')?.value.trim()) {
+        sidebarCollapsed[companyId] = !expanded;
+        try { sessionStorage.setItem(sidebarCollapseKey, JSON.stringify(sidebarCollapsed)); } catch { /* Optional preference. */ }
     }
 }
 
-// Filter sidebar apps by search term
 function filterSidebarApps(searchTerm) {
-    const term = searchTerm.toLowerCase().trim();
-    const appsNav = document.getElementById('apps-nav');
-    if (!appsNav) return;
-
-    // Get all app nav items
-    const appItems = appsNav.querySelectorAll('.nav-item[data-app-id]');
-    
-    if (!term) {
-        // Show all
-        appItems.forEach(item => item.style.display = '');
-        
-        // Show all company groups
-        const companyGroups = appsNav.querySelectorAll('.company-group');
-        companyGroups.forEach(group => group.style.display = '');
-        return;
-    }
-
-    // Filter apps
-    let visibleCount = 0;
-    const visibleCompanies = new Set();
-    
-    appItems.forEach(item => {
-        const appName = item.querySelector('span').textContent.toLowerCase();
-        if (appName.includes(term)) {
-            item.style.display = '';
-            visibleCount++;
-            
-            // Mark parent company as visible
-            const companyGroup = item.closest('.company-group');
-            if (companyGroup) {
-                visibleCompanies.add(companyGroup.dataset.companyId);
-            }
-        } else {
-            item.style.display = 'none';
-        }
+    const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+    const term = normalize(searchTerm);
+    const target = document.getElementById('apps-nav');
+    if (!target) return;
+    let visible = 0;
+    const items = target.querySelectorAll('[data-app-id]');
+    items.forEach(item => {
+        const company = item.closest('.company-group')?.querySelector('.company-group-title')?.textContent || '';
+        const matches = !term || normalize(`${item.querySelector('span').textContent} ${company}`).includes(term);
+        item.hidden = !matches;
+        if (matches) visible++;
     });
-
-    // Show/hide company groups based on visible apps
-    const companyGroups = appsNav.querySelectorAll('.company-group');
-    companyGroups.forEach(group => {
-        if (visibleCompanies.has(group.dataset.companyId)) {
-            group.style.display = '';
-            // Expand group when searching
-            group.classList.remove('collapsed');
-        } else {
-            group.style.display = 'none';
-        }
+    target.querySelectorAll('.company-group').forEach(group => {
+        group.hidden = Boolean(term) && ![...group.querySelectorAll('[data-app-id]')].some(item => !item.hidden);
+        setSidebarGroupExpanded(group, term ? true : !sidebarCollapsed[group.dataset.companyId]);
+        if (!term && group.querySelector('[data-app-id].active')) setSidebarGroupExpanded(group, true);
     });
+    const clear = document.querySelector('.sidebar-search-clear');
+    if (clear) clear.hidden = !searchTerm;
+    const status = document.getElementById('sidebar-search-status');
+    if (status) status.textContent = term ? (visible ? `${visible} ${visible === 1 ? 'aplicación encontrada' : 'aplicaciones encontradas'}` : 'No hay aplicaciones que coincidan. Prueba otro nombre.') : '';
 }
 
-// Escape HTML helper
-function escapeHtml(text) {
-    if (!text) return '';
+function clearSidebarSearch() {
+    const input = document.getElementById('sidebar-search-input');
+    input.value = ''; filterSidebarApps(''); input.focus();
+}
+
+function sidebarEscapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    div.textContent = text ?? '';
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ===================
-// Menú plegable en móvil (shared across all pages)
-// ===================
+function escapeHtml(text) { return sidebarEscapeHtml(text); }
+
+function syncSidebarCurrent() {
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+        if (link.classList.contains('active')) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+    });
+}
+
+function closeSidebarUserMenu(restoreFocus = false) {
+    const wrap = document.getElementById('sidebar-user');
+    wrap?.classList.remove('is-open');
+    const menu = document.getElementById('sidebar-user-menu');
+    if (menu) menu.hidden = true;
+    const trigger = wrap?.querySelector('.sidebar-user-trigger');
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger?.focus();
+}
+
+function toggleSidebarUserMenu(event) {
+    event?.stopPropagation();
+    const wrap = document.getElementById('sidebar-user');
+    if (!wrap) return;
+    if (wrap.classList.contains('is-open')) { closeSidebarUserMenu(); return; }
+    wrap.classList.add('is-open');
+    const menu = document.getElementById('sidebar-user-menu');
+    menu.hidden = false;
+    wrap.querySelector('.sidebar-user-trigger').setAttribute('aria-expanded', 'true');
+    menu.querySelector('a, button:not([hidden])')?.focus();
+}
+
+function openSidebarProfile(event) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || typeof openProfileModal !== 'function') return true;
+    event.preventDefault(); closeSidebarUserMenu();
+    if (sidebarMobile.matches) toggleMobileSidebar(false);
+    openProfileModal(); return false;
+}
 
 function toggleMobileSidebar(force) {
     const sidebar = document.querySelector('.sidebar');
-    const button = sidebar && sidebar.querySelector('.sidebar-mobile-toggle');
-    if (!button) return;
-
-    const open = sidebar.classList.toggle('is-mobile-open', force);
-    button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    button.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-    button.querySelector('i').className = open ? 'iconoir-xmark' : 'iconoir-menu';
+    const button = document.querySelector('.sidebar-mobile-toggle');
+    if (!sidebar || !button) return;
+    const open = sidebarMobile.matches && (force ?? !sidebar.classList.contains('is-mobile-open'));
+    for (const [element, inert] of sidebarInertBefore) element.inert = inert;
+    sidebarInertBefore.clear();
+    sidebar.classList.toggle('is-mobile-open', open);
+    document.body.classList.toggle('sidebar-menu-open', open);
+    document.getElementById('sidebar-backdrop').hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (open) {
+        window.PrismaAssistant?.close();
+        if (document.getElementById('inbox-panel')?.classList.contains('open')) toggleInbox();
+        sidebar.inert = false;
+        sidebar.setAttribute('role', 'dialog'); sidebar.setAttribute('aria-modal', 'true');
+        for (const sibling of sidebar.parentElement.children) {
+            if (sibling === sidebar || sibling.id === 'sidebar-backdrop' || ['SCRIPT','LINK','STYLE'].includes(sibling.tagName)) continue;
+            sidebarInertBefore.set(sibling, sibling.inert); sibling.inert = true;
+        }
+        sidebar.querySelector('.sidebar-close').focus();
+    } else {
+        sidebar.inert = sidebarMobile.matches;
+        sidebar.removeAttribute('role'); sidebar.removeAttribute('aria-modal'); closeSidebarUserMenu();
+        if (sidebarMobile.matches) button.focus({preventScroll:true});
+    }
 }
 
-// Al elegir un destino del menú en móvil, se pliega de nuevo.
-document.addEventListener('click', (e) => {
-    const sidebar = document.querySelector('.sidebar.is-mobile-open');
-    if (sidebar && e.target.closest('.sidebar-nav a')) toggleMobileSidebar(false);
+sidebarMobile.addEventListener('change', () => toggleMobileSidebar(false));
+document.addEventListener('DOMContentLoaded', () => {
+    if (location.pathname !== '/' && !location.pathname.endsWith('/index.php')) {
+        loadAppsForSidebar();
+        if (document.getElementById('pending-count')) updatePendingCount();
+    }
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    sidebar.inert = sidebarMobile.matches;
+    syncSidebarCurrent();
+    new MutationObserver(syncSidebarCurrent).observe(sidebar.querySelector('.sidebar-nav'), {subtree:true, attributes:true, attributeFilter:['class']});
 });
+document.addEventListener('click', event => {
+    if (!event.target.closest('#sidebar-user')) closeSidebarUserMenu();
+    if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.target.closest('.sidebar a') && document.querySelector('.sidebar.is-mobile-open')) toggleMobileSidebar(false);
+});
+document.addEventListener('keydown', event => {
+    const sidebar = document.querySelector('.sidebar');
+    if (event.key === 'Escape' && document.querySelector('.sidebar-user.is-open')) {
+        event.preventDefault(); event.stopImmediatePropagation(); closeSidebarUserMenu(true); return;
+    }
+    if (!sidebar?.classList.contains('is-mobile-open')) return;
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.isComposing && event.key.toLowerCase() === 'j') { toggleMobileSidebar(false); return; }
+    if (event.key === 'Escape') {
+        event.preventDefault(); event.stopImmediatePropagation(); toggleMobileSidebar(false);
+    } else if (event.key === 'Tab') {
+        const elements = [...sidebar.querySelectorAll('a, button, input')].filter(el => !el.disabled && el.getClientRects().length);
+        const first = elements[0], last = elements.at(-1);
+        if (event.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+    // Keep page shortcuts from opening an editor behind the mobile drawer.
+    event.stopImmediatePropagation();
+}, true);
+
+// Update pending count badge
+async function updatePendingCount() {
+    try {
+        const response = await fetch('/api/pending-approvals.php');
+        const data = await response.json();
+
+        if (data.success) {
+            const count = data.data.length;
+            const badge = document.getElementById('pending-count');
+
+            if (!badge) {
+                return;
+            }
+
+            badge.hidden = count === 0;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating pending count:', error);
+    }
+}
 
 // ===================
 // Mis tareas: contador de vencidas + hoy (shared across all pages)

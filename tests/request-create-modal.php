@@ -272,7 +272,7 @@ assert_contains_all(read_project_file('assets/css/work.css'), [
 // ---- Scripts y versiones ----
 assert_contains_all($index, [
     '/assets/css/work.css?v=6',
-    '/assets/js/main.js?v=5.6',
+    '/assets/js/main.js?v=5.7',
     '/assets/js/request-create-helpers.js?v=1',
     '/assets/js/request-create.js?v=1',
 ], 'index loads the new scripts with bumped versions');
@@ -281,7 +281,7 @@ assert_same(
     strpos($index, 'request-create-helpers.js') < strpos($index, 'request-create.js?v=') && strpos($index, 'work-helpers.js') < strpos($index, 'request-create.js?v=') && strpos($index, 'main.js?v=') < strpos($index, 'request-create.js?v='),
     'request-create.js loads after its helpers, work-helpers.js and main.js'
 );
-assert_contains_all(read_project_file('sw.js'), ["const CACHE_NAME = 'prisma-v50';"], 'service worker cache is bumped');
+assert_contains_all(read_project_file('sw.js'), ["const CACHE_NAME = 'prisma-v51';"], 'service worker cache is bumped');
 
 foreach (['assets/js/request-create.js', 'assets/js/request-create-helpers.js', 'assets/js/main.js'] as $file) {
     $check = shell_exec('node --check ' . escapeshellarg(__DIR__ . '/../' . $file) . ' 2>&1');

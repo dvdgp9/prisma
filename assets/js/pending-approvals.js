@@ -1,32 +1,6 @@
 
 // ===== PENDING APPROVALS MANAGEMENT =====
 
-// Update pending count badge
-async function updatePendingCount() {
-    try {
-        const response = await fetch('/api/pending-approvals.php');
-        const data = await response.json();
-
-        if (data.success) {
-            const count = data.data.length;
-            const badge = document.getElementById('pending-count');
-
-            if (!badge) {
-                return;
-            }
-
-            if (count > 0) {
-                badge.textContent = count;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-    } catch (error) {
-        console.error('Error updating pending count:', error);
-    }
-}
-
 // Load pending approvals view
 async function loadPendingApprovals() {
     currentView = 'pending';

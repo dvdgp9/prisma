@@ -3704,3 +3704,13 @@ IA1–IA5 completan los tres bloques aprobados. Primer hito utilizable: panel pe
 
 
 Desplegado como `a97d01b` en `main`, mediante fast-forward desde `74c9411`. Copia privada del código anterior: `/home/umilpdfe/.prisma-deploy-backups/header-tools-20261102-222537-d0c189` (972.979 bytes). Once PHP pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas: botones únicos en cabecera, accesos antiguos ausentes del menú y versiones de assets/caché correctas. Sesión temporal eliminada; sin cambios de BD. Los untracked previos del servidor se conservan.
+
+### Revisión de la barra lateral — 2 Nov 2026
+
+- Usuario solicita una versión para probar y comentar con `design-taste-frontend`. Se revisan jerarquía, navegación de apps, gestión y móvil. Se conserva PHP/JS/CSS y el sistema visual de Prisma.
+- Tres grupos: Espacio de trabajo, Aplicaciones y Gestión (Más en Prisma para usuarios sin administración). Se mantienen destinos/orden/permisos. Gestión muestra nombres; una sola zona de scroll y cuenta fija al pie.
+- Renderer único para apps/empresas en Inicio y demás páginas, enlaces reales con modificadores, empresa navegable y plegado separado con estado accesible. Búsqueda por app/empresa sin tildes, mensajes de resultado, restauración de plegado por usuario/empresa en sessionStorage; carga/vacío/error/reintento.
+- Móvil: drawer superpuesto sin mover la página, objetivos 44 px, fondo principal inerte, foco contenido, Escape/backdrop/cierre al navegar. Atajos aislados; Ctrl/Cmd+J cierra menú y abre asistente.
+- Corregido menú de cuenta dependiente de main.js (ahora compartido) y acceso a Mi perfil desde otras páginas mediante modal existente/Inicio. Contador de aprobaciones compartido y atributo hidden sincronizado.
+- QA: 43 scripts existentes, sintaxis PHP/JS y diff; navegador desktop 1440×900 y 1280×720, móvil 375×812, navegación/contexto activo/búsqueda/plegado/perfil, error/reintento/vacío, dos empresas/doce apps con nombres largos sin desbordar, rol usuario sin gestión, teclado/Escape/atajo. Capturas en artefactos del chat. Sin errores nuevos en pasada final, fallo inducido comprobado aparte.
+- Documentación: docs/sidebar-ux.md. Sidebar CSS v1/JS v3, main v5.7, aprobaciones v2, caché v51/runtime39. Sin migración. Publicación/despliegue en el destino ya autorizado en preparación; IA4 continúa pendiente.
