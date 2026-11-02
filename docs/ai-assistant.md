@@ -159,3 +159,6 @@ Solo puede estar abierto uno de los paneles (asistente/notificaciones). Los boto
 Validación: 43 scripts existentes, sintaxis PHP/JS y diff. Revisión de navegador a 1440×1000 y 375×812, sin scroll horizontal; apertura/cierre, atajo, continuidad del borrador, alternancia con notificaciones, contador de no leídas y vuelta al modal de tarea con Escape. Consola sin errores en la pasada final. Capturas con datos ficticios fuera del repositorio: `prisma-header-tools-desktop.jpg`, `prisma-header-tools-mobile.jpg` y `prisma-header-tools-panel.jpg`.
 
 Sin cambios de BD ni migraciones. Assets assistant v3, sidebar.js v2.2 y caché PWA prisma-v50 / runtime-v38. Se despliega mediante fast-forward y comprobación HTTPS de las ocho cabeceras autenticadas y sus assets.
+
+
+Desplegado como `a97d01b` en `main`, mediante fast-forward desde `74c9411`. Copia privada del código anterior: `/home/umilpdfe/.prisma-deploy-backups/header-tools-20261102-222537-d0c189` (972.979 bytes). Once PHP pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas: botones únicos en cabecera, accesos antiguos ausentes del menú y versiones de assets/caché correctas. Sesión temporal eliminada; sin cambios de BD. Los untracked previos del servidor se conservan.

@@ -3701,3 +3701,6 @@ IA1–IA5 completan los tres bloques aprobados. Primer hito utilizable: panel pe
 - Paneles mutuamente excluyentes; foco al cargar historial y al cerrar, etiquetas accesibles según texto visible, móvil con botones de 44 px, borrador/contexto conservados. Corregido `hidden` del contador al recibir no leídas.
 - Verificación: 43 scripts, sintaxis PHP/JS y diff; navegador desktop 1440×1000/móvil 375×812 sin scroll lateral, apertura/atajo/continuidad/notificaciones/modal de tarea/Escape; consola sin errores en revisión final. Capturas con datos ficticios en artefactos del chat.
 - No requiere migraciones. Assistant assets v3; sidebar.js v2.2; PWA v50/runtime38. Publicación/despliegue en el mismo destino autorizado, con copia privada del código y smoke HTTPS de ocho páginas. IA4 sigue pendiente.
+
+
+Desplegado como `a97d01b` en `main`, mediante fast-forward desde `74c9411`. Copia privada del código anterior: `/home/umilpdfe/.prisma-deploy-backups/header-tools-20261102-222537-d0c189` (972.979 bytes). Once PHP pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas: botones únicos en cabecera, accesos antiguos ausentes del menú y versiones de assets/caché correctas. Sesión temporal eliminada; sin cambios de BD. Los untracked previos del servidor se conservan.
