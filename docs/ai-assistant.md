@@ -210,3 +210,10 @@ Prueba con proveedor real: acción directa «Resume esta nota.» sobre una nota 
 - Respuestas: Copiar (texto limpio) y seguimientos en la última respuesta, enviados con el ámbito de esa respuesta. Citas inline con icono de tipo + `#ID`.
 - Espera: contador visible a partir de 8 s. Historial: grupos por fecha, búsqueda sobre lo cargado y borrado en línea con confirmación.
 - Assets assistant v6 + assistant-format v1, PWA prisma-v54 / runtime-v42. Sin migración. Test nuevo `tests/assistant-format.php`.
+
+## Asistente orientado a la pantalla — 3 Nov 2026
+
+- El panel sigue siempre la pantalla (mejora o tarea abierta, nota, app, Vista global). Elegir otra opción en «Cambiar» vale mientras la pantalla no cambie; después vuelve a seguirla. Ya no existe un ámbito fijado permanente.
+- Tira de contexto sobre el compositor: qué registro o ámbito se consulta, qué puede hacer el asistente ahí (consultar, no modificar) y, en registros y apps, dos acciones directas. Si la siguiente pregunta cambia de contexto, la conversación lo indica.
+- Los modales de mejora y tarea tienen el botón «Preguntar sobre esta mejora/tarea». Desde 1280 px el modal se desplaza para no quedar bajo el panel.
+- Assets assistant v7, PWA prisma-v55 / runtime-v43. Sin migración.

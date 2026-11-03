@@ -3819,3 +3819,33 @@ Versiones: assistant.css/js v6, assistant-format.js v1, PWA prisma-v54 / runtime
 #### Lessons
 - El visor del navegador interno a veces captura el panel a mitad de la animación de entrada (translúcido, con la cabecera de la página encima, o desplazado 16 px): repetir la captura antes de concluir que hay un bug.
 - Un panel `position: fixed` no aumenta `scrollWidth` del documento: para comprobar desbordes, medir `getBoundingClientRect()` de sus hijos.
+
+### Asistente orientado al contexto de la pantalla — 3 Nov 2026
+
+#### Background and Motivation
+El usuario señala que desde el modal de una mejora no puede abrir el asistente con un clic (solo con el atajo) y que no queda claro qué pasará al preguntar. El panel se suponía orientado al contexto de la página. Pide aplicar las cinco propuestas.
+
+#### Key Challenges and Analysis
+- El acceso en el modal era un icono de 30 px sin texto; el botón de la cabecera de página queda bajo el fondo del modal. El panel tapaba la parte derecha del modal.
+- «Mi trabajo» y «Equipo» fijaban el ámbito de forma permanente (también tras recargar), sin indicarlo: el panel dejaba de seguir la página.
+- Con conversación, el ámbito quedaba en un chip pequeño, sin decir qué puede hacer el asistente ni ofrecer las acciones del registro.
+
+#### Current Status / Progress Tracking (Executor)
+- [x] Modales de mejora (`index.php`) y tarea (`tasks.php`): botón «Preguntar sobre esta mejora/tarea» junto al cierre (en móvil «Preguntar», con nombre accesible completo). A partir de 1280 px el modal se desplaza a la izquierda mientras el panel está abierto.
+- [x] Tira de contexto fija sobre el compositor: icono + «Preguntas sobre Mejora #41 · Título», línea de capacidades («Puedo leerla, resumirla y buscar trabajo relacionado. Aún no puedo modificarla.», variantes para Mi trabajo/Equipo/App) y «Cambiar». Las opciones se ven en el inicio y se pliegan después. Sustituye al chip del compositor.
+- [x] Con una mejora/tarea/nota/app, dos acciones del registro en la tira también a mitad de conversación. Placeholder e introducción del inicio según el contexto.
+- [x] El panel sigue siempre la pantalla. Elegir otra opción vale mientras la pantalla no cambie (`manualFor`); al cambiar de pantalla vuelve a seguirla. Se ignora el antiguo `fixed` guardado. Al abrir una conversación del historial se usa el contexto de la pantalla actual.
+- [x] Aviso en la conversación cuando la siguiente pregunta tiene otro contexto que la anterior: «Siguiente pregunta sobre Mejora #41 · …».
+
+Verificación: 44 tests, sintaxis PHP/JS. Navegador con arnés (modal de mejora simulado): botón del modal, modal desplazado a 1440 px, tira y capacidades, acciones del registro, aviso al cambiar de contexto, elección manual mantenida dentro del modal y liberada al salir, móvil 375×812 sin desbordes visibles y consola limpia. Mensajes: 60 % del alto en escritorio y 50 % en móvil con un registro abierto (la tira ocupa más que el chip anterior). No probado con proveedor real ni en producción; no se ha revisado el aspecto real de los modales de Prisma, solo uno simulado con las mismas clases.
+
+Versiones: assistant.css/js v7, PWA prisma-v55 / runtime-v43. Sin migraciones.
+
+### Archivos a subir (asistente contextual), en este orden
+1. `includes/ai-assistant-response.php` y `assets/js/assistant-format.js` (si no se subió el bloque R1–R8)
+2. `assets/js/assistant.js`, `assets/css/assistant.css`
+3. `includes/assistant-panel.php`, `index.php`, `tasks.php`
+4. `sw.js` al final
+
+#### Lessons
+- Un ámbito elegido a mano no debe quedarse fijo para siempre: guardar para qué pantalla se eligió y soltarlo al cambiar de pantalla.

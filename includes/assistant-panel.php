@@ -3,7 +3,7 @@
 if (empty($_SESSION['assistant_csrf'])) $_SESSION['assistant_csrf'] = bin2hex(random_bytes(32));
 $assistant_attr = static function ($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); };
 ?>
-<link rel="stylesheet" href="/assets/css/assistant.css?v=6">
+<link rel="stylesheet" href="/assets/css/assistant.css?v=7">
 <section id="prisma-assistant" class="prisma-assistant" role="complementary" aria-labelledby="assistant-heading" hidden
     data-user-id="<?php echo (int) $user['id']; ?>" data-company-id="<?php echo (int) $user['company_id']; ?>"
     data-role="<?php echo $assistant_attr($user['role']); ?>" data-csrf="<?php echo $assistant_attr($_SESSION['assistant_csrf']); ?>">
@@ -44,9 +44,15 @@ $assistant_attr = static function ($value) { return htmlspecialchars((string) $v
     </div>
     <div id="assistant-error" class="assistant-error" role="alert" hidden></div>
     <fieldset class="assistant-scope" id="assistant-context">
-        <legend>Consultar en</legend>
-        <div id="assistant-scope-options" class="assistant-scope-options" aria-describedby="assistant-scope-help"></div>
+        <legend class="assistant-sr-only">Sobre qué preguntar</legend>
+        <div class="assistant-context-bar">
+            <i id="assistant-context-icon" class="iconoir-user" aria-hidden="true"></i>
+            <p class="assistant-context-text" id="assistant-context-text" aria-live="polite"><span>Preguntas sobre</span> <strong id="assistant-context-label">Mi trabajo</strong></p>
+            <button type="button" class="assistant-chip" id="assistant-scope-toggle" aria-expanded="false" aria-controls="assistant-scope-options" hidden>Cambiar</button>
+        </div>
         <p id="assistant-scope-help"></p>
+        <div id="assistant-context-actions" class="assistant-context-actions" hidden></div>
+        <div id="assistant-scope-options" class="assistant-scope-options" aria-describedby="assistant-scope-help"></div>
     </fieldset>
     <form id="assistant-composer" class="assistant-composer">
         <div class="assistant-compose-box">
@@ -57,7 +63,6 @@ $assistant_attr = static function ($value) { return htmlspecialchars((string) $v
             <textarea id="assistant-input" rows="2" maxlength="10000" placeholder="Pregunta sobre tu trabajo…" aria-describedby="assistant-save-state"></textarea>
             <div class="assistant-composer-footer">
                 <div class="assistant-composer-tools">
-                    <button type="button" class="assistant-chip" id="assistant-scope-toggle" aria-expanded="false" aria-controls="assistant-context" hidden><span class="assistant-sr-only">Consultar en: </span><span id="assistant-scope-chip">Mi trabajo</span><i class="iconoir-nav-arrow-down" aria-hidden="true"></i></button>
                     <button type="button" class="assistant-chip" id="assistant-text-mode"><i class="iconoir-align-left" aria-hidden="true"></i>Ordenar texto</button>
                     <button type="button" class="assistant-chip" id="assistant-cancel-notes" hidden>Cancelar</button>
                 </div>
@@ -68,4 +73,4 @@ $assistant_attr = static function ($value) { return htmlspecialchars((string) $v
     </form>
 </section>
 <script src="/assets/js/assistant-format.js?v=1" defer></script>
-<script src="/assets/js/assistant.js?v=6" defer></script>
+<script src="/assets/js/assistant.js?v=7" defer></script>

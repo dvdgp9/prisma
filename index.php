@@ -475,8 +475,8 @@ $company_name = $user['company_name'] ?? '';
                     <h3 class="modal-title" id="request-modal-title">Editar Petición</h3>
                     <span class="request-modal-mode" id="request-modal-mode" hidden>Colaboración</span>
                     <span class="modal-request-id" id="edit-request-id-display"></span>
-                    <button type="button" class="assistant-context-open" data-assistant-open aria-label="Abrir asistente con este contexto" title="Consultar con el asistente"><i class="iconoir-sparks" aria-hidden="true"></i></button>
                 </div>
+                <button type="button" class="assistant-context-open" data-assistant-open><i class="iconoir-sparks" aria-hidden="true"></i><span class="assistant-context-open-long">Preguntar sobre esta mejora</span><span class="assistant-context-open-short" aria-hidden="true">Preguntar</span></button>
                 <button class="close-modal" onclick="closeModal('edit-request-modal')">
                     <i class="iconoir-xmark"></i>
                 </button>

@@ -163,12 +163,12 @@ $userApps = get_user_apps();
                     <i class="iconoir-task-list modal-header-icon"></i>
                     <h3 class="modal-title" id="task-modal-heading">Tarea</h3>
                     <span class="modal-request-id" id="task-id-display"></span>
-                    <button type="button" class="assistant-context-open" data-assistant-open aria-label="Abrir asistente con este contexto" title="Consultar con el asistente"><i class="iconoir-sparks" aria-hidden="true"></i></button>
                     <a class="task-source-link" id="task-source-link" href="#" hidden>
                         <i class="iconoir-light-bulb"></i>
                         <span id="task-source-link-text"></span>
                     </a>
                 </div>
+                <button type="button" class="assistant-context-open" data-assistant-open><i class="iconoir-sparks" aria-hidden="true"></i><span class="assistant-context-open-long">Preguntar sobre esta tarea</span><span class="assistant-context-open-short" aria-hidden="true">Preguntar</span></button>
                 <button type="button" class="close-modal" onclick="requestCloseTaskModal()" aria-label="Cerrar">
                     <i class="iconoir-xmark"></i>
                 </button>

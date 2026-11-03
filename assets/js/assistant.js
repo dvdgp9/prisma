@@ -16,7 +16,7 @@
     const identity = `${panel.dataset.userId}:${panel.dataset.companyId}`;
     const prefix = `prisma_assistant:${identity}:`;
     const mobile = matchMedia('(max-width: 767px)');
-    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, historyItems: [], historyConfirm: null, outgoing: null, composeMode: 'question', generation: 0, busy: false, loading: false, pending: false, busySince: 0, waitTimer: null, scopeOpen: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
+    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, historyItems: [], historyConfirm: null, outgoing: null, composeMode: 'question', generation: 0, busy: false, loading: false, pending: false, busySince: 0, waitTimer: null, scopeOpen: false, manualFor: null, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
     const TYPE = { request: 'Mejora', task: 'Tarea', note: 'Nota' };
     const TYPE_ICON = { request: 'iconoir-light-bulb', task: 'iconoir-task-list', note: 'iconoir-page' };
     const baseContext = () => ({ version: 1, scope: 'mine', entity_id: null, filters: {}, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', fixed: false });
@@ -31,7 +31,7 @@
     } catch { /* The panel still works without storage. */ }
     function draftKey() { return `draft:${state.conversation?.id || 'new'}`; }
     function saveDraft() { write(draftKey(), input.value); write(draftKey() + ':mode', state.composeMode); }
-    function saveUI() { write('ui', { open: state.open, id: state.conversation?.id || null, fixed: state.fixed, context: state.context }); }
+    function saveUI() { write('ui', { open: state.open, id: state.conversation?.id || null, manualFor: state.manualFor, context: state.context }); }
     function restoreDraft() { input.value = read(draftKey(), ''); state.composeMode = read(draftKey() + ':mode', 'question') === 'notes' ? 'notes' : 'question'; updateSend(); }
     function element(tag, className, text) { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; }
     function textButton(text, action) { const b = element('button', 'assistant-text-button', text); b.type = 'button'; b.addEventListener('click', action); return b; }
@@ -69,16 +69,33 @@
         return { context: c, label };
     }
     function contextKey(c) { return JSON.stringify([c?.scope, c?.entity_id, Object.entries(c?.filters || {}).sort(([a], [b]) => a.localeCompare(b))]); }
+    const SCOPE_ICON = { mine: 'iconoir-user', team: 'iconoir-group', app: 'iconoir-view-grid', ...TYPE_ICON };
+    const SCOPE_NOUN = { app: 'esta app', request: 'esta mejora', task: 'esta tarea', note: 'esta nota' };
+    // What the next question is about, in words a person recognises: «Mejora #41 · Exportación CSV».
+    function contextDisplay(context = state.context, label = state.label) {
+        const scope = context?.scope || 'mine';
+        if (scope === 'mine') return 'Mi trabajo';
+        if (scope === 'team') return context.filters?.person ? 'Trabajo del equipo, con el filtro de persona' : 'Trabajo del equipo';
+        const name = String(label || '').split(' · ').slice(1).join(' · ').trim();
+        if (scope === 'app') return name ? `App ${name}` : 'Esta app';
+        return `${TYPE[scope]} #${context.entity_id}` + (name ? ` · ${name}` : '');
+    }
+    function scopeHelp(scope) {
+        if (scope === 'mine') return 'Tus tareas y mejoras asignadas y tus notas. Puedo buscarlas y resumirlas; aún no puedo modificarlas.';
+        if (scope === 'team') return 'El trabajo del equipo que tienes permiso para ver. Puedo buscarlo y resumirlo; aún no puedo modificarlo.';
+        if (scope === 'app') return 'Las tareas y mejoras de esta app. Puedo buscarlas y resumirlas; aún no puedo modificarlas.';
+        return 'Puedo leerla, resumirla y buscar trabajo relacionado. Aún no puedo modificarla.';
+    }
     function renderContext() {
         const group = $('assistant-scope-options');
-        const choices = [{ context: baseContext(), label: 'Mi trabajo', fixed: true }];
-        if (['programador', 'admin', 'superadmin'].includes(panel.dataset.role)) choices.push({ context: { ...baseContext(), scope: 'team' }, label: 'Equipo', fixed: true });
+        const choices = [{ context: baseContext(), label: 'Mi trabajo', page: false }];
+        if (['programador', 'admin', 'superadmin'].includes(panel.dataset.role)) choices.push({ context: { ...baseContext(), scope: 'team' }, label: 'Equipo', page: false });
         const page = state.page;
         if (page && !choices.some(choice => contextKey(choice.context) === contextKey(page.context))) {
-            choices.push({ ...page, label: { note: 'Esta nota', task: 'Esta tarea', request: 'Esta mejora', app: 'Esta app' }[page.context.scope] || 'Esta vista', fixed: false });
+            choices.push({ ...page, label: { note: 'Esta nota', task: 'Esta tarea', request: 'Esta mejora', app: 'Esta app' }[page.context.scope] || 'Esta vista', page: true });
         }
         if (state.context && !choices.some(choice => contextKey(choice.context) === contextKey(state.context))) {
-            choices.push({ context: state.context, label: { note: 'Nota elegida', task: 'Tarea elegida', request: 'Mejora elegida', app: 'App elegida' }[state.context.scope] || 'Vista elegida', fixed: true });
+            choices.push({ context: state.context, label: { note: 'Nota elegida', task: 'Tarea elegida', request: 'Mejora elegida', app: 'App elegida' }[state.context.scope] || 'Vista elegida', page: false });
         }
         group._choices = choices;
         const signature = JSON.stringify(choices.map(choice => [contextKey(choice.context), choice.label]));
@@ -90,22 +107,35 @@
                 const radio = element('input'); radio.type = 'radio'; radio.name = 'assistant-scope'; radio.value = String(i);
                 radio.addEventListener('change', () => {
                     const selected = group._choices[Number(radio.value)];
-                    state.fixed = selected.fixed; setContext(selected);
+                    // Another choice holds while this screen stays the same; the screen's own option follows the page again.
+                    state.manualFor = selected.page ? null : contextKey(state.page?.context);
+                    setContext(selected);
                 });
                 label.append(radio, element('span', '', choice.label)); group.append(label);
             });
         }
         group.querySelectorAll('input').forEach((radio, i) => { radio.checked = contextKey(choices[i].context) === contextKey(state.context); radio.disabled = state.loading || state.stopped; });
-        $('assistant-scope-chip').textContent = choices.find(choice => contextKey(choice.context) === contextKey(state.context))?.label || state.label;
         const scope = state.context?.scope || 'mine';
-        $('assistant-scope-help').textContent = scope === 'mine' ? 'Tus tareas y mejoras asignadas; tus notas accesibles.'
-            : scope === 'team' ? (state.context.filters?.person ? 'Trabajo del equipo con el filtro de persona de esta vista.' : 'Tareas, mejoras y notas del equipo que tienes permiso para ver.')
-            : state.label + (scope === 'app' ? '. Trabajo de esta aplicación.' : '. Puedes consultar este registro y trabajo relacionado de su app.');
+        const display = contextDisplay();
+        $('assistant-context-icon').className = SCOPE_ICON[scope] || SCOPE_ICON.mine;
+        $('assistant-context-label').textContent = display; $('assistant-context-label').title = display;
+        $('assistant-scope-help').textContent = scopeHelp(scope);
+        const box = $('assistant-context-actions');
+        const actions = SCOPE_NOUN[scope] ? quickActions(scope).slice(0, 2) : [];
+        const actionSignature = JSON.stringify(actions.map(action => action[2]));
+        if (box.dataset.signature !== actionSignature) {
+            box.dataset.signature = actionSignature;
+            box.replaceChildren(...actions.map(([title, , prompt]) => {
+                const chip = actionButton(title, null, () => send(null, prompt));
+                chip.classList.add('assistant-action--chip'); chip.dataset.assistantPrompt = prompt; return chip;
+            }));
+        }
         if (!state.messages.length && !state.loading && !state.busy && !state.pending) renderMessages(false);
+        else { renderContextChange(); updateSend(); }
     }
     async function setContext(info, validate = true) {
         const epoch = ++state.contextEpoch;
-        state.context = { ...info.context, fixed: state.fixed }; state.label = info.label;
+        state.context = { ...info.context, fixed: false }; state.label = info.label;
         renderContext(); saveUI();
         if (!validate || !state.open) return;
         try {
@@ -114,9 +144,11 @@
             state.context = data.context; state.label = data.label; renderContext(); saveUI();
         } catch (e) { if (epoch === state.contextEpoch) error(e.message); }
     }
+    // The panel follows the screen by default; a manual choice only lasts while the screen stays the same.
     function syncPage() {
         state.page = pageContext();
-        if (!state.fixed && contextKey(state.context) !== contextKey(state.page.context)) setContext(state.page);
+        if (state.manualFor !== null && state.manualFor !== contextKey(state.page.context)) state.manualFor = null;
+        if (state.manualFor === null && contextKey(state.context) !== contextKey(state.page.context)) setContext(state.page);
         else renderContext();
     }
     function updateSend() {
@@ -126,16 +158,19 @@
         const start = !state.messages.length && !state.busy && !state.pending && !state.loading && !history;
         panel.classList.toggle('assistant-start', start);
         panel.classList.toggle('assistant-notes-mode', notes);
-        // The scope stays visible before the first question; afterwards it folds into a chip so the conversation keeps the space.
-        $('assistant-context').hidden = history || notes || (!start && !state.scopeOpen);
-        $('assistant-scope-toggle').hidden = history || notes || start;
-        $('assistant-scope-toggle').setAttribute('aria-expanded', String(!$('assistant-context').hidden));
+        // The context strip is always visible; its options stay open before the first question and fold behind «Cambiar» afterwards.
+        $('assistant-context').hidden = history || notes;
+        $('assistant-scope-options').hidden = !start && !state.scopeOpen;
+        $('assistant-scope-toggle').hidden = start;
+        $('assistant-scope-toggle').setAttribute('aria-expanded', String(!$('assistant-scope-options').hidden));
+        $('assistant-context-actions').hidden = start || !$('assistant-context-actions').childElementCount;
         $('assistant-send').disabled = busy || !input.value.trim();
         $('assistant-send').setAttribute('aria-label', notes ? 'Organizar apuntes' : 'Enviar pregunta');
         $('assistant-send').querySelector('span').textContent = notes ? 'Organizar' : 'Enviar';
         $('assistant-composer').setAttribute('aria-busy', String(busy));
         $('assistant-input-label').textContent = notes ? 'Tus apuntes' : 'Tu pregunta';
-        input.placeholder = notes ? 'Pega aquí el texto que quieres organizar…' : 'Pregunta sobre tu trabajo…';
+        const noun = SCOPE_NOUN[state.context?.scope];
+        input.placeholder = notes ? 'Pega aquí el texto que quieres organizar…' : noun ? `Pregunta sobre ${noun}…` : state.context?.scope === 'team' ? 'Pregunta sobre el trabajo del equipo…' : 'Pregunta sobre tu trabajo…';
         $('assistant-notes-create').hidden = !notes;
         $('assistant-cancel-notes').hidden = !notes;
         $('assistant-text-mode').hidden = notes;
@@ -292,9 +327,16 @@
             empty.append(element('h3', 'assistant-empty-title', 'Ordenar un texto'), element('p', 'assistant-empty-text', 'Pega tus apuntes abajo y pulsa Organizar. Recibirás un resumen y los próximos pasos, y después podrás crear tareas y mejoras con ellos.'));
             return empty;
         }
-        empty.append(element('h3', 'assistant-empty-title', 'Busca, resume y aclara tu trabajo'), element('p', 'assistant-empty-text', 'Consulta tareas, mejoras y notas con sus fuentes. Las consultas no modifican registros.'));
+        const scope = state.context?.scope || 'mine';
+        const intro = {
+            request: ['Pregunta sobre esta mejora', 'Resume sus comentarios y checklist, revisa qué falta o busca trabajo relacionado.'],
+            task: ['Pregunta sobre esta tarea', 'Revisa qué hay que hacer, qué falta aclarar o cuál es el siguiente paso.'],
+            note: ['Pregunta sobre esta nota', 'Resume sus ideas principales o extrae los próximos pasos.'],
+            app: ['Pregunta sobre esta app', 'Busca y resume sus tareas y mejoras, con sus fuentes.']
+        }[scope] || ['Busca, resume y aclara tu trabajo', 'Consulta tareas, mejoras y notas con sus fuentes.'];
+        empty.append(element('h3', 'assistant-empty-title', intro[0]), element('p', 'assistant-empty-text', intro[1]));
         empty.append(element('h4', 'assistant-actions-label', 'Consulta en un clic'));
-        for (const [title, description, prompt] of quickActions(state.context?.scope || 'mine')) {
+        for (const [title, description, prompt] of quickActions(scope)) {
             const button = suggestion(title, description, 'iconoir-arrow-right'); button.dataset.assistantPrompt = prompt;
             button.addEventListener('click', () => send(null, prompt)); empty.append(button);
         }
@@ -369,12 +411,25 @@
             messages.append(waitStatus()); updateWait();
             state.waitTimer ||= setInterval(updateWait, 1000);
         } else { state.busySince = 0; clearInterval(state.waitTimer); state.waitTimer = null; }
+        renderContextChange();
         // The start screen reads from the top; a conversation follows its latest message.
         if (scroll || !state.messages.length) messages.scrollTop = state.messages.length || state.busy || state.pending ? messages.scrollHeight : 0;
         const conversation = state.conversation;
         $('assistant-conversation-bar').hidden = !conversation;
         $('assistant-conversation-title').textContent = conversation?.title || '';
         updateSend(); updateLatest();
+    }
+    // When the screen changes mid-conversation, say what the next question will be about.
+    function renderContextChange() {
+        messages.querySelector('.assistant-context-change')?.remove();
+        if (state.busy || state.pending || state.loading) return;
+        const last = [...state.messages].reverse().find(m => m.role === 'user' && m.metadata?.input_mode !== 'notes' && m.state !== 'redacted');
+        if (!last || contextKey(last.context) === contextKey(state.context)) return;
+        const atEnd = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 120;
+        const note = element('p', 'assistant-context-change');
+        note.append(icon(SCOPE_ICON[state.context?.scope] || SCOPE_ICON.mine), element('span', '', 'Siguiente pregunta sobre '), element('strong', '', contextDisplay()));
+        messages.append(note);
+        if (atEnd) messages.scrollTop = messages.scrollHeight;
     }
     function updateLatest() { $('assistant-latest').hidden = !state.messages.length || messages.scrollHeight - messages.scrollTop - messages.clientHeight < 120; }
     function contextLabel(context) {
@@ -386,7 +441,7 @@
         const attempt = read(`attempt:${data.conversation.id}`, null);
         if (attempt && data.messages.some(message => message.client_key === attempt.key && message.state === 'complete')) write(`attempt:${data.conversation.id}`, null);
         if (data.messages.at(-1)?.state === 'redacted') {
-            state.fixed = false; state.context = baseContext(); state.label = 'Mi trabajo'; ++state.contextEpoch;
+            state.manualFor = null; state.context = baseContext(); state.label = 'Mi trabajo'; ++state.contextEpoch;
             write(`attempt:${data.conversation.id}`, null); renderContext();
         }
         state.pending = data.messages.some(m => m.state === 'pending');
@@ -401,7 +456,7 @@
             catch (e) { error(e.message, () => loadConversation(id)); }
         }, 2500);
     }
-    async function loadConversation(id, restoreContext = false) {
+    async function loadConversation(id) {
         saveDraft(); const epoch = ++state.generation; clearTimeout(state.poll); state.busy = false; state.outgoing = null; state.loading = true; updateSend();
         $('assistant-manage').hidden = true; error('');
         messages.replaceChildren(element('p', 'assistant-message-state', 'Abriendo conversación…')); $('assistant-latest').hidden = true;
@@ -409,7 +464,6 @@
             const data = await api(`/api/ai-conversations.php?id=${id}`);
             if (epoch !== state.generation) return;
             state.loading = false; applyDetail(data); restoreDraft();
-            if (restoreContext && state.fixed) await setContext({ context: data.conversation.context, label: data.conversation.context_label });
             if (state.open && document.activeElement === document.body) (mobile.matches ? panel.querySelector('[data-assistant-action="close"]') : input).focus();
         } catch (e) {
             if (epoch !== state.generation) return;
@@ -484,7 +538,7 @@
         const open = element('button', 'assistant-history-item'); open.type = 'button'; open.dataset.conversation = conversation.id;
         open.setAttribute('aria-current', String(conversation.id === state.conversation?.id));
         open.append(element('strong', '', conversation.title), element('span', '', conversation.context_label + (when ? ' · ' + when : '')));
-        open.addEventListener('click', () => { hideHistory(); loadConversation(conversation.id, true); });
+        open.addEventListener('click', () => { hideHistory(); loadConversation(conversation.id); });
         const remove = element('button', 'assistant-history-delete'); remove.type = 'button'; remove.title = 'Eliminar';
         remove.setAttribute('aria-label', `Eliminar «${conversation.title}»`); remove.append(icon('iconoir-trash'));
         remove.addEventListener('click', () => { state.historyConfirm = conversation.id; renderHistory(); $('assistant-history-list').querySelector('[data-confirm-delete]')?.focus(); });
@@ -536,7 +590,7 @@
         if (Array.from(content).length > 10000) { error('El texto debe ocupar como máximo 10.000 caracteres.'); return; }
         const epoch = state.generation; let target = state.conversation?.id;
         const inputMode = retry ? (retry.metadata?.input_mode || 'question') : quickPrompt ? 'question' : submittedMode;
-        const desiredContext = retry?.context || (inputMode === 'notes' ? baseContext() : quickContext || { ...state.context, fixed: state.fixed });
+        const desiredContext = retry?.context || (inputMode === 'notes' ? baseContext() : quickContext || state.context);
         const previous = target ? read(`attempt:${target}`, null) : null;
         const sameAttempt = previous?.content === content && (previous.input_mode || 'question') === inputMode && contextKey(previous.context) === contextKey(desiredContext);
         const key = retry?.client_key || (sameAttempt ? previous.key : crypto.randomUUID());
@@ -707,7 +761,7 @@
     const observer = new MutationObserver(() => syncPage());
     for (const id of ['page-title', 'my-work-title', 'note-pane']) if ($(id)) observer.observe($(id), { childList: true, subtree: true, characterData: true });
     for (const id of ['task-modal', 'edit-request-modal']) if ($(id)) observer.observe($(id), { attributes: true, attributeFilter: ['class'] });
-    const saved = read('ui', {}); state.fixed = Boolean(saved.fixed); state.context = saved.context || baseContext(); state.label = contextLabel(state.context);
+    const saved = read('ui', {}); state.manualFor = typeof saved.manualFor === 'string' ? saved.manualFor : null; state.context = saved.context || baseContext(); state.label = contextLabel(state.context);
     if (saved.id) state.conversation = { id: Number(saved.id) };
     restoreDraft(); syncPage(); renderMessages(); mobileMode();
     if (saved.open) open();

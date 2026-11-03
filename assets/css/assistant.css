@@ -98,18 +98,25 @@
 .assistant-loading > span:last-child { width: 55%; }
 .prisma-assistant .assistant-latest { position: absolute; bottom: 10px; right: 22px; display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 12px; border: 1px solid var(--ink-200); border-radius: 20px; background: var(--surface); box-shadow: 0 3px 12px rgb(15 20 24 / .06); font-size: 12px; }
 
-/* Scope: segmented options; native radios stay focusable for keyboard and screen readers. */
+/* Context strip: what the next question is about and what the assistant can do there. */
 .assistant-scope { border: 0; margin: 0; padding: 10px 18px; min-width: 0; flex-shrink: 0; }
 .prisma-assistant:not(.assistant-start) .assistant-scope { border-top: 1px solid var(--ink-100); }
-.assistant-scope legend { font-size: 12px; font-weight: 500; color: var(--ink-600); margin-bottom: 6px; padding: 0; float: left; width: 100%; }
-.assistant-scope-options { clear: both; display: flex; flex-wrap: wrap; gap: 6px; }
+.assistant-context-bar { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+#assistant-context-icon { color: var(--brand-strong); font-size: 16px; flex-shrink: 0; }
+.assistant-context-text { flex: 1; min-width: 0; margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.assistant-context-text strong { font-weight: 600; color: var(--ink-900); }
+#assistant-scope-help { margin: 2px 0 0 24px; font-size: 12px; color: var(--ink-500); line-height: 1.5; overflow-wrap: anywhere; }
+.assistant-context-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 24px; }
+.assistant-scope-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .assistant-scope-choice { position: relative; display: flex; flex: 1 0 90px; align-items: center; justify-content: center; min-height: 34px; padding: 0 10px; border: 1px solid var(--ink-200); border-radius: 7px; color: var(--ink-600); font-size: 12px; cursor: pointer; text-align: center; }
 .assistant-scope-choice:hover { background: var(--ink-50); }
 .assistant-scope-choice:has(input:checked) { color: var(--brand-ink); background: var(--brand-soft); border-color: var(--brand-line); font-weight: 500; }
 .assistant-scope-choice:has(input:focus-visible) { outline: 2px solid var(--brand-strong); outline-offset: 2px; }
 .assistant-scope-choice:has(input:disabled) { opacity: .55; cursor: default; }
 .prisma-assistant .assistant-scope-choice input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: inherit; appearance: none; }
-#assistant-scope-help { margin: 6px 0 0; font-size: 12px; color: var(--ink-500); line-height: 1.5; overflow-wrap: anywhere; }
+.assistant-context-change { display: flex; align-items: center; gap: 6px; margin: -8px 0 18px; padding: 8px 10px; border-radius: 8px; background: var(--ink-50); color: var(--ink-600); font-size: 12px; line-height: 1.5; white-space: nowrap; overflow: hidden; }
+.assistant-context-change i { color: var(--brand-strong); font-size: 15px; flex-shrink: 0; }
+.assistant-context-change strong { font-weight: 500; color: var(--ink-800); overflow: hidden; text-overflow: ellipsis; }
 
 /* Composer */
 .assistant-composer { padding: 0 18px; flex-shrink: 0; }
@@ -130,9 +137,7 @@
 .prisma-assistant .assistant-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; max-width: 100%; padding: 0 9px; border: 1px solid var(--ink-200); border-radius: 7px; color: var(--ink-600); font-size: 12px; white-space: nowrap; }
 .prisma-assistant .assistant-chip:hover { background: var(--ink-50); color: var(--ink-900); }
 .assistant-chip i { font-size: 15px; flex-shrink: 0; }
-#assistant-scope-chip { overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 #assistant-scope-toggle[aria-expanded="true"] { background: var(--brand-soft); border-color: var(--brand-line); color: var(--brand-ink); }
-#assistant-scope-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
 .prisma-assistant #assistant-send { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 11px; border-radius: 7px; background: var(--brand-strong); color: white; flex-shrink: 0; font-size: 12px; }
 #assistant-send i { font-size: 17px; }
 .assistant-hint { margin: 6px 2px max(10px, env(safe-area-inset-bottom)); font-size: 11px; line-height: 1.5; color: var(--ink-500); text-align: center; }
@@ -171,9 +176,17 @@
 .assistant-manage [data-assistant-action*="delete"] { color: var(--danger); }
 .assistant-manage p { font-size: 12px; margin-top: 12px; line-height: 1.7; }
 
-.assistant-context-open { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--ink-200); border-radius: 7px; background: var(--surface); color: var(--brand-ink); cursor: pointer; flex-shrink: 0; }
+/* Labelled entry in record modals: the page header button sits under the modal backdrop. */
+.modal-header > .assistant-context-open { margin-left: auto; margin-right: 10px; }
+.assistant-context-open { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border: 1px solid var(--brand-line); border-radius: 8px; background: var(--brand-soft); color: var(--brand-ink); font: 500 12px Geist, sans-serif; white-space: nowrap; cursor: pointer; flex-shrink: 0; transition: background .16s ease, transform .16s ease; }
+.assistant-context-open:hover { background: rgba(66, 160, 209, .16); }
+.assistant-context-open:active { transform: scale(.98); }
+.assistant-context-open i { font-size: 16px; }
+.assistant-context-open-short { display: none; }
 .assistant-context-open:focus-visible { outline: 2px solid var(--brand-strong); outline-offset: 2px; }
 @media (min-width: 1100px) { body.assistant-open .main-content { margin-right: var(--assistant-width); min-width: 0; } }
+/* With room for both, an open record modal moves left so the panel never covers it. */
+@media (min-width: 1280px) { body.assistant-open .modal { padding-right: calc(var(--assistant-width) + var(--spacing-xl, 2rem)); } }
 @media (max-width: 767px) {
     .prisma-assistant { width: 100%; border: 0; }
     body.assistant-open { overflow: hidden; }
@@ -185,10 +198,12 @@
     .assistant-history-row--confirm button { min-height: 40px; }
     #assistant-input { font-size: 16px; }
     .prisma-assistant #assistant-send { min-height: 40px; }
-    #assistant-scope-chip { max-width: 130px; }
     .assistant-references summary, .assistant-manage button, .prisma-assistant .assistant-back { min-height: 44px; }
+    .assistant-context-open { height: 40px; }
+    .assistant-context-open-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .assistant-context-open-short { display: inline; }
 }
-@media (prefers-reduced-motion: reduce) { .prisma-assistant, .assistant-loading > span { animation: none; } .assistant-suggestion > i, .assistant-compose-box { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .prisma-assistant, .assistant-loading > span { animation: none; } .assistant-suggestion > i, .assistant-compose-box, .assistant-context-open { transition: none; } }
 @keyframes assistant-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes assistant-pulse { from { opacity: .45; } to { opacity: 1; } }
 
