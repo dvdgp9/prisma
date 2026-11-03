@@ -16,7 +16,9 @@
     const identity = `${panel.dataset.userId}:${panel.dataset.companyId}`;
     const prefix = `prisma_assistant:${identity}:`;
     const mobile = matchMedia('(max-width: 767px)');
-    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, outgoing: null, composeMode: 'question', generation: 0, busy: false, loading: false, pending: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
+    const state = { open: false, conversation: null, messages: [], cursor: null, historyCursor: null, historyEpoch: 0, historyBusy: false, historyItems: [], historyConfirm: null, outgoing: null, composeMode: 'question', generation: 0, busy: false, loading: false, pending: false, busySince: 0, waitTimer: null, scopeOpen: false, fixed: false, context: null, label: 'Mi trabajo', page: null, contextEpoch: 0, stopped: false, poll: null, returnFocus: null };
+    const TYPE = { request: 'Mejora', task: 'Tarea', note: 'Nota' };
+    const TYPE_ICON = { request: 'iconoir-light-bulb', task: 'iconoir-task-list', note: 'iconoir-page' };
     const baseContext = () => ({ version: 1, scope: 'mine', entity_id: null, filters: {}, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', fixed: false });
     function read(key, fallback) { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch { return fallback; } }
     function write(key, value) { if (state.stopped) return; try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch { $('assistant-save-state').textContent = 'Este navegador no permite conservar el borrador.'; } }
@@ -33,6 +35,7 @@
     function restoreDraft() { input.value = read(draftKey(), ''); state.composeMode = read(draftKey() + ':mode', 'question') === 'notes' ? 'notes' : 'question'; updateSend(); }
     function element(tag, className, text) { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; }
     function textButton(text, action) { const b = element('button', 'assistant-text-button', text); b.type = 'button'; b.addEventListener('click', action); return b; }
+    function icon(name) { const i = element('i', name); i.setAttribute('aria-hidden', 'true'); return i; }
     function error(message, retry) {
         const box = $('assistant-error'); box.replaceChildren(); box.hidden = !message;
         if (!message) return;
@@ -93,6 +96,7 @@
             });
         }
         group.querySelectorAll('input').forEach((radio, i) => { radio.checked = contextKey(choices[i].context) === contextKey(state.context); radio.disabled = state.loading || state.stopped; });
+        $('assistant-scope-chip').textContent = choices.find(choice => contextKey(choice.context) === contextKey(state.context))?.label || state.label;
         const scope = state.context?.scope || 'mine';
         $('assistant-scope-help').textContent = scope === 'mine' ? 'Tus tareas y mejoras asignadas; tus notas accesibles.'
             : scope === 'team' ? (state.context.filters?.person ? 'Trabajo del equipo con el filtro de persona de esta vista.' : 'Tareas, mejoras y notas del equipo que tienes permiso para ver.')
@@ -122,26 +126,25 @@
         const start = !state.messages.length && !state.busy && !state.pending && !state.loading && !history;
         panel.classList.toggle('assistant-start', start);
         panel.classList.toggle('assistant-notes-mode', notes);
-        $('assistant-intro').hidden = !start || notes;
-        $('assistant-create').hidden = history;
-        $('assistant-create').classList.toggle('assistant-create--compact', !start && !notes);
-        $('assistant-create-label').textContent = !input.value.trim() && lastNotes() ? 'Crear tareas y mejoras de estos apuntes' : 'Crear tareas y mejoras';
-        $('assistant-context').hidden = history || notes;
+        // The scope stays visible before the first question; afterwards it folds into a chip so the conversation keeps the space.
+        $('assistant-context').hidden = history || notes || (!start && !state.scopeOpen);
+        $('assistant-scope-toggle').hidden = history || notes || start;
+        $('assistant-scope-toggle').setAttribute('aria-expanded', String(!$('assistant-context').hidden));
         $('assistant-send').disabled = busy || !input.value.trim();
         $('assistant-send').setAttribute('aria-label', notes ? 'Organizar apuntes' : 'Enviar pregunta');
         $('assistant-send').querySelector('span').textContent = notes ? 'Organizar' : 'Enviar';
         $('assistant-composer').setAttribute('aria-busy', String(busy));
         $('assistant-input-label').textContent = notes ? 'Tus apuntes' : 'Tu pregunta';
-        input.placeholder = notes ? 'Pega aquí el texto que quieres organizar…' : 'Escribe tu pregunta…';
-        $('assistant-notes-help').hidden = !notes;
+        input.placeholder = notes ? 'Pega aquí el texto que quieres organizar…' : 'Pregunta sobre tu trabajo…';
+        $('assistant-notes-create').hidden = !notes;
         $('assistant-cancel-notes').hidden = !notes;
         $('assistant-text-mode').hidden = notes;
         panel.querySelectorAll('[data-assistant-prompt]').forEach(button => { button.disabled = busy; });
         input.disabled = state.loading || state.stopped;
-        $('assistant-text-mode').disabled = state.loading || state.stopped;
+        $('assistant-text-mode').disabled = $('assistant-scope-toggle').disabled = state.loading || state.stopped;
         $('assistant-scope-options').querySelectorAll('input').forEach(radio => { radio.disabled = state.loading || state.stopped; });
-        input.style.height = 'auto'; input.style.height = `${Math.max(46, input.scrollHeight)}px`;
-        $('assistant-save-state').textContent = state.busy || state.pending ? 'Preparando respuesta…' : mobile.matches ? `Intro añade líneas · Pulsa ${notes ? 'Organizar' : 'Enviar'}` : notes ? `${isMac ? '⌘' : 'Ctrl'} + Enter organiza · Enter añade líneas` : 'Enter envía · Mayús+Enter añade una línea';
+        input.style.height = 'auto'; input.style.height = `${Math.max(notes ? 120 : 46, input.scrollHeight)}px`;
+        $('assistant-save-state').textContent = state.busy || state.pending ? 'Preparando respuesta…' : mobile.matches ? 'La IA puede equivocarse. Revisa sus respuestas.' : notes ? `${isMac ? '⌘' : 'Ctrl'}+Enter organiza · La IA puede equivocarse` : 'Enter envía · Mayús+Enter, nueva línea · La IA puede equivocarse';
     }
     function composeMode(mode) {
         state.composeMode = mode; saveDraft(); renderMessages(false); updateSend(); input.focus();
@@ -150,11 +153,15 @@
         const actions = {
             mine: [
                 ['Qué vence hoy', 'Tareas y mejoras con vencimiento hoy.', '¿Qué tareas y mejoras mías vencen hoy?'],
-                ['Ver mis pendientes', 'Tareas y mejoras que siguen abiertas.', '¿Qué tareas y mejoras tengo pendientes?']
+                ['Vencidas', 'Trabajo abierto con el vencimiento superado.', '¿Qué tareas y mejoras mías están vencidas?'],
+                ['Ver mis pendientes', 'Tareas y mejoras que siguen abiertas.', '¿Qué tareas y mejoras tengo pendientes?'],
+                ['Cambios recientes', 'Actividad de los últimos siete días.', '¿Qué tareas y mejoras mías han tenido actividad en los últimos siete días?']
             ],
             team: [
                 ['Pendientes del equipo', 'Trabajo abierto y quién lo tiene asignado.', 'Resume el trabajo pendiente del equipo con sus responsables.'],
-                ['Próximos vencimientos', 'Qué vence durante los próximos siete días.', '¿Qué tareas y mejoras del equipo vencen durante los próximos siete días?']
+                ['Vencidas del equipo', 'Trabajo abierto con el vencimiento superado.', '¿Qué tareas y mejoras del equipo están vencidas y quién las tiene?'],
+                ['Próximos vencimientos', 'Qué vence durante los próximos siete días.', '¿Qué tareas y mejoras del equipo vencen durante los próximos siete días?'],
+                ['Actividad reciente', 'Movimientos de los últimos siete días.', '¿Qué tareas y mejoras del equipo han tenido actividad en los últimos siete días?']
             ],
             note: [
                 ['Resumir esta nota', 'Ideas principales y decisiones.', 'Resume esta nota.'],
@@ -170,6 +177,8 @@
             ],
             app: [
                 ['Ver pendientes de esta app', 'Tareas y mejoras abiertas.', '¿Qué tareas y mejoras hay pendientes en esta aplicación?'],
+                ['Vencidas en esta app', 'Trabajo abierto con el vencimiento superado.', '¿Qué tareas y mejoras de esta aplicación están vencidas?'],
+                ['Mejoras más urgentes', 'Mejoras abiertas ordenadas por prioridad.', '¿Qué mejoras abiertas de esta aplicación tienen más prioridad?'],
                 ['Revisar actividad reciente', 'Las mejoras con movimientos más recientes.', 'Resume la actividad reciente de las mejoras de esta aplicación.']
             ]
         };
@@ -179,23 +188,40 @@
         return ref && /^(request|task|note):[1-9][0-9]*$/.test(ref.key) && /^\/(index\.php\?open_request=|tasks\.php\?task=|notes\.php\?id=)[1-9][0-9]*$/.test(ref.url);
     }
     function lastNotes() { return [...state.messages].reverse().find(message => message.role === 'user' && message.metadata?.input_mode === 'notes' && message.state !== 'redacted'); }
-    function messageText(message) {
-        const paragraph = element('p', 'assistant-message-text');
-        const content = message.content;
-        const refs = new Map((message.metadata?.references || []).filter(trustedReference).map(ref => [ref.key, ref]));
-        const pattern = /\[\[((?:request|task|note):[1-9][0-9]*)\]\]/g;
-        let end = 0;
-        for (const match of content.matchAll(pattern)) {
-            paragraph.append(document.createTextNode(content.slice(end, match.index)));
-            const ref = refs.get(match[1]);
-            if (ref) {
-                const link = element('a', 'assistant-inline-reference', `${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id}`);
-                link.href = ref.url; link.title = ref.title; paragraph.append(link);
-            } else paragraph.append(document.createTextNode('[referencia no disponible]'));
-            end = match.index + match[0].length;
+    function referencesOf(message) { return new Map((message.metadata?.references || []).filter(trustedReference).map(ref => [ref.key, ref])); }
+    function appendInline(parent, tokens, refs) {
+        for (const token of tokens) {
+            if (token.type === 'text') parent.append(document.createTextNode(token.text));
+            else if (token.type === 'strong') { const strong = element('strong'); appendInline(strong, token.children, refs); parent.append(strong); }
+            else {
+                const ref = refs.get(token.key);
+                if (!ref) { parent.append(document.createTextNode('[referencia no disponible]')); continue; }
+                const link = element('a', 'assistant-inline-reference'); link.href = ref.url;
+                link.title = `${TYPE[ref.type]} #${ref.id}: ${ref.title}`; link.setAttribute('aria-label', link.title);
+                // Answers usually name the record already; the chip adds type and a tappable ID without repeating the title.
+                link.append(icon(TYPE_ICON[ref.type]), element('span', '', `#${ref.id}`));
+                parent.append(link);
+            }
         }
-        paragraph.append(document.createTextNode(content.slice(end)));
-        return paragraph;
+    }
+    function messageText(message) {
+        const box = element('div', 'assistant-message-text');
+        // People's own text stays literal; only assistant answers get the small formatting subset.
+        if (message.role !== 'assistant') { box.classList.add('assistant-message-text--plain'); box.textContent = message.content; return box; }
+        const refs = referencesOf(message);
+        for (const block of PrismaAssistantFormat.parse(message.content)) {
+            if (block.type === 'heading') { const heading = element('p', 'assistant-answer-heading'); appendInline(heading, block.inline, refs); box.append(heading); }
+            else if (block.type === 'list') {
+                const list = element(block.ordered ? 'ol' : 'ul');
+                for (const item of block.items) { const li = element('li'); appendInline(li, item, refs); list.append(li); }
+                box.append(list);
+            } else {
+                const paragraph = element('p');
+                block.lines.forEach((line, i) => { if (i) paragraph.append(element('br')); appendInline(paragraph, line, refs); });
+                box.append(paragraph);
+            }
+        }
+        return box;
     }
     function appendEvidence(article, metadata) {
         if (!metadata) return;
@@ -203,11 +229,12 @@
         if (refs.length) {
             const disclosure = element('details', 'assistant-references');
             const summary = element('summary', '', `${refs.length} ${refs.length === 1 ? 'fuente consultada' : 'fuentes consultadas'}`);
-            const icon = element('i', 'iconoir-link'); icon.setAttribute('aria-hidden', 'true'); summary.prepend(icon);
+            summary.prepend(icon('iconoir-link'));
             const links = element('div', 'assistant-reference-links'); links.setAttribute('aria-label', 'Registros de esta respuesta');
             for (const ref of refs) {
-                const link = element('a', '', `${ref.title} · ${{ request: 'Mejora', task: 'Tarea', note: 'Nota' }[ref.type]} #${ref.id}`);
-                link.href = ref.url; links.append(link);
+                const link = element('a'); link.href = ref.url;
+                link.append(icon(TYPE_ICON[ref.type]), element('span', 'assistant-reference-title', ref.title), element('span', 'assistant-reference-id', `${TYPE[ref.type]} #${ref.id}`));
+                links.append(link);
             }
             disclosure.append(summary, links); article.append(disclosure);
         }
@@ -215,55 +242,135 @@
             const count = metadata.coverage.reduce((sum, page) => sum + page.reviewed, 0);
             const hasMore = metadata.coverage.some(page => page.has_more);
             const laterPage = metadata.coverage.some(page => page.offset > 0);
-            const suffix = hasMore ? ' · Consulta parcial. Puedes afinarla o pedir los siguientes resultados.' : metadata.partial ? (laterPage ? ' · Consulta acotada a esta página.' : ' · Parte del contenido se ha recortado.') : ' en esta consulta.';
+            const suffix = hasMore ? '. Consulta parcial: puedes afinarla o pedir más resultados.' : metadata.partial ? (laterPage ? '. Consulta acotada a esta página.' : '. Parte del contenido se ha recortado.') : ' en esta consulta.';
             const text = `${count} ${count === 1 ? 'registro revisado' : 'registros revisados'}` + suffix;
             const coverage = element('p', 'assistant-coverage', text);
             const sources = article.querySelector('.assistant-references');
             if (sources && !hasMore && !metadata.partial) sources.append(coverage); else article.append(coverage);
         }
     }
+    function actionButton(label, iconName, action) {
+        const button = element('button', 'assistant-action'); button.type = 'button';
+        if (iconName) button.append(icon(iconName));
+        button.append(element('span', '', label)); button.addEventListener('click', action); return button;
+    }
+    function createLink(className, ...children) {
+        const link = element('a', className); link.href = '/ai-inbox.php#desde-asistente'; link.dataset.assistantCreate = '';
+        link.append(...children); return link;
+    }
+    async function copyMessage(message, button) {
+        const labels = {};
+        for (const ref of referencesOf(message).values()) labels[ref.key] = `(${TYPE[ref.type]} #${ref.id})`;
+        try {
+            await navigator.clipboard.writeText(PrismaAssistantFormat.plainText(message.content, labels));
+            const label = button.querySelector('span'); label.textContent = 'Copiado';
+            setTimeout(() => { label.textContent = 'Copiar'; }, 2000);
+        } catch { error('No se pudo copiar. Selecciona el texto y cópialo manualmente.'); }
+    }
+    // Follow-ups keep the answer's own scope, even if the page changed since.
+    function followUps(message, question) {
+        if (question?.metadata?.input_mode === 'notes') return [createLink('assistant-action assistant-action--primary', icon('iconoir-plus'), element('span', '', 'Crear tareas y mejoras con estos apuntes'))];
+        const context = message.context || question?.context;
+        const chips = [];
+        const ask = (label, prompt) => chips.push(actionButton(label, null, () => send(null, prompt, context)));
+        if (message.metadata?.coverage?.some(page => page.has_more)) ask('Ver más resultados', 'Muestra los siguientes resultados.');
+        if (referencesOf(message).size >= 2 && ['mine', 'team', 'app'].includes(context?.scope)) {
+            ask('Ordenar por prioridad', 'Ordena estos resultados por prioridad.');
+            ask('Solo lo que vence esta semana', 'De estos resultados, ¿cuáles vencen durante los próximos siete días?');
+        }
+        chips.forEach(chip => { chip.dataset.assistantPrompt = ''; chip.classList.add('assistant-action--chip'); });
+        return chips;
+    }
+    function suggestion(title, description, iconName) {
+        const button = element('button', 'assistant-suggestion'); button.type = 'button';
+        const copy = element('span', 'assistant-suggestion-copy'); copy.append(element('strong', '', title), element('span', '', description));
+        button.append(copy, icon(iconName)); return button;
+    }
+    function emptyState() {
+        const empty = element('div', 'assistant-empty');
+        if (state.composeMode === 'notes') {
+            empty.append(element('h3', 'assistant-empty-title', 'Ordenar un texto'), element('p', 'assistant-empty-text', 'Pega tus apuntes abajo y pulsa Organizar. Recibirás un resumen y los próximos pasos, y después podrás crear tareas y mejoras con ellos.'));
+            return empty;
+        }
+        empty.append(element('h3', 'assistant-empty-title', 'Busca, resume y aclara tu trabajo'), element('p', 'assistant-empty-text', 'Consulta tareas, mejoras y notas con sus fuentes. Las consultas no modifican registros.'));
+        empty.append(element('h4', 'assistant-actions-label', 'Consulta en un clic'));
+        for (const [title, description, prompt] of quickActions(state.context?.scope || 'mine')) {
+            const button = suggestion(title, description, 'iconoir-arrow-right'); button.dataset.assistantPrompt = prompt;
+            button.addEventListener('click', () => send(null, prompt)); empty.append(button);
+        }
+        empty.append(element('h4', 'assistant-actions-label', 'Con tu texto'));
+        const notes = suggestion('Ordenar apuntes', 'Resumen y próximos pasos de un texto que pegues.', 'iconoir-align-left');
+        notes.addEventListener('click', () => composeMode('notes'));
+        const copy = element('span', 'assistant-suggestion-copy'); copy.append(element('strong', '', 'Crear tareas y mejoras'), element('span', '', 'Abre el editor para revisarlas antes de guardar.'));
+        const create = createLink('assistant-suggestion', copy, icon('iconoir-arrow-up-right'));
+        empty.append(notes, create);
+        return empty;
+    }
+    function waitStatus() {
+        const box = element('div', 'assistant-loading');
+        const status = element('p', 'assistant-message-state'); status.id = 'assistant-wait'; status.setAttribute('role', 'status');
+        const notes = (state.outgoing || state.messages.at(-1))?.metadata?.input_mode === 'notes';
+        status.append(document.createTextNode(notes ? 'Organizando tus apuntes…' : 'Consultando Prisma…'));
+        const time = element('span', 'assistant-wait-time'); time.setAttribute('aria-hidden', 'true'); status.append(time);
+        const note = element('p', 'assistant-wait-note', 'Las consultas amplias pueden tardar hasta un minuto.'); note.hidden = true;
+        box.append(status, note);
+        for (let i = 0; i < 3; i++) { const line = element('span'); line.setAttribute('aria-hidden', 'true'); box.append(line); }
+        return box;
+    }
+    function updateWait() {
+        const time = messages.querySelector('.assistant-wait-time');
+        if (!time) { clearInterval(state.waitTimer); state.waitTimer = null; return; }
+        const seconds = Math.floor((Date.now() - state.busySince) / 1000);
+        time.textContent = seconds >= 8 ? ` ${seconds} s` : '';
+        messages.querySelector('.assistant-wait-note').hidden = seconds < 8;
+    }
     function renderMessages(scroll = true) {
         messages.replaceChildren();
         if (state.cursor) messages.append(textButton('Ver mensajes anteriores', olderMessages));
-        if (!state.messages.length && !state.busy && !state.pending && state.composeMode !== 'notes') {
-            const empty = element('div', 'assistant-empty');
-            empty.append(element('p', 'assistant-actions-label', 'Consulta en un clic'));
-            for (const [title, description, prompt] of quickActions(state.context?.scope || 'mine')) {
-                const button = element('button', 'assistant-suggestion'); button.type = 'button'; button.dataset.assistantPrompt = prompt;
-                const copy = element('span', 'assistant-suggestion-copy'); copy.append(element('strong', '', title), element('span', '', description));
-                const icon = element('i', 'iconoir-arrow-right'); icon.setAttribute('aria-hidden', 'true'); button.append(copy, icon);
-                button.addEventListener('click', () => send(null, prompt)); empty.append(button);
-            }
-            messages.append(empty);
-        }
-        for (const message of state.messages) {
+        if (!state.messages.length && !state.busy && !state.pending) messages.append(emptyState());
+        let previousScope = null;
+        state.messages.forEach((message, index) => {
             const article = element('article', `assistant-message assistant-message--${message.role}`);
-            const label = element('div', 'assistant-message-label', message.role === 'user' ? (message.metadata?.input_mode === 'notes' ? 'Tus apuntes' : 'Tú') : 'Prisma');
-            if (message.role === 'assistant') label.prepend(element('i', 'iconoir-sparks'));
+            const notes = message.metadata?.input_mode === 'notes';
+            const label = element('div', 'assistant-message-label', message.role === 'user' ? (notes ? 'Tus apuntes' : 'Tú') : 'Prisma');
+            if (message.role === 'assistant') label.prepend(icon('iconoir-sparks'));
             article.append(label);
             if (message.state === 'redacted') article.append(element('p', 'assistant-message-state', 'Este mensaje ya no está disponible porque cambió el acceso a su contexto.'));
             else {
                 article.append(messageText(message));
                 appendEvidence(article, message.metadata);
-                if (message.role === 'user') article.append(element('p', 'assistant-message-context', message.metadata?.input_mode === 'notes' ? 'Texto compartido' : contextLabel(message.context)));
+                // Show a question's scope only when it differs from the previous one; «Mi trabajo» is the default.
+                if (message.role === 'user' && !notes) {
+                    const scope = contextKey(message.context);
+                    if (scope !== previousScope && (previousScope !== null || message.context?.scope !== 'mine')) article.append(element('p', 'assistant-message-context', contextLabel(message.context)));
+                    previousScope = scope;
+                }
                 if (message.state === 'failed') {
                     article.append(element('p', 'assistant-message-state', 'La respuesta no se completó.'));
                     // Retry only the last turn; older failed turns are not reordered into history.
                     if (message.id === state.messages.at(-1)?.id) article.append(textButton('Reintentar este mensaje', () => send(message)));
                 }
+                if (message.role === 'assistant' && message.state === 'complete') {
+                    const actions = element('div', 'assistant-message-actions');
+                    const copy = actionButton('Copiar', 'iconoir-copy', () => copyMessage(message, copy)); actions.append(copy);
+                    if (index === state.messages.length - 1 && !state.busy && !state.pending) actions.append(...followUps(message, state.messages[index - 1]));
+                    article.append(actions);
+                }
             }
             messages.append(article);
-        }
+        });
         if (state.outgoing && state.busy && !state.messages.some(message => message.client_key === state.outgoing.key)) {
             const outgoing = element('article', 'assistant-message assistant-message--user');
-            outgoing.append(element('div', 'assistant-message-label', state.outgoing.metadata?.input_mode === 'notes' ? 'Tus apuntes' : 'Tú'), messageText(state.outgoing), element('p', 'assistant-message-context', state.outgoing.metadata?.input_mode === 'notes' ? 'Texto compartido' : contextLabel(state.outgoing.context)));
+            outgoing.append(element('div', 'assistant-message-label', state.outgoing.metadata?.input_mode === 'notes' ? 'Tus apuntes' : 'Tú'), messageText(state.outgoing));
             messages.append(outgoing);
         }
         if (state.pending || state.busy) {
-            const skeleton = element('div', 'assistant-loading'); skeleton.setAttribute('role', 'status'); skeleton.append(element('p', 'assistant-message-state', 'Consultando Prisma…'));
-            for (let i = 0; i < 3; i++) { const line = element('span'); line.setAttribute('aria-hidden', 'true'); skeleton.append(line); } messages.append(skeleton);
-        }
-        if (scroll) messages.scrollTop = messages.scrollHeight;
+            state.busySince ||= Date.now();
+            messages.append(waitStatus()); updateWait();
+            state.waitTimer ||= setInterval(updateWait, 1000);
+        } else { state.busySince = 0; clearInterval(state.waitTimer); state.waitTimer = null; }
+        // The start screen reads from the top; a conversation follows its latest message.
+        if (scroll || !state.messages.length) messages.scrollTop = state.messages.length || state.busy || state.pending ? messages.scrollHeight : 0;
         const conversation = state.conversation;
         $('assistant-conversation-bar').hidden = !conversation;
         $('assistant-conversation-title').textContent = conversation?.title || '';
@@ -326,7 +433,7 @@
     function historyView(visible) {
         if (visible) $('assistant-manage').hidden = true;
         $('assistant-history').hidden = !visible; $('assistant-chat').hidden = visible;
-        for (const id of ['assistant-composer', 'assistant-context', 'assistant-footnote']) $(id).hidden = visible;
+        for (const id of ['assistant-composer', 'assistant-context']) $(id).hidden = visible;
         panel.querySelector('[data-assistant-action="history"]').setAttribute('aria-pressed', String(visible));
         updateSend();
     }
@@ -339,24 +446,12 @@
         state.historyBusy = true; list.setAttribute('aria-busy', 'true'); $('assistant-history-more').disabled = true;
         if (!append) {
             list.replaceChildren(element('p', 'assistant-message-state', 'Cargando conversaciones…'));
-            state.historyCursor = null; $('assistant-history-more').hidden = true;
+            state.historyCursor = null; state.historyItems = []; state.historyConfirm = null; $('assistant-history-more').hidden = true;
         }
         try {
             const data = await api('/api/ai-conversations.php' + (append && state.historyCursor ? `?before=${state.historyCursor}` : ''));
             if (epoch !== state.historyEpoch) return;
-            if (!append) list.replaceChildren();
-            if (!data.items.length && !append) {
-                list.append(element('p', 'assistant-message-state', 'Aquí encontrarás las conversaciones que empieces con Prisma.'), textButton('Empezar una conversación', newConversation));
-            }
-            for (const conversation of data.items) {
-                const button = element('button', 'assistant-history-item'); button.type = 'button';
-                button.setAttribute('aria-current', String(conversation.id === state.conversation?.id));
-                const updated = new Date(conversation.updated_at.replace(' ', 'T'));
-                const date = Number.isNaN(updated.getTime()) ? '' : ' · ' + new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' }).format(updated);
-                button.append(element('strong', '', conversation.title), element('span', '', conversation.context_label + date));
-                button.addEventListener('click', () => { hideHistory(); loadConversation(conversation.id, true); }); list.append(button);
-            }
-            state.historyCursor = data.next_cursor; $('assistant-history-more').hidden = !data.next_cursor;
+            state.historyItems.push(...data.items); state.historyCursor = data.next_cursor; renderHistory();
         } catch (e) {
             if (epoch !== state.historyEpoch) return;
             if (!append) list.replaceChildren();
@@ -365,12 +460,75 @@
             if (epoch === state.historyEpoch) { state.historyBusy = false; list.setAttribute('aria-busy', 'false'); $('assistant-history-more').disabled = false; }
         }
     }
-    function hideHistory() { error(''); ++state.historyEpoch; state.historyBusy = false; historyView(false); updateSend(); updateLatest(); }
-    function newConversation() {
-        saveDraft(); ++state.generation; clearTimeout(state.poll); state.conversation = null; state.messages = []; state.cursor = null; state.pending = false; state.busy = false; state.loading = false; state.outgoing = null;
-        $('assistant-manage').hidden = true; hideHistory(); error(''); restoreDraft(); renderMessages(); saveUI(); (mobile.matches ? panel.querySelector('[data-assistant-action="new"]') : input).focus();
+    function searchable(text) { return String(text || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(); }
+    function historyDate(conversation) { const date = new Date(String(conversation.updated_at).replace(' ', 'T')); return Number.isNaN(date.getTime()) ? null : date; }
+    function historyGroup(date) {
+        if (!date) return 'Anteriores';
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const days = Math.floor((today - new Date(date.getFullYear(), date.getMonth(), date.getDate())) / 86400000);
+        return days <= 0 ? 'Hoy' : days === 1 ? 'Ayer' : days < 7 ? 'Últimos 7 días' : 'Anteriores';
     }
-    async function send(retry = null, quickPrompt = null) {
+    function historyRow(conversation) {
+        const row = element('div', 'assistant-history-row');
+        if (state.historyConfirm === conversation.id) {
+            row.classList.add('assistant-history-row--confirm');
+            const confirm = element('button', 'assistant-history-confirm', 'Eliminar'); confirm.type = 'button'; confirm.dataset.confirmDelete = '';
+            confirm.addEventListener('click', () => deleteFromHistory(conversation.id));
+            const cancel = element('button', '', 'Cancelar'); cancel.type = 'button';
+            cancel.addEventListener('click', () => cancelHistoryDelete(conversation.id));
+            row.append(element('p', '', `¿Eliminar «${conversation.title}» y sus mensajes?`), confirm, cancel);
+            return row;
+        }
+        const date = historyDate(conversation);
+        const when = !date ? '' : historyGroup(date) === 'Hoy' ? new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' }).format(date) : new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' }).format(date);
+        const open = element('button', 'assistant-history-item'); open.type = 'button'; open.dataset.conversation = conversation.id;
+        open.setAttribute('aria-current', String(conversation.id === state.conversation?.id));
+        open.append(element('strong', '', conversation.title), element('span', '', conversation.context_label + (when ? ' · ' + when : '')));
+        open.addEventListener('click', () => { hideHistory(); loadConversation(conversation.id, true); });
+        const remove = element('button', 'assistant-history-delete'); remove.type = 'button'; remove.title = 'Eliminar';
+        remove.setAttribute('aria-label', `Eliminar «${conversation.title}»`); remove.append(icon('iconoir-trash'));
+        remove.addEventListener('click', () => { state.historyConfirm = conversation.id; renderHistory(); $('assistant-history-list').querySelector('[data-confirm-delete]')?.focus(); });
+        row.append(open, remove);
+        return row;
+    }
+    function renderHistory() {
+        const list = $('assistant-history-list'), query = searchable($('assistant-history-filter').value.trim());
+        list.replaceChildren();
+        $('assistant-history-more').hidden = !state.historyCursor;
+        if (!state.historyItems.length) {
+            list.append(element('p', 'assistant-message-state', 'Aquí encontrarás las conversaciones que empieces con Prisma.'), textButton('Empezar una conversación', newConversation));
+            return;
+        }
+        const items = state.historyItems.filter(c => !query || searchable(`${c.title} ${c.context_label}`).includes(query));
+        if (!items.length) list.append(element('p', 'assistant-message-state', 'Ninguna conversación cargada coincide.' + (state.historyCursor ? ' Carga más para seguir buscando.' : '')));
+        let group = null;
+        for (const conversation of items) {
+            const name = historyGroup(historyDate(conversation));
+            if (name !== group) { group = name; list.append(element('h4', 'assistant-history-group', name)); }
+            list.append(historyRow(conversation));
+        }
+    }
+    function cancelHistoryDelete(id) {
+        state.historyConfirm = null; renderHistory();
+        $('assistant-history-list').querySelector(`[data-conversation="${id}"]`)?.parentElement.querySelector('.assistant-history-delete')?.focus();
+    }
+    async function deleteFromHistory(id) {
+        try {
+            await api('/api/ai-conversations.php', { method: 'DELETE', body: JSON.stringify({ id }) });
+            state.historyItems = state.historyItems.filter(c => c.id !== id); state.historyConfirm = null; write(`draft:${id}`, '');
+            if (state.conversation?.id === id) resetConversation();
+            renderHistory(); $('assistant-history-filter').focus();
+        } catch (e) { error(e.message); }
+    }
+    function hideHistory() { error(''); ++state.historyEpoch; state.historyBusy = false; state.historyConfirm = null; historyView(false); updateSend(); updateLatest(); }
+    function resetConversation() {
+        ++state.generation; clearTimeout(state.poll); state.conversation = null; state.messages = []; state.cursor = null; state.pending = false; state.busy = false; state.loading = false; state.outgoing = null; state.scopeOpen = false;
+        $('assistant-manage').hidden = true; restoreDraft(); renderMessages(); saveUI();
+    }
+    function newConversation() {
+        saveDraft(); resetConversation(); hideHistory(); error(''); (mobile.matches ? panel.querySelector('[data-assistant-action="new"]') : input).focus();
+    }
+    async function send(retry = null, quickPrompt = null, quickContext = null) {
         if (state.busy || state.loading || state.pending || state.stopped) return;
         const submittedDraft = input.value, submittedMode = state.composeMode;
         const content = retry ? retry.content : quickPrompt || input.value.trim();
@@ -378,12 +536,12 @@
         if (Array.from(content).length > 10000) { error('El texto debe ocupar como máximo 10.000 caracteres.'); return; }
         const epoch = state.generation; let target = state.conversation?.id;
         const inputMode = retry ? (retry.metadata?.input_mode || 'question') : quickPrompt ? 'question' : submittedMode;
-        const desiredContext = retry?.context || (inputMode === 'notes' ? baseContext() : { ...state.context, fixed: state.fixed });
+        const desiredContext = retry?.context || (inputMode === 'notes' ? baseContext() : quickContext || { ...state.context, fixed: state.fixed });
         const previous = target ? read(`attempt:${target}`, null) : null;
         const sameAttempt = previous?.content === content && (previous.input_mode || 'question') === inputMode && contextKey(previous.context) === contextKey(desiredContext);
         const key = retry?.client_key || (sameAttempt ? previous.key : crypto.randomUUID());
         const context = sameAttempt && !retry ? previous.context : desiredContext;
-        state.busy = true; state.outgoing = retry ? null : { content, context, key, metadata: submittedMode === 'notes' && !quickPrompt ? { input_mode: 'notes' } : null }; error(''); renderMessages(); saveDraft(); (mobile.matches && quickPrompt ? messages : input).focus({ preventScroll: true });
+        state.busy = true; state.scopeOpen = false; state.outgoing = retry ? null : { role: 'user', content, context, key, metadata: submittedMode === 'notes' && !quickPrompt ? { input_mode: 'notes' } : null }; error(''); renderMessages(); saveDraft(); (mobile.matches && quickPrompt ? messages : input).focus({ preventScroll: true });
         try {
             if (!target) {
                 const conversation = await api('/api/ai-conversations.php', { method: 'POST', body: JSON.stringify({ context }) });
@@ -492,15 +650,21 @@
     $('assistant-history-more').addEventListener('click', () => showHistory(true));
     $('assistant-composer').addEventListener('submit', e => { e.preventDefault(); send(); input.focus(); });
     panel.addEventListener('keydown', e => e.stopPropagation());
-    $('assistant-create-link').addEventListener('click', event => {
-        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-        const text = input.value.trim() ? input.value : lastNotes() ? lastNotes().content : '';
+    // Create links live in the start screen, the notes composer and after organised notes.
+    panel.addEventListener('click', event => {
+        if (!event.target.closest('[data-assistant-create]') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        const text = state.composeMode === 'notes' && input.value.trim() ? input.value : lastNotes()?.content || '';
         try { sessionStorage.setItem(prefix + 'create-handoff', JSON.stringify({ text, at: Date.now() })); }
         catch { if (text.trim()) { event.preventDefault(); error('No se pudo trasladar el texto. Copia tus apuntes antes de abrir el editor.'); return; } }
         close();
     });
     $('assistant-text-mode').addEventListener('click', () => composeMode('notes'));
     $('assistant-cancel-notes').addEventListener('click', () => composeMode('question'));
+    $('assistant-scope-toggle').addEventListener('click', () => {
+        state.scopeOpen = !state.scopeOpen; updateSend();
+        if (state.scopeOpen) $('assistant-scope-options').querySelector('input:checked')?.focus();
+    });
+    $('assistant-history-filter').addEventListener('input', () => { state.historyConfirm = null; renderHistory(); });
     messages.addEventListener('scroll', updateLatest);
     $('assistant-latest').addEventListener('click', () => { messages.scrollTop = messages.scrollHeight; updateLatest(); input.focus({ preventScroll: true }); });
     input.addEventListener('input', () => { saveDraft(); updateSend(); });
@@ -511,7 +675,9 @@
         if (e.key === 'Escape' && (panel.contains(e.target) || mobile.matches)) {
             e.preventDefault(); e.stopImmediatePropagation();
             if (!$('assistant-manage').hidden) { $('assistant-manage').hidden = true; panel.querySelector('[data-assistant-action="manage"]').focus(); }
+            else if (!$('assistant-history').hidden && state.historyConfirm) cancelHistoryDelete(state.historyConfirm);
             else if (!$('assistant-history').hidden) { hideHistory(); panel.querySelector('[data-assistant-action="history"]').focus(); }
+            else if (state.scopeOpen && !$('assistant-scope-toggle').hidden) { state.scopeOpen = false; updateSend(); $('assistant-scope-toggle').focus(); }
             else if (state.composeMode === 'notes') composeMode('question');
             else close();
             return;

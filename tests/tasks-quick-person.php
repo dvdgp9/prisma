@@ -137,6 +137,6 @@ assert_file_contains('assets/js/main.js', [
 
 assert_file_contains('tasks.php', ['+nombre)', '/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=17'], 'tasks page hints the syntax and loads the new scripts');
 assert_file_contains('index.php', ['+nombre)', '/assets/js/task-parser.js?v=9', '/assets/js/main.js?v=5.7'], 'index hints the syntax and loads the new scripts');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v53';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v54';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Quick task person completed successfully.\n");

@@ -202,3 +202,11 @@ Assets assistant v5, ai-inbox.js ai7 y caché PWA v53/runtime41. Sin migración:
 Desplegado el 3 Nov 2026 como `897cd2f`, mediante fast-forward desde `fca9c5d`. Copia privada previa del código: `/home/umilpdfe/.prisma-deploy-backups/assistant-v5-20261103-000537-8239b0` (984.430 bytes). Los cinco PHP afectados pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas, controles del panel, assets assistant v5/ai-inbox ai7, PWA v53/runtime41, aplicaciones e historial.
 
 Prueba con proveedor real: acción directa «Resume esta nota.» sobre una nota sintética con referencia verificada; organización de apuntes conservando el texto original, sin recuperar registros ni fuentes; reintento sin duplicar el turno. Nota, conversación y sesiones temporales eliminadas al finalizar. Sin migración ni modificación de trabajo existente. Untracked previos del servidor conservados. Publicado en `dvdgp9/prisma` y disponible para revisión en `https://prisma.wthefox.com`.
+
+## Revisión de diseño, UX y funcionalidad (R1–R8) — 3 Nov 2026
+
+- Formato de respuestas: `assets/js/assistant-format.js` convierte un subconjunto de Markdown (párrafos, listas `-`/`1.`, `**negrita**`, títulos de una línea y `[[tipo:ID]]`) en bloques; `assistant.js` construye los nodos con `textContent`, nunca con `innerHTML`. El prompt de respuesta pide solo ese subconjunto. Los mensajes del usuario se muestran literales.
+- Disposición: compositor fijo al pie. El ámbito se ve completo antes de la primera pregunta y después se pliega en un chip dentro del compositor. El aviso de IA está en la línea de ayuda; crear tareas y mejoras aparece en el inicio, en el modo apuntes y tras organizar apuntes.
+- Respuestas: Copiar (texto limpio) y seguimientos en la última respuesta, enviados con el ámbito de esa respuesta. Citas inline con icono de tipo + `#ID`.
+- Espera: contador visible a partir de 8 s. Historial: grupos por fecha, búsqueda sobre lo cargado y borrado en línea con confirmación.
+- Assets assistant v6 + assistant-format v1, PWA prisma-v54 / runtime-v42. Sin migración. Test nuevo `tests/assistant-format.php`.

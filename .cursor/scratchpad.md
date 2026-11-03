@@ -3743,3 +3743,79 @@ Desplegado el 2 Nov 2026 como `f3a608d`, mediante fast-forward desde `251d590`. 
 Desplegado el 3 Nov 2026 como `897cd2f`, mediante fast-forward desde `fca9c5d`. Copia privada previa del código: `/home/umilpdfe/.prisma-deploy-backups/assistant-v5-20261103-000537-8239b0` (984.430 bytes). Los cinco PHP afectados pasan sintaxis en LucusHost. Smoke HTTPS autenticado correcto en las ocho páginas, controles del panel, assets assistant v5/ai-inbox ai7, PWA v53/runtime41, aplicaciones e historial.
 
 Prueba con proveedor real: acción directa «Resume esta nota.» sobre una nota sintética con referencia verificada; organización de apuntes conservando el texto original, sin recuperar registros ni fuentes; reintento sin duplicar el turno. Nota, conversación y sesiones temporales eliminadas al finalizar. Sin migración ni modificación de trabajo existente. Untracked previos del servidor conservados. Publicado en `dvdgp9/prisma` y disponible para revisión en `https://prisma.wthefox.com`.
+
+
+### Planner — Revisión de diseño, UX y funcionalidad del panel (3 Nov 2026)
+
+#### Background and Motivation
+
+El usuario pide revisar el panel lateral del asistente (diseño, UX y funcionalidad) para que sea más útil, cómodo y relevante, usando `design-taste-frontend`. Esa skill está pensada para landings; aquí solo se aplican sus reglas válidas para UI de producto (estados completos, contraste, consistencia, jerarquía, sin ruido de microetiquetas). Se conserva el stack (PHP + JS sin build) y el sistema visual de Prisma (Geist, tokens `--ink-*`/`--brand-*`, iconoir).
+
+Revisión hecha sobre el código v5 (`assistant.js/css`, `assistant-panel.php`, prompts de `ai-assistant-response.php`) y en navegador con un arnés local de datos ficticios (fuera del repo), a 920×860 y 375×812. No se ha tocado producción.
+
+#### Key Challenges and Analysis
+
+Problemas detectados, por impacto:
+
+1. **Las respuestas muestran Markdown en crudo.** El prompt pide «listas sencillas» y el modelo devuelve `**Vencen esta semana**` y `- item`; `messageText()` lo pinta como texto plano con `pre-wrap`. Es lo que más degrada la percepción de calidad. Comprobado en el arnés.
+2. **La conversación tiene poco espacio.** Con una conversación abierta, el selector de ámbito (≈120 px), la barra de título, el compositor con etiqueta+ayuda (≈130 px), «Crear tareas y mejoras» y el aviso al pie ocupan casi la mitad del panel. En móvil 375×812 los mensajes quedan en ≈40 % de la altura y con teclado abierto prácticamente desaparecen.
+3. **El compositor cambia de sitio.** En el estado inicial está en mitad del panel (debajo de las acciones) y al empezar a conversar salta al pie. Además deja un hueco vacío grande bajo él en escritorio.
+4. **Exceso de microtexto.** «Qué quieres consultar», ayuda del ámbito, «Consulta en un clic», «Tu pregunta», «Ordenar un texto», línea de atajos, «Pasa al editor…», aviso de IA, y bajo cada mensaje del usuario «Mi trabajo». Varios a 10–11 px en `--ink-500`, en el límite de legibilidad. Compiten con el contenido.
+5. **El selector de ámbito tiene doble affordance**: botón segmentado con un radio dentro. Ocupa mucho para una decisión que casi siempre es «Mi trabajo» o «esta pantalla».
+6. **Las respuestas no se pueden reutilizar.** No hay copiar, ni preguntas de seguimiento sugeridas (p. ej. «Ver siguientes resultados» cuando `has_more`), ni forma de pasar una respuesta a una tarea (esto último depende de IA4).
+7. **Referencias poco informativas.** Las citas inline dicen «Mejora #41»; el título solo está en el `title` (hover, no existe en táctil) y en el desplegable de fuentes. Sin estado ni vencimiento.
+8. **Espera opaca.** Una consulta puede tardar hasta 75 s y solo se ve «Consultando Prisma…» con un esqueleto. Sin tiempo transcurrido ni expectativa.
+9. **Historial básico.** Sin búsqueda, sin agrupar por fecha (Hoy/Ayer/Anteriores), borrar exige abrir la conversación y entrar en «…». «Volver a la conversación» aparece aunque no haya conversación.
+10. **Arranque poco relevante.** Solo dos consultas rápidas por ámbito, fijas; no reflejan nada del estado real (vencidas, cambios recientes).
+
+Lo que funciona bien y se conserva: contexto por pantalla, persistencia de borrador/conversación, citas verificadas en servidor, reintentos idempotentes, Escape por capas, accesibilidad de foco y móvil como diálogo.
+
+Decisión técnica recomendada para (1): un renderizador propio y mínimo en `assistant.js` que construya nodos DOM (párrafos, listas `-`/`1.`, negrita `**`, títulos cortos) sin `innerHTML`, manteniendo el tratamiento de `[[request:ID]]`. Evita depender de marked/DOMPurify (solo se cargan en algunas páginas) y no abre vía de XSS. Probado con Node como los demás helpers puros.
+
+#### High-level Task Breakdown
+
+Cada paso es independiente, pequeño y verificable. Orden por impacto/esfuerzo.
+
+- **R1 Formato de respuestas.** Renderizador seguro (párrafos, listas con y sin número, negrita, títulos) que preserve referencias inline. Ajustar el prompt para que use solo ese subconjunto. Éxito: la respuesta de ejemplo se ve con títulos en negrita y listas con viñeta; test Node con casos de listas, negrita sin cerrar, `<script>` como texto literal y referencias; ninguna asignación de `innerHTML`.
+- **R2 Espacio para la conversación.** Compositor siempre anclado al pie (también en el estado inicial). Con conversación: ámbito como chip compacto dentro del compositor («Mi trabajo ▾») que despliega las opciones; ocultar «Crear tareas y mejoras» y el aviso al pie (pasa a la línea de ayuda del compositor). Etiqueta del mensaje del usuario solo cuando su ámbito cambia respecto al anterior. Éxito: a 920×860 los mensajes ocupan ≥ 60 % de la altura del panel; a 375×812 ≥ 50 %; el compositor no cambia de posición al enviar el primer mensaje.
+- **R3 Menos microtexto.** Leyendas de formulario como texto solo para lectores de pantalla donde el control ya se explica, mínimo 11 px para texto auxiliar y 12 px para acciones, eliminar descripciones redundantes. Éxito: ningún texto visible < 11 px en el panel; inventario de etiquetas reducido (lista antes/después en el informe).
+- **R4 Acciones sobre la respuesta.** Fila discreta bajo cada respuesta del asistente: Copiar (texto limpio, sin `[[...]]`), y en la última respuesta chips de seguimiento: «Siguientes resultados» si `has_more`, y 1–2 refinados según ámbito. Éxito: copiar pega texto legible; el chip envía la consulta como acción directa sin tocar el borrador.
+- **R5 Referencias legibles.** Cita inline con icono de tipo + título recortado (máx. ~32 caracteres) en lugar de «#ID»; lista de fuentes con icono por tipo. Éxito: en móvil se entiende a qué registro apunta cada cita sin hover; las referencias no verificadas siguen sin enlace.
+- **R6 Espera informada.** Tras 8 s mostrar el tiempo transcurrido y «Las consultas amplias pueden tardar hasta un minuto». Sin animaciones nuevas fuera de `prefers-reduced-motion`. Éxito: con respuesta simulada lenta se ve el contador; desaparece al llegar la respuesta o el error.
+- **R7 Historial útil.** Agrupar por Hoy/Ayer/Esta semana/Anteriores, filtro de texto sobre las conversaciones cargadas, borrar desde la lista con confirmación en línea, y «Volver» solo si hay conversación. Éxito: agrupación correcta con fechas de ejemplo; borrar desde la lista no abre la conversación.
+- **R8 (opcional) Arranque relevante.** 3–4 consultas rápidas por ámbito incluyendo «Vencidas» y «Cambios recientes». Opcional después: recuentos reales sin IA (consulta SQL ligera) en los botones. Requiere decidir si se añade un endpoint.
+- **Fuera de esta revisión:** convertir respuestas en tareas/mejoras y editar registros desde el chat pertenece a IA4 (tarjetas y aplicación); no se adelanta aquí.
+
+Validación común a cada paso: suite `php tests/*.php`, sintaxis JS, navegador 1440×900 / 920×860 / 375×812 / 320×740 sin scroll horizontal, Tab/Escape, consola limpia, subir `?v=` de assistant y `CACHE_NAME` de `sw.js` (y tests que fijan versiones).
+
+#### Executor's Feedback or Assistance Requests
+
+Pendiente del usuario: confirmar prioridades (recomendado R1+R2+R3 juntos como primer bloque) y si R8 incluye recuentos reales con endpoint nuevo.
+
+#### Current Status / Progress Tracking — R1–R8 (Executor, 3 Nov 2026)
+
+El usuario aprueba ejecutar todo el plan. Implementado en local; **sin commit ni despliegue** (los hace el usuario).
+
+- [x] R1 `assets/js/assistant-format.js` (nuevo): bloques párrafo/lista/título/negrita/referencia, sin HTML; `assistant.js` crea nodos con textContent. Prompt de respuesta ajustado a ese subconjunto (y apuntes con **Resumen**/**Próximos pasos**). Test nuevo `tests/assistant-format.php` (Node).
+- [x] R2 Compositor siempre al pie. Ámbito visible en el inicio; con conversación se pliega en un chip «Mi trabajo ▾» dentro del compositor (Escape lo cierra). Fuera el enlace fijo de crear y el aviso del pie: el aviso pasa a la línea de ayuda. Medido en el arnés: mensajes 73 % del alto a 920×860 y 68 % a 375×812 (antes ≈45 % y ≈40 %).
+- [x] R3 Introducción dentro del estado inicial, etiqueta del textarea solo para lectores de pantalla en preguntas, radios ocultos visualmente (siguen siendo radios nativos), ámbito bajo cada pregunta solo cuando cambia. Ningún texto visible < 11 px.
+- [x] R4 Bajo cada respuesta: Copiar (texto limpio, referencias como «(Mejora #41)»). En la última: «Ver más resultados» si `has_more`, «Ordenar por prioridad» y «Solo lo que vence esta semana» si hay ≥ 2 fuentes en Mi trabajo/Equipo/App, con el ámbito de esa respuesta y sin tocar el borrador. Tras organizar apuntes: «Crear tareas y mejoras con estos apuntes».
+- [x] R5 Citas inline como chip con icono de tipo + «#ID» (título completo en title/aria-label). Se probó con título y repetía lo que el modelo ya escribe, así que se descartó. Fuentes con icono, título e ID.
+- [x] R6 A partir de 8 s: segundos transcurridos y «Las consultas amplias pueden tardar hasta un minuto». «Organizando tus apuntes…» en modo texto.
+- [x] R7 Historial agrupado (Hoy/Ayer/Últimos 7 días/Anteriores), búsqueda sobre lo cargado, borrar desde la lista con confirmación en línea (Escape cancela; borrar la conversación abierta la reinicia). El botón dice «Volver» siempre: también sirve para salir del historial sin conversación.
+- [x] R8 Cuatro consultas rápidas en Mi trabajo, Equipo y App (vencidas, cambios/actividad reciente, más urgentes) y sección «Con tu texto» (Ordenar apuntes, Crear tareas y mejoras). **No** se añadieron recuentos reales: requieren endpoint nuevo y consultas en cada apertura; queda como decisión pendiente.
+
+Verificación: 44 scripts de tests en verde, `php -l` y `node --check`. Navegador con arnés de datos ficticios (fuera del repo): inicio, espera lenta con contador, respuesta formateada, chip de ámbito + Escape, Copiar, seguimiento con un único turno, historial (grupos/filtro/borrado/Escape), modo apuntes, 1440×900, 920×860, 375×812 y 320×740 sin desbordes, consola sin errores. No probado contra el proveedor real ni en producción.
+
+Versiones: assistant.css/js v6, assistant-format.js v1, PWA prisma-v54 / runtime-v42 (tests que fijan la versión actualizados). Sin migraciones.
+
+### Archivos a subir (revisión del panel R1–R8), en este orden
+1. `includes/ai-assistant-response.php`
+2. `assets/js/assistant-format.js` (nuevo), `assets/js/assistant.js`, `assets/css/assistant.css`
+3. `includes/assistant-panel.php`
+4. `sw.js` al final
+(Tests: `tests/assistant-format.php` y los 8 con versión de caché; no hacen falta en producción.)
+
+#### Lessons
+- El visor del navegador interno a veces captura el panel a mitad de la animación de entrada (translúcido, con la cabecera de la página encima, o desplazado 16 px): repetir la captura antes de concluir que hay un bug.
+- Un panel `position: fixed` no aumenta `scrollWidth` del documento: para comprobar desbordes, medir `getBoundingClientRect()` de sus hijos.
