@@ -214,12 +214,19 @@ class PrismaAssistantStore
             $this->query('DELETE FROM ai_message_sources WHERE message_id = ?', [$messageId]);
             foreach ($unique as $ref) $this->query('INSERT INTO ai_message_sources (message_id, conversation_id, entity_type, entity_id, access_fingerprint) VALUES (?, ?, ?, ?, ?)', [$messageId, $id, $ref['entity_type'], $ref['entity_id'], $ref['access_fingerprint']]);
             $this->query('UPDATE ai_conversations SET context_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [$contextJson, $id]);
-            $history = $this->query("SELECT role, content, metadata_json FROM ai_messages WHERE conversation_id = ? AND (state = 'complete' OR id = ?) ORDER BY id DESC LIMIT 20", [$id, $messageId])->fetchAll(PDO::FETCH_ASSOC);
+            $history = $this->query("SELECT role, content, metadata_json, context_json FROM ai_messages WHERE conversation_id = ? AND (state = 'complete' OR id = ?) ORDER BY id DESC LIMIT 20", [$id, $messageId])->fetchAll(PDO::FETCH_ASSOC);
             $history = array_reverse($history);
+            $previousQuery = null;
             foreach ($history as &$historyMessage) {
                 $metadata = json_decode($historyMessage['metadata_json'] ?? 'null', true);
+                if ($historyMessage['role'] === 'assistant') {
+                    $previousContext = json_decode($historyMessage['context_json'], true);
+                    $sameContext = (array) ($previousContext['filters'] ?? []) === (array) $info['context']['filters'];
+                    foreach (['scope', 'entity_id', 'timezone'] as $field) if (($previousContext[$field] ?? null) !== ($info['context'][$field] ?? null)) $sameContext = false;
+                    $previousQuery = $sameContext && in_array($metadata['query']['mode'] ?? '', ['search', 'detail'], true) ? $metadata['query'] : null;
+                }
                 if ($metadata && $historyMessage['role'] === 'assistant') $historyMessage['content'] .= "\n\nReferencias y consulta de esta respuesta (datos del servidor): " . $this->json($metadata);
-                unset($historyMessage['metadata_json']);
+                unset($historyMessage['metadata_json'], $historyMessage['context_json']);
             }
             unset($historyMessage);
             $bytes = 0;
@@ -229,7 +236,7 @@ class PrismaAssistantStore
                 if ($bytes > 60000) break;
                 array_unshift($bounded, $message);
             }
-            return ['replay' => false, 'input_mode' => $inputMode, 'message_id' => $messageId, 'revision' => (int) $row['revision'] + 1, 'client_key' => $key, 'context' => $info['context'], 'label' => $info['label'], 'history' => $bounded];
+            return ['replay' => false, 'input_mode' => $inputMode, 'message_id' => $messageId, 'revision' => (int) $row['revision'] + 1, 'client_key' => $key, 'context' => $info['context'], 'label' => $info['label'], 'history' => $bounded, 'previous_query' => $previousQuery];
         });
     }
     /** Register every retrieved dependency before sending its content to the provider. */

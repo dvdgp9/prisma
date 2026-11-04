@@ -1,5 +1,15 @@
 # Asistente de Prisma — contratos IA1
 
+## Corrección de respuestas sin evidencia — 4 Nov 2026
+
+Preparada localmente; pendiente de despliegue. Caso comunicado: «Vale, ¿y qué tiene por delante?» produjo una lista genérica de tareas de Rebeca inexistentes en Prisma. No se ha inspeccionado esa conversación de producción, por lo que no se atribuye un plan concreto al incidente.
+
+- Fallo confirmado en código: `assistant_format_answer` filtraba enlaces inventados, pero permitía conservar el texto sin ninguna cita válida. Ahora las consultas exigen citas de registros recuperados en cada párrafo/elemento de lista. Una cita inexistente, una lista sin citas o `source_keys` sin citas inline sustituyen el texto completo por títulos y enlaces construidos con los registros autorizados, con aviso de cobertura parcial cuando corresponda. Validar una cita comprueba su pertenencia a la consulta; no demuestra por sí mismo la veracidad semántica de cada frase.
+- Las consultas sin resultados responden desde servidor, sin llamar al modelo de redacción. El aviso distingue consulta vacía, comprobación parcial y ámbito real; no concluye que la persona no tenga tareas en toda Prisma. Un plan `chat` en modo pregunta pasa a aclaración. El flujo explícito de apuntes conserva su generación sobre el texto del usuario.
+- El historial ya contenía los metadatos de consulta dentro del texto. Ahora el planificador recibe además `previous_query` separado, desde la última respuesta persistida y solo si coinciden ámbito, registro, filtros y zona horaria. El prompt pide consultar de nuevo los pendientes de la persona referida y aclarar si no se puede identificar.
+
+Validación local: 44 scripts de tests pasan en SQLite y proveedores simulados. Regresión con el texto comunicado, sustitución por tareas reales de la fixture, rechazo de listas parcialmente citadas, consulta vacía sin generación, seguimiento con persona/filtros persistidos, cambio de contexto y continuidad del modo apuntes. Sin migraciones, cambios de interfaz ni acceso a datos de producción.
+
 Estado: IA1, IA2 e IA3 desplegados y verificados en LucusHost. IA4 e IA5 completarán las acciones y la integración de los accesos existentes.
 Plan y seguimiento: `.cursor/scratchpad.md`, bloque «Planner — Asistente unificado».
 

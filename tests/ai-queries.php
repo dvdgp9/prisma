@@ -110,7 +110,59 @@ $formatted=assistant_format_answer(['data'=>['text'=>'Pendiente [[request:11]]. 
 same(['request:11'],array_column($formatted['metadata']['references'],'key'),'only retrieved references may become links');
 same('/index.php?open_request=11',$formatted['metadata']['references'][0]['url'],'server constructs record URL');
 same(false,strpos($formatted['content'],'[[task:999]]')!==false,'hallucinated reference marker removed');
-same(true,strpos($formatted['content'],'[referencia no disponible]')!==false,'missing evidence is explicit');
+same(true,str_contains($formatted['content'],'No he podido verificar'),'unverified answer is replaced with an explicit evidence fallback');
+same(false,str_contains($formatted['content'],'Falsa'),'unsupported claims are removed along with invented references');
+$pending = $q->run(['resource'=>'task','person'=>'Rebecca'], $team, '2026-11-02');
+same([2,7], ids($pending,'task'), 'follow-up retrieval uses real tasks assigned to the named person');
+$invented = ['data'=>['text'=>"**Tareas pendientes de Rebeca**\n\n1. **Optimización de entorno:** Realizar el mantenimiento preventivo del servidor principal.\n2. **Gestión de incidencias:** Revisar y responder los tickets de soporte técnico acumulados.\n3. **Planificación:** Revisar el calendario de tareas para la próxima semana.",'source_keys'=>[]],'model'=>'fixture','usage'=>['total_tokens'=>25]];
+$safe = assistant_format_answer($invented, $pending);
+same(false,str_contains($safe['content'],'mantenimiento preventivo'),'reported fabricated task list never reaches the user');
+same(true,str_contains($safe['content'],'Delegada [['),'fallback shows the first actual task title');
+same(true,str_contains($safe['content'],'Delegada a dos [['),'fallback shows the second actual task title');
+same(array_column($pending['records'],'key'), array_column($safe['metadata']['references'],'key'), 'fallback includes verified links in retrieval order');
+same($pending['query'], $safe['metadata']['query'], 'fallback retains person and filters for later follow-ups');
+same(25, $safe['usage']['total_tokens'], 'rejected model output still accounts for consumed tokens');
+$valid = $invented;
+$valid['data'] = ['text'=>'- Delegada [[task:2]]', 'source_keys'=>['task:2']];
+same($valid['data']['text'], assistant_format_answer($valid,$pending)['content'], 'fully cited answer is preserved');
+$uncited = $valid;
+$uncited['data']['text'] .= "\n- Mantenimiento preventivo del servidor principal.";
+same(false,str_contains(assistant_format_answer($uncited,$pending)['content'],'Mantenimiento preventivo'),'one valid citation cannot legitimise an uncited invented task');
+$keysOnly = $invented;
+$keysOnly['data']['source_keys'] = ['task:2'];
+same(false,str_contains(assistant_format_answer($keysOnly,$pending)['content'],'mantenimiento preventivo'),'source_keys alone cannot legitimise unsupported prose');
+$unqueried = $q->run(['mode'=>'chat'], $team, '2026-11-02');
+$empty = $q->run(['resource'=>'task','person'=>'Nadie con este nombre'], $mine, '2026-11-02');
+$followupTurn = ['context'=>$team,'label'=>'Trabajo del equipo','previous_query'=>$pending['query'],'history'=>[['role'=>'user','content'=>'Vale, ¿y qué tiene por delante?']]];
+$generatedAnswer = assistant_grounded_answer(['api_key'=>'fixture','model'=>'fixture'], $followupTurn, $pending, '2026-11-02', static function($payload) use($invented){
+    same(true,str_contains($payload,'Delegada a dos'),'answer generator receives freshly retrieved task titles');
+    same(false,str_contains($payload,'access_fingerprint'),'answer generator does not receive internal access fingerprints');
+    return ['status'=>200,'body'=>json_encode(['choices'=>[['finish_reason'=>'stop','message'=>['content'=>json_encode($invented['data'])]]]])];
+});
+same($safe['content'],$generatedAnswer['content'],'full answer pipeline replaces the reported hallucination with actual records');
+$neverGenerate = static function(){throw new RuntimeException('No evidence must bypass answer generation');};
+$emptyAnswer = assistant_grounded_answer(['model'=>'fixture'], $followupTurn, $empty, '2026-11-02', $neverGenerate);
+same(true,str_contains($emptyAnswer['content'],'en Mi trabajo'),'empty result states the actual restricted scope');
+same(true,str_contains($emptyAnswer['content'],'otros ámbitos'),'empty result does not claim that no tasks exist anywhere');
+same([], $emptyAnswer['metadata']['references'], 'empty result has no fabricated citations');
+$partialEmpty = $empty; $partialEmpty['partial'] = true;
+same(true,str_contains(assistant_grounded_answer(['model'=>'fixture'],$followupTurn,$partialEmpty,'2026-11-02',$neverGenerate)['content'],'no puedo concluir'),'partial empty retrieval cannot assert there are no matches');
+$chatAnswer = assistant_grounded_answer(['model'=>'fixture'], $followupTurn, $unqueried, '2026-11-02', $neverGenerate);
+same(true,str_contains($chatAnswer['content'],'No he consultado registros'),'question with chat plan cannot generate supposed database facts');
+$plannerData = $pending['query']; unset($plannerData['person_id']);
+$plan = assistant_query_plan(['api_key'=>'fixture','model'=>'fixture'], $followupTurn, '2026-11-02', ['id'=>7,'name'=>'David'], static function($payload) use($plannerData){
+    $request=json_decode($payload,true);
+    same(true,str_contains($request['messages'][0]['content'],'"previous_query":{"mode":"search","resource":"task"'),'follow-up planner receives the previous server query separately from prose');
+    same(true,str_contains($request['messages'][0]['content'],'"person":"Rebecca"'),'follow-up planner receives the previous named person');
+    return ['status'=>200,'body'=>json_encode(['choices'=>[['finish_reason'=>'stop','message'=>['content'=>json_encode($plannerData)]]]])];
+});
+same([2,7], ids($q->run($plan['data'],$team,'2026-11-02'),'task'), 'planned follow-up executes fresh retrieval for the person');
+$plannerData['mode'] = 'chat';
+$chatPlan = assistant_query_plan(['api_key'=>'fixture','model'=>'fixture'], $followupTurn, '2026-11-02', ['id'=>7,'name'=>'David'], static function() use($plannerData){
+    return ['status'=>200,'body'=>json_encode(['choices'=>[['finish_reason'=>'stop','message'=>['content'=>json_encode($plannerData)]]]])];
+});
+same('clarify',$chatPlan['data']['mode'],'planner chat response is converted to clarification for questions');
+same(true,str_contains($chatPlan['data']['question'],'qué persona'),'unsafe chat plan requests a concrete query');
 $textTurn = ['input_mode'=>'notes','context'=>$mine,'label'=>'Mi trabajo','history'=>[
     ['role'=>'assistant','content'=>'ANTERIOR_NO_INCLUIR'],
     ['role'=>'user','content'=>"Probar en móvil y preparar la reunión."]
