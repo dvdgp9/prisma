@@ -101,11 +101,11 @@ assert_file_contains('tasks.php', [
     'data-user-id="<?php echo (int) $user[\'id\']; ?>"',
     'data-user-name=',
     '/assets/js/task-parser.js?v=9',
-    '/assets/js/tasks.js?v=17',
-    '/assets/js/tasks-interactions.js?v=5',
-    '/assets/css/tasks.css?v=3.3',
+    '/assets/js/tasks.js?v=18',
+    '/assets/js/tasks-interactions.js?v=6',
+    '/assets/css/tasks.css?v=3.4',
 ], 'tasks page exposes the current user and loads the new assets');
 assert_file_contains('index.php', ['/assets/js/task-parser.js?v=9'], 'index loads the new task-parser.js');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v55';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v56';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Task share names completed successfully.\n");

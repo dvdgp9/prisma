@@ -20,6 +20,62 @@ function canEditTask(task) {
     return !!task && (task.capabilities || {}).edit !== false && !task.is_completed;
 }
 
+function taskRecurrenceLabel(task) {
+    const units = { day: ['día', 'días'], week: ['semana', 'semanas'], month: ['mes', 'meses'], year: ['año', 'años'] };
+    if (!units[task.recurrence_unit]) return 'No repetir';
+    const interval = Number(task.recurrence_interval) || 1;
+    return `Cada ${interval} ${units[task.recurrence_unit][interval === 1 ? 0 : 1]}`;
+}
+
+function openRecurrenceMenu(taskId, anchor, event) {
+    if (event) event.stopPropagation();
+    const task = findTask(taskId);
+    if (!canEditTask(task)) return;
+    const menu = openTaskMenu(anchor, [], { title: 'Repetir tarea' });
+    menu.setAttribute('role', 'dialog');
+    const form = document.createElement('form');
+    form.className = 'task-recurrence-form';
+    form.innerHTML = `
+        <label for="task-recurrence-unit">Frecuencia</label>
+            <select id="task-recurrence-unit" name="unit" class="expanded-select">
+                <option value="">No repetir</option>
+                <option value="day">Días</option><option value="week">Semanas</option>
+                <option value="month">Meses</option><option value="year">Años</option>
+            </select>
+        <label class="task-recurrence-every">Cada
+            <input name="interval" type="number" class="expanded-select" min="1" max="365" step="1" required value="1">
+        </label>
+        <p class="task-recurrence-help">Desde el día en que la completes. La siguiente conservará descripción, aplicación y personas. Los adjuntos quedan en la completada.</p>
+        <button type="submit" class="btn btn-primary btn-sm">Guardar repetición</button>`;
+    const unit = form.elements.unit;
+    const interval = form.elements.interval;
+    unit.value = task.recurrence_unit || '';
+    interval.value = task.recurrence_interval || 1;
+    const updateInterval = () => {
+        interval.disabled = !unit.value;
+        interval.closest('label').hidden = !unit.value;
+    };
+    unit.addEventListener('change', updateInterval);
+    updateInterval();
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const payload = { id: taskId, recurrence_unit: unit.value || null, recurrence_interval: unit.value ? Number(interval.value) : null };
+        form.querySelector('button').disabled = true;
+        if (!(await putTask(payload, 'No se pudo guardar la repetición'))) {
+            form.querySelector('button').disabled = false;
+            return;
+        }
+        Object.assign(task, payload);
+        if (typeof currentModalTask !== 'undefined' && currentModalTask?.id == taskId) Object.assign(currentModalTask, payload);
+        closeTaskMenu();
+        await loadTasks();
+        renderTaskMetaBar();
+    });
+    menu.appendChild(form);
+    positionTaskMenu(menu, anchor);
+    unit.focus();
+}
+
 // ========== Menú contextual genérico ==========
 
 let openMenuEl = null;
@@ -134,7 +190,7 @@ function openTaskMenu(anchor, items, options = {}) {
             closeTaskMenu();
             return;
         }
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
             e.preventDefault();
             moveMenuFocus(menu, e.key === 'ArrowDown' ? 1 : -1);
         }

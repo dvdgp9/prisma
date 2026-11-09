@@ -181,6 +181,13 @@ async function createQuickTask() {
         if (appId) taskData.app_id = parseInt(appId);
         if (description) taskData.description = description;
         if (dueDate) taskData.due_date = dueDate;
+        const recurrenceUnit = document.getElementById('quick-add-recurrence-unit').value;
+        if (recurrenceUnit) {
+            const intervalInput = document.getElementById('quick-add-recurrence-interval');
+            if (!intervalInput.reportValidity()) return;
+            taskData.recurrence_unit = recurrenceUnit;
+            taskData.recurrence_interval = Number(intervalInput.value);
+        }
     }
 
     try {
@@ -197,6 +204,9 @@ async function createQuickTask() {
             input.value = '';
             document.getElementById('quick-add-description').value = '';
             document.getElementById('quick-add-due-date').value = '';
+            document.getElementById('quick-add-recurrence-unit').value = '';
+            document.getElementById('quick-add-recurrence-interval').value = '1';
+            document.getElementById('quick-add-recurrence-interval').hidden = true;
             resetQuickPreview();
 
             // Reload tasks
@@ -390,6 +400,12 @@ function buildTaskCard(task, localToday) {
         meta.push('<span class="task-new-pill" title="Te la acaban de asignar">Nueva</span>');
     }
     if (dueDateHtml) meta.push(dueDateHtml);
+    if (task.recurrence_unit) {
+        const label = escapeHtml(taskRecurrenceLabel(task));
+        meta.push(canEdit
+            ? `<button type="button" class="task-meta-item task-meta-btn" title="Cambiar repetición" onclick="openRecurrenceMenu(${task.id}, this, event)"><i class="iconoir-repeat"></i>${label}</button>`
+            : `<span class="task-meta-item" title="Desde el día de completado"><i class="iconoir-repeat"></i>${label}</span>`);
+    }
     if (task.app_name) {
         meta.push(canEdit
             ? `<button type="button" class="task-meta-item task-meta-btn" title="Cambiar aplicación" onclick="openAppMenu(${task.id}, this, event)">
@@ -596,7 +612,7 @@ async function completeTaskWithUndo(taskId) {
     await loadTasks();
     showToast({
         title: 'Tarea completada',
-        message: task ? escapeHtml(task.title) : '',
+        message: task ? escapeHtml(task.title) + (task.recurrence_unit ? ' · Siguiente repetición programada' : '') : '',
         icon: 'iconoir-check',
         duration: 6000,
         action: {
@@ -986,6 +1002,10 @@ async function renderTaskMetaBar() {
     const done = task.is_completed == 1;
     const canEdit = caps.edit !== false && !done;
     const canShare = caps.share !== false && !done;
+    const recurrenceLabel = escapeHtml(taskRecurrenceLabel(task));
+    const recurrenceControl = canEdit
+        ? `<button type="button" class="task-meta-chip ${task.recurrence_unit ? '' : 'is-empty'}" onclick="openRecurrenceMenu(${task.id}, this, event)" title="Repetir desde el día de completado"><i class="iconoir-repeat"></i>${recurrenceLabel}</button>`
+        : task.recurrence_unit ? `<span class="task-meta-chip is-static"><i class="iconoir-repeat"></i>${recurrenceLabel}</span>` : '';
     const creator = task.creator_name || task.creator_username || '';
 
     // Completar / reabrir
@@ -1059,7 +1079,7 @@ async function renderTaskMetaBar() {
         <div class="request-meta-bar__controls">
             ${completeControl}
             ${completeControl ? '<span class="request-meta-bar__divider" aria-hidden="true"></span>' : ''}
-            ${dateControl}${appControl}${shareControl}
+            ${dateControl}${recurrenceControl}${appControl}${shareControl}
         </div>
         <div class="request-meta-bar__facts">${facts.join('')}</div>`;
 }

@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/work-records.php';
 require_once __DIR__ . '/../includes/task-shares.php';
+require_once __DIR__ . '/../includes/task-recurrence.php';
 
 header('Content-Type: application/json');
 
@@ -115,7 +116,11 @@ switch ($method) {
             error_response('El título es obligatorio');
         }
         
-        $taskId = create_task_record($db, $user, $input);
+        try {
+            $taskId = create_task_record($db, $user, $input);
+        } catch (InvalidArgumentException $e) {
+            error_response($e->getMessage());
+        }
 
         // Assigned while creating it ("para Ana" / "+ana" in quick add): same flow as
         // "Compartir con", so the person gets the notice and the "seen" mark starts empty.
@@ -139,56 +144,89 @@ switch ($method) {
             error_response('ID de tarea requerido');
         }
         
-        // Owner or shared users can edit/complete; only the owner changes sharing.
-        $access = require_task_capability($input['id'], task_capability_for_update($input));
-        $wasCompleted = (int) $access['task']['is_completed'] === 1;
-        $completionChanged = isset($input['is_completed']) && (bool) $input['is_completed'] !== $wasCompleted;
-
-        // Build update query dynamically
-        $updates = [];
-        $params = [];
-        
-        if (isset($input['title'])) {
-            $updates[] = "title = ?";
-            $params[] = trim($input['title']);
-        }
-        if (isset($input['description'])) {
-            $updates[] = "description = ?";
-            $params[] = $input['description'];
-        }
-        if (isset($input['is_completed'])) {
-            $updates[] = "is_completed = ?";
-            $params[] = $input['is_completed'] ? 1 : 0;
-            // When and who only change on a real change: re-sending "completed" keeps them.
-            if ($completionChanged && $input['is_completed']) {
-                $updates[] = "completed_at = NOW()";
-                $updates[] = "completed_by = ?";
-                $params[] = $user['id'];
-            } elseif ($completionChanged) {
-                $updates[] = "completed_at = NULL";
-                $updates[] = "completed_by = NULL";
+        try {
+            $db->beginTransaction();
+            // Serialize completion and retries before reading the current state and permissions.
+            $stmt = $db->prepare('SELECT id FROM tasks WHERE id = ? FOR UPDATE');
+            $stmt->execute([$input['id']]);
+            // Owner or shared users can edit/complete; only the owner changes sharing.
+            $access = require_task_capability($input['id'], task_capability_for_update($input));
+            $wasCompleted = (int) $access['task']['is_completed'] === 1;
+            $completionChanged = isset($input['is_completed']) && (bool) $input['is_completed'] !== $wasCompleted;
+            $completedOn = new DateTimeImmutable('now', new DateTimeZone('Europe/Madrid'));
+            $nextTaskId = null;
+            if ($completionChanged && !$input['is_completed']) {
+                undo_next_task_occurrence($db, $input['id']);
             }
-        }
-        if (isset($input['is_shared'])) {
-            $updates[] = "is_shared = ?";
-            $params[] = $input['is_shared'] ? 1 : 0;
-        }
-        if (array_key_exists('app_id', $input)) {
-            $updates[] = "app_id = ?";
-            $params[] = $input['app_id'];
-        }
-        if (array_key_exists('due_date', $input)) {
-            $updates[] = "due_date = ?";
-            $params[] = $input['due_date'];
-        }
+
+            // Build update query dynamically
+            $updates = [];
+            $params = [];
         
-        if (empty($updates)) {
-            error_response('Nada que actualizar');
-        }
+            if (isset($input['title'])) {
+                $updates[] = "title = ?";
+                $params[] = trim($input['title']);
+            }
+            if (isset($input['description'])) {
+                $updates[] = "description = ?";
+                $params[] = $input['description'];
+            }
+            if (isset($input['is_completed'])) {
+                $updates[] = "is_completed = ?";
+                $params[] = $input['is_completed'] ? 1 : 0;
+                // When and who only change on a real change: re-sending "completed" keeps them.
+                if ($completionChanged && $input['is_completed']) {
+                    $updates[] = "completed_at = NOW()";
+                    $updates[] = "completed_by = ?";
+                    $params[] = $user['id'];
+                } elseif ($completionChanged) {
+                    $updates[] = "completed_at = NULL";
+                    $updates[] = "completed_by = NULL";
+                }
+            }
+            if (isset($input['is_shared'])) {
+                $updates[] = "is_shared = ?";
+                $params[] = $input['is_shared'] ? 1 : 0;
+            }
+            if (array_key_exists('app_id', $input)) {
+                $updates[] = "app_id = ?";
+                $params[] = $input['app_id'];
+            }
+            if (array_key_exists('due_date', $input)) {
+                $updates[] = "due_date = ?";
+                $params[] = $input['due_date'];
+            }
+            if (array_key_exists('recurrence_unit', $input) || array_key_exists('recurrence_interval', $input)) {
+                $rule = normalize_task_recurrence($input, $access['task']);
+                $updates[] = 'recurrence_unit = ?';
+                $params[] = $rule['recurrence_unit'];
+                $updates[] = 'recurrence_interval = ?';
+                $params[] = $rule['recurrence_interval'];
+            }
         
-        $params[] = $input['id'];
-        $stmt = $db->prepare("UPDATE tasks SET " . implode(', ', $updates) . " WHERE id = ?");
-        $stmt->execute($params);
+            if (empty($updates)) {
+                error_response('Nada que actualizar');
+            }
+        
+            $params[] = $input['id'];
+            $stmt = $db->prepare("UPDATE tasks SET " . implode(', ', $updates) . " WHERE id = ?");
+            $stmt->execute($params);
+
+            if ($completionChanged && $input['is_completed']) {
+                $stmt = $db->prepare('SELECT * FROM tasks WHERE id = ?');
+                $stmt->execute([$input['id']]);
+                $completedTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                $nextTaskId = create_next_task_occurrence($db, $completedTask, $completedOn);
+            }
+            $db->commit();
+        } catch (InvalidArgumentException $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_response($e->getMessage());
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Failed to update task ' . $input['id'] . ': ' . $e->getMessage());
+            error_response('No se pudo actualizar la tarea', 500);
+        }
 
         // "X ha completado una tarea" to the others who have it; reopening takes it back.
         // The task is already saved: a failed notice must not report the change as failed.
@@ -203,8 +241,18 @@ switch ($method) {
                 error_log('Failed to update task completion notifications for task ' . $input['id'] . ': ' . $e->getMessage());
             }
         }
+
+        if ($nextTaskId) {
+            try {
+                $stmt = $db->prepare('SELECT user_id FROM task_shares WHERE task_id = ?');
+                $stmt->execute([$nextTaskId]);
+                create_task_assignment_notifications($db, $nextTaskId, $stmt->fetchAll(PDO::FETCH_COLUMN), $user);
+            } catch (Exception $e) {
+                error_log('Failed to notify next task occurrence ' . $nextTaskId . ': ' . $e->getMessage());
+            }
+        }
         
-        success_response(null, 'Tarea actualizada');
+        success_response(['next_task_id' => $nextTaskId], 'Tarea actualizada');
         break;
         
     case 'DELETE':

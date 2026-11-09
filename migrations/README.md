@@ -158,6 +158,18 @@ Añade `ai_messages.metadata_json` (`LONGTEXT NULL`) para referencias verificada
 
 Ejecutar **una vez antes de desplegar IA3**, después de la 020 y con copia de seguridad. Una repetición da «Duplicate column name» si la columna ya existe; comprobar su estructura antes de continuar. Verificación: `SHOW COLUMNS FROM ai_messages LIKE 'metadata_json';`. Probada en MariaDB temporal y aplicada/verificada en producción MariaDB 11.4 el 2 Nov 2026 antes de desplegar IA3. Detalles de despliegue y comportamiento en `docs/ai-assistant.md`.
 
+## Migración 022: Tareas recurrentes al completar
+
+**Archivo**: `022_task_recurrence.sql`. Ejecutar una vez, después de la 019 y antes de subir los archivos nuevos. Añade `recurrence_unit`, `recurrence_interval`, `recurrence_parent_id` y `recurrence_snapshot` a `tasks`, sin cambiar las tareas existentes. Requiere InnoDB y `tasks.id` de tipo `INT` con signo. No se necesita cron.
+
+En Tareas → Más opciones se elige el intervalo al crear; en el detalle, el chip «No repetir» permite activarlo, cambiarlo o desactivarlo. Admite de 1 a 365 días, semanas, meses o años. Al completar desde Tareas o Mi trabajo se guarda el histórico y se crea una tarea pendiente, con fecha calculada desde el día de completado en Europe/Madrid. Los finales de mes se ajustan al último día válido. La siguiente conserva autor, empresa, título, descripción, aplicación y personas; los adjuntos permanecen en la completada. Las asignaciones nuevas empiezan sin ver y generan aviso.
+
+La finalización y la creación se guardan en una transacción con bloqueo de fila y un índice único que impide duplicar la siguiente repetición. Reenviar «completada» no crea otra tarea. «Deshacer» o reabrir elimina la siguiente si sigue pendiente y conserva su contenido original; si ya se ha editado, completado o tiene adjuntos, la reapertura se rechaza para preservar ese trabajo. Desactivar la repetición se hace sobre la tarea pendiente y evita que genere otra al completarse.
+
+Verificar con `SHOW COLUMNS FROM tasks LIKE 'recurrence%';` y `SHOW INDEX FROM tasks WHERE Key_name = 'uniq_task_recurrence_parent';`. Prueba funcional: crear una tarea «Cada 2 semanas», completarla, comprobar que la siguiente vence dentro de 14 días y pulsar «Deshacer» para restaurar el estado anterior.
+
+Pruebas: `php tests/task-recurrence.php` usa SQLite por defecto. Para comprobar la migración y las transacciones en MariaDB, definir `PRISMA_RECURRENCE_TEST_DSN` y `PRISMA_RECURRENCE_TEST_USER` apuntando a una base **vacía y desechable** y ejecutar la misma prueba. `php tests/task-recurrence-api.php` usa esas variables y requiere otra base vacía; verifica la API real, permisos, concurrencia, reintentos, avisos y rollback ante fallos. Sin DSN, esta última se omite.
+
 ## 🔒 Comportamiento de Permisos
 
 ### Superadmin

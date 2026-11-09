@@ -1618,3 +1618,31 @@ button.task-meta-chip:hover {
         display: none;
     }
 }
+/* Completion-based recurrence, in quick add and the task property menu. */
+.task-recurrence-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-8);
+}
+.task-recurrence-fields input { flex: 0 0 80px; width: 80px; min-width: 0; }
+.task-recurrence-fields select { flex: 0 1 auto; width: auto; min-width: 160px; max-width: 100%; }
+.task-recurrence-form {
+    display: grid;
+    gap: var(--sp-12);
+    padding: var(--sp-12);
+    width: 280px;
+    max-width: calc(100vw - 40px);
+}
+.task-recurrence-form label {
+    display: grid;
+    gap: var(--sp-4);
+    font-size: var(--fs-13);
+}
+.task-recurrence-help {
+    margin: var(--sp-8) 0;
+    color: var(--text-muted);
+    font-size: var(--fs-13);
+    line-height: 1.5;
+}
+.task-recurrence-fields [hidden], .task-recurrence-form [hidden] { display: none; }

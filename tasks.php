@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.3">
+    <link rel="stylesheet" href="/assets/css/tasks.css?v=3.4">
 </head>
 
 <?php
@@ -128,6 +128,18 @@ $userApps = get_user_apps();
                             <input type="date" id="quick-add-due-date" class="expanded-date" placeholder="Fecha límite">
                         </div>
                     </div>
+                    <div class="task-recurrence-fields">
+                        <label for="quick-add-recurrence-unit">Repetir</label>
+                        <input type="number" id="quick-add-recurrence-interval" class="expanded-select" min="1" max="365" step="1" required value="1" aria-label="Intervalo de repetición" hidden>
+                        <select id="quick-add-recurrence-unit" class="expanded-select" onchange="document.getElementById('quick-add-recurrence-interval').hidden = !this.value">
+                            <option value="">No repetir</option>
+                            <option value="day">Cada X días</option>
+                            <option value="week">Cada X semanas</option>
+                            <option value="month">Cada X meses</option>
+                            <option value="year">Cada X años</option>
+                        </select>
+                    </div>
+                    <p class="task-recurrence-help">El intervalo cuenta desde el día en que completes la tarea.</p>
                     <textarea 
                         id="quick-add-description" 
                         class="expanded-textarea" 
@@ -241,8 +253,8 @@ $userApps = get_user_apps();
     </script>
     <script src="/assets/js/task-parser.js?v=9"></script>
     <script src="/assets/js/file-viewer.js?v=1"></script>
-    <script src="/assets/js/tasks.js?v=17"></script>
-    <script src="/assets/js/tasks-interactions.js?v=5"></script>
+    <script src="/assets/js/tasks.js?v=18"></script>
+    <script src="/assets/js/tasks-interactions.js?v=6"></script>
     <script src="/assets/js/pwa.js?v=1.1"></script>
 </body>
 

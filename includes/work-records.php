@@ -22,13 +22,21 @@ function create_request_record($db, $user, array $fields)
 
 function create_task_record($db, $user, array $fields)
 {
-    $stmt = $db->prepare('INSERT INTO tasks (user_id, company_id, app_id, title, description, due_date, is_shared)
-        VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
+    $columns = 'user_id, company_id, app_id, title, description, due_date, is_shared';
+    $values = [
         $user['id'], $user['company_id'], $fields['app_id'] ?? null,
         trim($fields['title']), $fields['description'] ?? null,
         $fields['due_date'] ?? null, empty($fields['is_shared']) ? 0 : 1
-    ]);
+    ];
+    if (array_key_exists('recurrence_unit', $fields) || array_key_exists('recurrence_interval', $fields)) {
+        require_once __DIR__ . '/task-recurrence.php';
+        $rule = normalize_task_recurrence($fields);
+        $columns .= ', recurrence_unit, recurrence_interval';
+        $values[] = $rule['recurrence_unit'];
+        $values[] = $rule['recurrence_interval'];
+    }
+    $stmt = $db->prepare('INSERT INTO tasks (' . $columns . ') VALUES (' . implode(', ', array_fill(0, count($values), '?')) . ')');
+    $stmt->execute($values);
     return (int) $db->lastInsertId();
 }
 
