@@ -272,9 +272,9 @@ assert_contains_all(read_project_file('assets/css/work.css'), [
 // ---- Scripts y versiones ----
 assert_contains_all($index, [
     '/assets/css/work.css?v=6',
-    '/assets/js/main.js?v=5.7',
+    '/assets/js/main.js?v=5.8',
     '/assets/js/request-create-helpers.js?v=1',
-    '/assets/js/request-create.js?v=1',
+    '/assets/js/request-create.js?v=2',
 ], 'index loads the new scripts with bumped versions');
 assert_same(
     true,

@@ -16,6 +16,7 @@ let newRequestState = newRequestDraft({});
 let newRequestMenuState = null;
 let newRequestReturnFocus = null;
 let newRequestSubmitting = false;
+let newRequestCreatedCallback = null;
 // Se intentó crear sin aplicación: el chip se marca en rojo hasta elegirla.
 let newRequestAppInvalid = false;
 // Miniaturas de las imágenes elegidas (URL.createObjectURL), para liberarlas al quitar o cerrar.
@@ -151,11 +152,21 @@ function setupNewRequestModal() {
 
 // ========== Abrir y cerrar ==========
 
-function openNewRequestModal() {
+function openNewRequestModal(prefill = null) {
     if (isNewRequestModalOpen()) return;
     newRequestReturnFocus = document.activeElement;
     resetNewRequestModal();
     newRequestState.appId = newRequestDefaultApp(apps, currentView, currentAppId);
+    if (prefill) {
+        newRequestState = prefill.draft;
+        newRequestEl('request-title').value = prefill.fields.title;
+        newRequestEl('request-description').value = prefill.fields.description;
+        newRequestEl('new-request-requester-name').value = prefill.fields.requesterName;
+        newRequestEl('new-request-requester-email').value = prefill.fields.requesterEmail;
+        newRequestCreatedCallback = prefill.onCreated || null;
+        renderNewRequestChecklist();
+        updateRequesterDot('new');
+    }
     newRequestEl('new-request-attachments').hidden = !newRequestCan().attach;
     renderNewRequestBar();
 
@@ -172,6 +183,7 @@ function resetNewRequestModal() {
     newRequestPreviewUrls.forEach(url => URL.revokeObjectURL(url));
     newRequestPreviewUrls.clear();
     newRequestState = newRequestDraft({});
+    newRequestCreatedCallback = null;
     newRequestAppInvalid = false;
 
     newRequestEl('new-request-form').reset();
@@ -776,30 +788,43 @@ async function submitNewRequest(event) {
     }
 
     const draft = newRequestState;
-    const payload = newRequestPayload(draft, fields);
     setNewRequestSubmitting(true);
 
-    let requestId;
+    let created;
     try {
-        const response = await fetch('/api/requests.php', {
+        created = await persistNewRequest(draft, fields, label => setNewRequestSubmitting(true, label));
+    } catch (error) {
+        console.error('Nueva mejora: error al crear', error);
+        setNewRequestSubmitting(false);
+        showToast({ title: 'No se pudo crear la mejora', message: newRequestEscape(error.message), icon: 'iconoir-warning-triangle', duration: 6000 }, 'toast-discarded');
+        return;
+    }
+
+    setNewRequestSubmitting(false);
+    const onCreated = newRequestCreatedCallback;
+    closeNewRequestModal();
+    if (onCreated) onCreated();
+    loadRequests();
+    showNewRequestCreated(created);
+}
+
+// Modal y entrada rápida comparten la misma escritura y los mismos avisos si falla un extra.
+async function persistNewRequest(draft, fields, onProgress = () => {}) {
+    const payload = newRequestPayload(draft, fields);
+    let response;
+    let data;
+    try {
+        response = await fetch('/api/requests.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        const data = await response.json();
-        if (!data.success) {
-            console.error('Nueva mejora: no se pudo crear', response.status, data.error, payload);
-            setNewRequestSubmitting(false);
-            showToast({ title: 'No se pudo crear la mejora', message: newRequestEscape(data.error || 'Inténtalo de nuevo'), icon: 'iconoir-warning-triangle', duration: 6000 }, 'toast-discarded');
-            return;
-        }
-        requestId = data.data.id;
+        data = await response.json();
     } catch (error) {
-        console.error('Nueva mejora: error al crear', error, payload);
-        setNewRequestSubmitting(false);
-        showToast({ title: 'No se pudo crear la mejora', message: 'Error de conexión. Inténtalo de nuevo.', icon: 'iconoir-warning-triangle', duration: 6000 }, 'toast-discarded');
-        return;
+        throw new Error('Error de conexión. Inténtalo de nuevo.');
     }
+    if (!response.ok || !data.success) throw new Error(data.error || 'No se pudo crear la mejora. Inténtalo de nuevo.');
+    const requestId = data.data.id;
 
     // Lo que va aparte, ya con la mejora creada: asignados, pasos y archivos.
     const problems = [];
@@ -815,7 +840,7 @@ async function submitNewRequest(event) {
         if (problem) problems.push(problem);
     }
     for (const [index, file] of draft.files.entries()) {
-        setNewRequestSubmitting(true, draft.files.length > 1 ? `Subiendo ${index + 1} de ${draft.files.length}…` : 'Subiendo archivo…');
+        onProgress(draft.files.length > 1 ? `Subiendo ${index + 1} de ${draft.files.length}…` : 'Subiendo archivo…');
         const formData = new FormData();
         formData.append('request_id', requestId);
         formData.append('file', file, file.name);
@@ -823,10 +848,10 @@ async function submitNewRequest(event) {
         if (problem) problems.push(problem);
     }
 
-    setNewRequestSubmitting(false);
-    closeNewRequestModal();
-    loadRequests();
+    return { requestId, payload, problems };
+}
 
+function showNewRequestCreated({ requestId, payload, problems }) {
     if (problems.length) {
         showToast({
             title: `Mejora #${newRequestEscape(requestId)} creada con avisos`,

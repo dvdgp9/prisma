@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
     <link rel="stylesheet" href="/assets/css/work.css?v=6">
     <link rel="stylesheet" href="/assets/css/team.css?v=1">
+    <link rel="stylesheet" href="/assets/css/request-quick-add.css?v=1">
 </head>
 
 <?php
@@ -183,6 +184,29 @@ $company_name = $user['company_name'] ?? '';
 
             <!-- Listado de mejoras (Mejoras, apps y empresas); oculto en la Vista global -->
             <div class="requests-area" id="requests-area">
+            <form class="request-quick-add" id="request-quick-form" aria-labelledby="request-quick-label">
+                <label class="request-quick-label" id="request-quick-label" for="request-quick-input">Añadir mejora</label>
+                <textarea id="request-quick-input" rows="1" placeholder="Qué hay que mejorar… @app +nombre mañana prioridad alta" aria-describedby="request-quick-help request-quick-error" autocomplete="off"></textarea>
+                <div class="request-quick-chips" id="request-quick-chips" aria-label="Datos detectados" hidden></div>
+                <p class="request-quick-title" id="request-quick-title" hidden></p>
+                <div class="request-quick-footer">
+                    <div class="request-quick-app-field">
+                        <label for="request-quick-app">Aplicación</label>
+                        <select id="request-quick-app"><option value="">Elige una aplicación</option></select>
+                    </div>
+                    <div class="request-quick-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" id="request-quick-details">Más opciones</button>
+                        <button type="submit" class="btn btn-primary btn-sm" id="request-quick-submit"><i class="iconoir-plus" aria-hidden="true"></i><span>Crear mejora</span></button>
+                    </div>
+                </div>
+                <p class="request-quick-help" id="request-quick-help">Enter para crear · Mayús+Enter para añadir descripción · Ctrl/Cmd+Enter desde cualquier línea.</p>
+                <p class="request-quick-error" id="request-quick-error" role="alert" hidden></p>
+                <details class="request-quick-guide">
+                    <summary>Cómo escribir una mejora</summary>
+                    <p>Primera línea: título, @app (o @"Nombre completo"), prioridad alta/media/baja/crítica y dificultad alta/media/baja.<?php if ($user['role'] !== 'user'): ?> Añade +nombre o para Nombre para asignar, y hoy, mañana, viernes o 15/07 para la fecha. Puedes añadir varias personas.<?php endif; ?></p>
+                    <p>Las siguientes líneas son la descripción. Usa « :: » para empezarla en la misma línea, «- [ ] Paso» para el checklist, «Solicitante: Nombre» y «Email: correo@ejemplo.com» para quien la pide. Quitar un dato detectado conserva ese texto. En Más opciones puedes revisar todo y adjuntar archivos.</p>
+                </details>
+            </form>
             <div class="requests-toolbar-shell is-advanced" id="requests-toolbar-shell">
                 <div class="sorting-bar" id="sorting-bar">
                     <div class="sorting-controls">
@@ -1015,10 +1039,12 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=5"></script>
-    <script src="/assets/js/main.js?v=5.7"></script>
+    <script src="/assets/js/main.js?v=5.8"></script>
     <script src="/assets/js/my-work.js?v=5"></script>
     <script src="/assets/js/request-create-helpers.js?v=1"></script>
-    <script src="/assets/js/request-create.js?v=1"></script>
+    <script src="/assets/js/request-create.js?v=2"></script>
+    <script src="/assets/js/request-parser.js?v=1"></script>
+    <script src="/assets/js/request-quick-add.js?v=1"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js?v=2"></script>
     <?php endif; ?>

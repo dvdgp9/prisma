@@ -55,7 +55,7 @@ assert_file_contains('index.php', [
     'id="my-work"',
     'id="requests-area"',
     'id="export-btn"',
-    '/assets/js/main.js?v=5.7',
+    '/assets/js/main.js?v=5.8',
 ], 'index has the overview and the requests list as separate areas');
 assert_file_contains('assets/js/main.js', [
     "let currentView = 'home';",

@@ -1086,6 +1086,7 @@ async function loadApps() {
                 }
             });
             renderAppsNav();
+            if (typeof syncQuickRequestContext === 'function') syncQuickRequestContext();
         }
     } catch (error) {
         sidebarAppState('error');
@@ -1218,6 +1219,7 @@ function updateViewLayout() {
     if (overview) overview.hidden = !isHome;
     if (requestsArea) requestsArea.hidden = isHome;
     if (exportBtn) exportBtn.hidden = isHome;
+    if (typeof syncQuickRequestContext === 'function') syncQuickRequestContext();
 
     if (isHome) {
         if (typeof loadMyWork === 'function') loadMyWork();
@@ -3508,6 +3510,7 @@ async function loadAvailableUsers() {
         const data = await response.json();
         if (data.success) {
             availableUsers = data.data;
+            if (typeof renderQuickRequestPreview === 'function') renderQuickRequestPreview();
         }
     } catch (error) {
         console.error('Error loading users:', error);

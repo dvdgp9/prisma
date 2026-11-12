@@ -63,7 +63,7 @@ assert_same(['tone' => 'later', 'label' => 'Para el 5 ene 2027', 'days' => 78], 
 assert_file_contains('index.php', [
     '/assets/js/work-helpers.js?v=5',
     '/assets/css/work.css?v=6',
-    '/assets/js/main.js?v=5.7',
+    '/assets/js/main.js?v=5.8',
     'data-sort-field="due_date"',
 ], 'index loads the date helpers, styles and table column');
 $index = file_get_contents(__DIR__ . '/../index.php');
