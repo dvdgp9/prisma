@@ -294,13 +294,6 @@ async function loadChecklistItems(requestId) {
     }
 }
 
-// Columna "Fecha" de la tabla: fecha objetivo de las activas; nada en las cerradas.
-function getTableDueMarkup(request) {
-    if (request.status !== 'pending' && request.status !== 'in_progress') return '-';
-    const info = requestDueInfo(request.due_date);
-    return `<span class="request-due is-${info.tone}">${escapeHtml(info.label)}</span>`;
-}
-
 function renderRequestsTable(filteredRequests, tableBody) {
     const sortedRequests = sortRequestsForTable(filteredRequests);
 
@@ -319,7 +312,9 @@ function renderRequestsTable(filteredRequests, tableBody) {
                 <td>
                     ${getTableStatusBadgeMarkup(request, request.capabilities?.update_status === true)}
                 </td>
-                <td>${getTableDueMarkup(request)}</td>
+                <td class="request-table-date" onclick="event.stopPropagation()">
+                    ${getRequestDueControlHtml(request, request.capabilities?.update_status === true, true)}
+                </td>
                 <td class="requests-table-title-cell">
                     <strong>${escapeHtml(request.title)}</strong>
                     ${request.description ? `<span class="requests-table-subline">${escapeHtml(request.description)}</span>` : ''}
@@ -914,26 +909,29 @@ function renderRequestMetaBar(request) {
 
 // Fecha objetivo de la mejora (opcional). Con permiso de planificar (el mismo que
 // el estado) es un chip que abre el calendario nativo y guarda al momento.
-function getRequestDueControlHtml(request, canPlan) {
+function getRequestDueControlHtml(request, canPlan, inList = false) {
     const info = requestDueInfo(request.due_date);
-    const tone = `is-${info.tone}`;
+    const closed = inList && ['completed', 'discarded'].includes(request.status);
+    const tone = `is-${closed && info.tone !== 'none' ? 'later' : info.tone}`;
+    const value = info.tone === 'none' ? '' : request.due_date;
+    const label = closed && value ? new Date(`${value}T00:00:00`).toLocaleDateString('es-ES', { dateStyle: 'medium' }) : info.label;
 
     if (!canPlan) {
         return info.tone === 'none'
-            ? ''
-            : `<span class="request-due ${tone}" title="Fecha objetivo"><i class="iconoir-calendar-check"></i><span>${escapeHtml(info.label)}</span></span>`;
+            ? (inList ? '<span class="request-row-muted">Sin fecha</span>' : '')
+            : `<span class="request-due ${tone}" title="Fecha objetivo · ${value}"><i class="iconoir-calendar-check" aria-hidden="true"></i><span>${escapeHtml(label)}</span></span>`;
     }
 
     const id = parseInt(request.id, 10);
-    const value = info.tone === 'none' ? '' : request.due_date;
     return `
         <span class="request-due-control">
-            <button type="button" class="request-due ${tone} is-interactive" title="Cambiar la fecha objetivo"
+            <button type="button" class="request-due ${tone} is-interactive" title="${value ? `Cambiar fecha objetivo · ${value}` : 'Añadir fecha objetivo'}"
                     onclick="event.stopPropagation(); openRequestDuePicker(this)">
-                <i class="iconoir-calendar-check"></i><span>${escapeHtml(info.tone === 'none' ? 'Poner fecha' : info.label)}</span>
+                <i class="iconoir-calendar-check" aria-hidden="true"></i><span>${escapeHtml(value ? label : 'Añadir fecha')}</span>
             </button>
             <input type="date" class="request-due-input" value="${value}" tabindex="-1" aria-label="Fecha objetivo"
-                   onclick="event.stopPropagation()" onchange="quickUpdateRequest(${id}, 'due_date', this.value, event)">
+                   onclick="event.stopPropagation()" onblur="this.classList.remove('is-visible')"
+                   onchange="quickUpdateRequest(${id}, 'due_date', this.value, event)">
             ${value ? `
                 <button type="button" class="request-due-clear" title="Quitar la fecha" aria-label="Quitar la fecha"
                         onclick="quickUpdateRequest(${id}, 'due_date', '', event)"><i class="iconoir-xmark"></i></button>` : ''}
@@ -951,8 +949,8 @@ function openRequestDuePicker(button) {
             console.error('showPicker not allowed, falling back to focus', error);
         }
     }
+    input.classList.add('is-visible');
     input.focus();
-    input.click();
 }
 
 function renderMetaAssigneesHtml() {
@@ -962,7 +960,7 @@ function renderMetaAssigneesHtml() {
     let chips = list.map((a, i) => `
         <span class="assigned-tag ${i === 0 ? 'primary-owner-tag' : ''}">
             ${escapeHtml(a.full_name || a.username)}${i === 0 ? ' · Resp.' : ''}
-            ${canEdit ? `<span class="remove-tag" onclick="metaRemoveAssignee(${a.id})">×</span>` : ''}
+            ${canEdit ? `<button type="button" class="remove-tag" aria-label="Quitar asignación" onclick="metaRemoveAssignee(${a.id})">×</button>` : ''}
         </span>
     `).join('');
 
@@ -995,22 +993,23 @@ function setupMetaAssignSearch() {
              (u.full_name && u.full_name.toLowerCase().includes(search))));
         if (!filtered.length) { dropdown.style.display = 'none'; return; }
         dropdown.innerHTML = filtered.slice(0, 5).map(user => `
-            <div class="assign-dropdown-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-fullname="${escapeHtml(user.full_name || '')}">
-                <div class="comment-avatar" style="width:20px;height:20px;font-size:0.5rem;">${(user.full_name || user.username).charAt(0).toUpperCase()}</div>
+            <button type="button" class="assign-dropdown-item" data-user-id="${user.id}">
+                <span class="comment-avatar" aria-hidden="true" style="width:20px;height:20px;font-size:0.5rem;">${escapeHtml((user.full_name || user.username).charAt(0).toUpperCase())}</span>
                 <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
-            </div>
+            </button>
         `).join('');
         dropdown.style.display = 'block';
         dropdown.querySelectorAll('.assign-dropdown-item').forEach(item => {
-            item.onclick = () => metaAddAssignee({
-                id: parseInt(item.dataset.userId, 10),
-                username: item.dataset.username,
-                full_name: item.dataset.fullname
-            });
+            item.onclick = () => {
+                const user = filtered.find(user => String(user.id) === item.dataset.userId);
+                if (user) metaAddAssignee(user);
+            };
         });
     });
 
-    input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 200));
+    input.parentElement.addEventListener('focusout', event => {
+        if (!event.currentTarget.contains(event.relatedTarget)) dropdown.style.display = 'none';
+    });
 }
 
 function metaAddAssignee(user) {
@@ -1384,278 +1383,167 @@ function renderRequests() {
 
     grid.innerHTML = '';
 
-    // Render active requests
-    activeRequests.forEach(request => {
-        const card = createRequestCard(request);
-        grid.appendChild(card);
-    });
+    if (activeRequests.length) {
+        grid.appendChild(createRequestList(activeRequests));
+    }
 
-    // Add separator if there are finished requests
-    if (finishedRequests.length > 0) {
-        const separator = document.createElement('div');
-        separator.className = `requests-separator ${revealFinishedRequests ? 'active' : ''}`;
-        separator.onclick = toggleFinishedRequests;
-        separator.innerHTML = `
-            <div class="separator-line"></div>
-            <span class="separator-text">
-                <i class="iconoir-check-circle"></i>
+    if (finishedRequests.length) {
+        const finished = document.createElement('details');
+        finished.className = 'request-list-finished';
+        finished.open = revealFinishedRequests;
+        finished.innerHTML = `
+            <summary>
+                <i class="iconoir-check-circle" aria-hidden="true"></i>
                 Finalizadas (${finishedRequests.length})
-                <i class="iconoir-nav-arrow-down toggle-icon" style="margin-left: 4px;"></i>
-            </span>
-            <div class="separator-line"></div>
+            </summary>
         `;
-        grid.appendChild(separator);
-
-        const finishedWrapper = document.createElement('div');
-        finishedWrapper.className = `finished-requests-wrapper ${revealFinishedRequests ? 'show' : ''}`;
-        
-        // Render finished requests with subtle style
-        finishedRequests.forEach(request => {
-            const card = createRequestCard(request, true);
-            card.classList.add('card-finished');
-            finishedWrapper.appendChild(card);
+        finished.querySelector('summary').addEventListener('click', () => {
+            showFinished = !finished.open;
         });
-        
-        grid.appendChild(finishedWrapper);
+        finished.appendChild(createRequestList(finishedRequests));
+        grid.appendChild(finished);
     }
 }
 
-// Toggle visibility of finished requests
-function toggleFinishedRequests() {
-    showFinished = !showFinished;
-    const separator = document.querySelector('.requests-separator');
-    const wrapper = document.querySelector('.finished-requests-wrapper');
-    
-    if (separator && wrapper) {
-        separator.classList.toggle('active');
-        wrapper.classList.toggle('show');
-    }
-}
-
-// Create a single request card
-function createRequestCard(request, isFinished = false) {
-    const priorityClass = `priority-${request.priority}`;
-    const statusClass = `status-${request.status}`;
-    const date = new Date(request.created_at).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
-
-    // Check if current user is admin (passed from PHP - we'll add this)
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.requestId = request.id;
-
-    const priorityLabels = {
-        'critical': 'CRÍTICA',
-        'high': 'ALTA',
-        'medium': 'MEDIA',
-        'low': 'BAJA'
-    };
-
-    const statusLabels = {
-        'pending': 'Pendiente',
-        'in_progress': 'En curso',
-        'completed': 'Completada',
-        'discarded': 'Descartada'
-    };
-
-    const userRole = document.body.dataset.userRole;
-    const canAdmin = ['admin', 'superadmin'].includes(userRole);
-    const canManageRequest = request.capabilities?.edit === true;
-    const canUpdateStatus = request.capabilities?.update_status === true;
-    const canEdit = request.capabilities?.edit === true;
-    const canDelete = request.capabilities?.delete === true;
-    const requestCreatedLabel = getRequestCreatedLabel(request.created_at);
-    const hasComments = parseInt(request.comment_count || 0, 10) > 0;
-    const checklistProgress = getChecklistProgress(request);
-    // Fecha objetivo solo en las activas ("Sin fecha" discreto para ver lo que falta planificar)
-    const isActiveRequest = request.status === 'pending' || request.status === 'in_progress';
-    const dueInfo = requestDueInfo(request.due_date);
-
-    const showAppLine = currentView !== 'app' && request.app_name;
-    const description = (request.description || '').trim();
-    const priorityArrow = canManageRequest ? '<i class="iconoir-nav-arrow-down"></i>' : '';
-    const priorityDropdown = canManageRequest ? createPriorityDropdown(request.id, request.priority) : '';
-
-    card.innerHTML = `
-        <div class="request-card-topline">
-            ${showAppLine ? `
-                <div class="request-card-app" title="${escapeHtml(request.app_name)}">
-                    <span class="app-name">${escapeHtml(request.app_name)}</span>
-                    <span class="app-id">#${request.id}</span>
-                </div>
-            ` : `
-                <div class="request-card-app">
-                    <span class="app-id">#${request.id}</span>
-                </div>
-            `}
-            <div class="request-card-topline-spacer"></div>
-            <div class="request-card-toprow-end">
-                ${canManageRequest ? `
-                    <div class="difficulty-indicator" title="Dificultad">
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"
-                                onclick="setDifficulty(${request.id}, 'low', event)" title="Baja"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"
-                                onclick="setDifficulty(${request.id}, 'medium', event)" title="Media"></button>
-                        <button class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"
-                                onclick="setDifficulty(${request.id}, 'high', event)" title="Alta"></button>
-                    </div>
-                ` : `
-                    ${request.difficulty ? `
-                        <div class="difficulty-display" title="Dificultad: ${getDifficultyLabel(request.difficulty)}">
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 1 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 2 ? 'active' : ''}"></div>
-                            <div class="difficulty-bar ${getDifficultyLevel(request.difficulty) >= 3 ? 'active' : ''}"></div>
-                        </div>
-                    ` : ''}
-                `}
-                ${canUpdateStatus ? `
-                    <div class="status-actions" role="group" aria-label="Cambiar estado">
-                        <button class="status-action-btn ${request.status === 'pending' ? 'active' : ''}"
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'pending', event)" title="Pausar">
-                            <i class="iconoir-pause"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'in_progress' ? 'active' : ''}"
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'in_progress', event)" title="En curso">
-                            <i class="iconoir-play"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'completed' ? 'active' : ''}"
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'completed', event)" title="Completar">
-                            <i class="iconoir-check"></i>
-                        </button>
-                        <button class="status-action-btn ${request.status === 'discarded' ? 'active' : ''}"
-                                onclick="quickUpdateRequest(${request.id}, 'status', 'discarded', event)" title="Descartar">
-                            <i class="iconoir-xmark"></i>
-                        </button>
-                    </div>
-                ` : `
-                    <div class="status-badge-display status-${request.status}">
-                        ${statusLabels[request.status] || request.status}
-                    </div>
-                `}
-            </div>
+function createRequestList(items) {
+    const list = document.createElement('div');
+    list.className = 'request-list';
+    list.setAttribute('role', 'table');
+    list.setAttribute('aria-label', 'Mejoras');
+    list.innerHTML = `
+        <div class="request-row request-list-header" role="row">
+            <span role="columnheader">Mejora</span>
+            <span role="columnheader">Prioridad</span>
+            <span role="columnheader">Estado</span>
+            <span role="columnheader">Fecha objetivo</span>
+            <span role="columnheader">Responsable</span>
+            <span role="columnheader" aria-label="Acciones"></span>
         </div>
+    `;
+    items.forEach(request => list.appendChild(createRequestRow(request)));
+    return list;
+}
 
-        <h3 class="card-title">
+function renderRequestRowSelect(id, field, name, value, options, editable) {
+    const label = options[value] || '—';
+    const classes = `request-row-select ${field}-${Object.hasOwn(options, value) ? value : 'unknown'}`;
+    if (!editable) return `<span class="${classes}">${label}</span>`;
+    return `
+        <select class="${classes}" aria-label="${name}" data-request-field="${field}"
+                onchange="quickUpdateRequest(${id}, '${field}', this.value, event)">
+            ${!Object.hasOwn(options, value) ? '<option value="" selected disabled>—</option>' : ''}
+            ${Object.entries(options).map(([key, title]) =>
+                `<option value="${key}" ${key === value ? 'selected' : ''}>${title}</option>`
+            ).join('')}
+        </select>
+    `;
+}
+
+function createRequestRow(request) {
+    const id = Number(request.id);
+    const canEdit = request.capabilities?.edit === true;
+    const canPlan = request.capabilities?.update_status === true;
+    const owner = getPrimaryOwnerLabel(request);
+    const hasOwner = (request.assignments || []).length > 0;
+    const ownerLabel = escapeHtml(hasOwner || !canEdit ? owner : 'Asignar');
+    const priority = renderRequestRowSelect(id, 'priority', 'Prioridad', request.priority,
+        { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }, canEdit);
+    const status = renderRequestRowSelect(id, 'status', 'Estado', request.status,
+        { pending: 'Pendiente', in_progress: 'En curso', completed: 'Completada', discarded: 'Descartada' }, canPlan);
+
+    const row = document.createElement('div');
+    row.className = 'request-row';
+    row.setAttribute('role', 'row');
+    row.dataset.requestId = id;
+    row.innerHTML = `
+        <div class="request-row-subject" role="cell">
             <button type="button" class="request-card-detail-trigger" onclick="openRequestDetailModal(${request.id})">
                 ${escapeHtml(request.title)}
             </button>
-        </h3>
-
-        ${description ? `<p class="card-description">${escapeHtml(description)}</p>` : ''}
-
-        <div class="request-card-insights">
-            <span class="priority-badge priority-${request.priority}"
-                  ${canManageRequest ? `onclick="toggleBadgeDropdown(event, ${request.id}, 'priority')"` : ''}>
-                ${priorityLabels[request.priority] || request.priority.toUpperCase()}
-                ${priorityArrow}
-                ${priorityDropdown}
-            </span>
-            ${isActiveRequest ? `
-                <span class="request-card-insight request-due is-${dueInfo.tone}" title="Fecha objetivo">
-                    <i class="iconoir-calendar-check"></i>
-                    <span>${escapeHtml(dueInfo.label)}</span>
-                </span>
-            ` : ''}
-            <span class="request-card-insight">
-                <i class="iconoir-calendar"></i>
-                <span>${requestCreatedLabel}</span>
-            </span>
-            ${hasComments ? `
-                <span class="request-card-insight is-highlight">
-                    <i class="iconoir-chat-bubble"></i>
-                    <span>${request.comment_count}</span>
-                </span>
-            ` : ''}
-            ${checklistProgress.total > 0 ? `
-                <span class="request-card-insight ${checklistProgress.completed === checklistProgress.total ? 'is-highlight' : ''}">
-                    <i class="iconoir-check-square"></i>
-                    <span>${checklistProgress.completed}/${checklistProgress.total}</span>
-                </span>
-            ` : ''}
-        </div>
-
-        ${request.files && request.files.length > 0 ? `
-            <div style="margin-bottom: var(--spacing-md);">
-                <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">
-                    <i class="iconoir-attachment"></i> Archivos adjuntos:
-                </div>
-                <ul style="list-style: none; padding: 0;">
-                    ${request.files.map(file => `
-                        <li style="margin-bottom: var(--spacing-xs);">
-                            <a href="${escapeHtml(file)}" target="_blank" 
-                               style="color: var(--primary-color); text-decoration: none; font-size: 0.875rem;">
-                                <i class="iconoir-download"></i> ${escapeHtml(file.split('/').pop())}
-                            </a>
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        ` : ''}
-
-        <div class="card-footer">
-            <div class="card-footer-people">
-                <span class="card-creator" title="Creada por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}">
-                    <i class="iconoir-user"></i>
-                    <span>Creada por ${escapeHtml(request.creator_name || request.creator_username || 'Anónimo')}</span>
-                </span>
-                ${request.assignments && request.assignments.length > 0 ? request.assignments.map((a, index) => `
-                    <span class="assigned-tag ${index === 0 ? 'primary-owner-tag' : ''}" title="${index === 0 ? 'Responsable' : 'Asignado'}: ${escapeHtml(a.full_name || a.username)}">
-                        ${index === 0 ? 'Responsable:' : 'Equipo:'} ${escapeHtml(a.full_name || a.username)}
-                    </span>
-                `).join('') : (canEdit ? `
-                    <button class="btn-assign-quick" onclick="openAssignModal(${request.id}, event)" title="Asignar">
-                        <i class="iconoir-user-plus"></i>
-                        <span>Asignar</span>
-                    </button>
-                ` : '')}
-            </div>
-            <div class="card-footer-actions">
-                <div class="vote-section" title="${canAdmin ? 'Ajustar votos' : (request.user_voted ? 'Quitar voto' : 'Votar')}">
-                    <button class="vote-btn ${request.user_voted && !canAdmin ? 'voted' : ''}"
-                            onclick="vote(${request.id}, 'up')"
-                            aria-label="Votar a favor">
-                        <i class="iconoir-arrow-up"></i>
-                    </button>
-                    <span class="vote-count">${request.vote_count || 0}</span>
-                    ${canAdmin ? `
-                        <button class="vote-btn vote-down"
-                                onclick="vote(${request.id}, 'down')"
-                                aria-label="Reducir voto">
-                            <i class="iconoir-arrow-down"></i>
-                        </button>
-                    ` : ''}
-                </div>
-                <div class="card-actions-cluster">
-                    <button class="quick-action-btn view ${canManageRequest ? '' : 'request-card-detail-cta'}" onclick="openRequestDetailModal(${request.id})" title="Ver detalle" aria-label="Ver detalle de ${escapeHtml(request.title)}">
-                        <i class="iconoir-eye"></i>
-                        ${canManageRequest ? '' : '<span>Ver detalle</span>'}
-                    </button>
-                    ${canEdit ? `
-                        ${userRole === 'superadmin' && (request.status === 'pending' || request.status === 'in_progress') ? `
-                            <button class="quick-action-btn quick-action-btn--ship"
-                                    onclick="openQuickCompleteAndSchedule(${request.id}, '${escapeHtml(request.title)}', ${request.app_id || 'null'})"
-                                    title="Completar y Programar">
-                                <i class="iconoir-rocket"></i>
-                            </button>
-                        ` : ''}
-                        <button class="quick-action-btn quick-action-btn--task" onclick="openCreateTaskFromRequestModal(${request.id})" title="Crear tarea">
-                            <i class="iconoir-task-list"></i>
-                        </button>
-                        ${canDelete ? `
-                            <button class="quick-action-btn delete" onclick="deleteRequest(${request.id})" title="Eliminar">
-                                <i class="iconoir-trash"></i>
-                            </button>
-                        ` : ''}
-                    ` : ''}
-                </div>
+            <div class="request-row-context">
+                ${currentView !== 'app' && request.app_name ? `
+                    <span class="request-row-app">${escapeHtml(request.app_name)}</span>
+                ` : ''}
+                <span>#${id}</span>
             </div>
         </div>
+        <div class="request-row-priority" role="cell" aria-label="Prioridad">${priority}</div>
+        <div class="request-row-status" role="cell" aria-label="Estado">${status}</div>
+        <div class="request-row-date" role="cell" aria-label="Fecha objetivo">
+            ${getRequestDueControlHtml(request, canPlan, true)}
+        </div>
+        <div class="request-row-owner" role="cell" aria-label="Responsable">
+            ${canEdit ? `
+                <button type="button" title="Gestionar asignaciones" onclick="${hasOwner
+                    ? `openRequestAssignments(${id})`
+                    : `openAssignModal(${id}, event)`}">
+                    <i class="iconoir-${hasOwner ? 'user' : 'user-plus'}" aria-hidden="true"></i>
+                    <span>${ownerLabel}</span>
+                </button>
+            ` : `<span>${ownerLabel}</span>`}
+        </div>
+        <div class="request-row-actions" role="cell">${renderRequestRowActions(request, id, canEdit)}</div>
     `;
 
-    return card;
+    row.querySelector('[data-request-ship]')?.addEventListener('click', () => {
+        openQuickCompleteAndSchedule(id, request.title, request.app_id);
+    });
+
+    row.querySelector('.request-row-menu-panel').addEventListener('click', event => {
+        if (!event.target.closest('button')) return;
+        const menu = event.currentTarget.parentElement;
+        menu.open = false;
+        menu.querySelector('summary').focus();
+    }, true);
+
+    return row;
+}
+
+function renderRequestRowActions(request, id, canEdit) {
+    const canAdmin = ['admin', 'superadmin'].includes(userRole);
+    const canShip = canEdit && userRole === 'superadmin' && ['pending', 'in_progress'].includes(request.status);
+    const voteLabel = request.user_voted && !canAdmin ? 'Quitar voto' : 'Votar a favor';
+
+    return `
+        <details class="request-row-menu" name="request-row-menu">
+            <summary aria-label="Más acciones para la mejora #${id}">
+                <i class="iconoir-more-horiz" aria-hidden="true"></i>
+            </summary>
+            <div class="request-row-menu-panel">
+                <button type="button" onclick="vote(${id}, 'up')">
+                    <i class="iconoir-arrow-up" aria-hidden="true"></i> ${voteLabel} · ${Number(request.vote_count || 0)}
+                </button>
+                ${canAdmin ? `<button type="button" onclick="vote(${id}, 'down')">
+                    <i class="iconoir-arrow-down" aria-hidden="true"></i> Reducir voto
+                </button>` : ''}
+                ${canEdit ? `<label class="request-row-menu-difficulty">
+                    Dificultad
+                    <select onchange="setDifficulty(${id}, this.value, event)">
+                        <option value="" disabled ${!request.difficulty ? 'selected' : ''}>Sin definir</option>
+                        ${['low', 'medium', 'high'].map(value => `
+                            <option value="${value}" ${value === request.difficulty ? 'selected' : ''}>${getDifficultyLabel(value)}</option>
+                        `).join('')}
+                    </select>
+                </label>
+                <button type="button" onclick="openCreateTaskFromRequestModal(${id})">
+                    <i class="iconoir-task-list" aria-hidden="true"></i> Crear tarea
+                </button>` : ''}
+                ${canShip ? `<button type="button" data-request-ship>
+                    <i class="iconoir-rocket" aria-hidden="true"></i> Completar y programar
+                </button>` : ''}
+                ${request.capabilities?.delete === true ? `<button type="button" class="request-row-menu-delete" onclick="deleteRequest(${id})">
+                    <i class="iconoir-trash" aria-hidden="true"></i> Eliminar
+                </button>` : ''}
+            </div>
+        </details>
+    `;
+}
+
+async function openRequestAssignments(requestId) {
+    await openRequestDetailModal(requestId);
+    if (Number(currentModalRequest?.id) === requestId && document.getElementById('edit-request-modal').classList.contains('active')) {
+        document.getElementById('edit-meta-assign-search')?.focus();
+    }
 }
 
 function findRequestById(requestId) {
@@ -1858,6 +1746,11 @@ function toggleBadgeDropdown(event, requestId, type) {
 async function quickUpdateRequest(requestId, field, value, event) {
     event.stopPropagation();
 
+    const control = event.currentTarget;
+    const row = control?.closest('[data-request-id]');
+    const listId = row?.closest('#requests-table') ? 'requests-table' : 'requests-grid';
+    const focusSelector = field === 'due_date' ? 'button.request-due'
+        : `[data-request-field="${field}"]`;
     const data = { id: requestId };
     data[field] = value;
 
@@ -1900,13 +1793,28 @@ async function quickUpdateRequest(requestId, field, value, event) {
             }
 
             // Reload requests to show updated state
+            const restoreFocus = row?.contains(document.activeElement);
             await loadRequests();
+            if (restoreFocus && document.activeElement === document.body) {
+                const replacement = document.querySelector(
+                    `#${listId} [data-request-id="${requestId}"]`
+                );
+                const nextControl = replacement?.getClientRects().length && replacement.querySelector(focusSelector);
+                if (nextControl) nextControl.focus({ preventScroll: true });
+                else document.getElementById('request-search')?.focus({ preventScroll: true });
+            }
+            return;
         } else {
             alert(result.error || 'Error al actualizar');
         }
     } catch (error) {
         console.error('Error updating request:', error);
         alert('Error al actualizar');
+    }
+    if (control instanceof HTMLInputElement) {
+        control.value = control.defaultValue;
+    } else if (control instanceof HTMLSelectElement) {
+        control.value = Array.from(control.options).find(option => option.defaultSelected)?.value || '';
     }
 }
 
@@ -1949,10 +1857,22 @@ function showToast(config, type = '') {
 }
 
 // Close dropdowns when clicking outside
-document.addEventListener('click', () => {
+document.addEventListener('click', event => {
+    document.querySelectorAll('.request-row-menu[open]').forEach(menu => {
+        if (!menu.contains(event.target)) menu.open = false;
+    });
     document.querySelectorAll('.badge-dropdown.active').forEach(d => {
         d.classList.remove('active');
     });
+});
+
+document.addEventListener('keydown', event => {
+    const menu = event.target.closest('.request-row-menu[open]');
+    if (event.key === 'Escape' && menu) {
+        event.stopPropagation();
+        menu.open = false;
+        menu.querySelector('summary').focus();
+    }
 });
 
 // Vote on a request
@@ -3548,22 +3468,23 @@ function openAssignModal(requestId, event) {
     
     const userList = document.getElementById('assign-user-list');
     userList.innerHTML = availableUsers.map(user => `
-        <div class="assign-dropdown-item" data-user-id="${user.id}" data-user-name="${escapeHtml(user.full_name || user.username)}">
-            <div class="comment-avatar" style="width: 24px; height: 24px; font-size: 0.625rem;">
-                ${(user.full_name || user.username).charAt(0).toUpperCase()}
-            </div>
-            <div>
-                <div class="mention-item-name">${escapeHtml(user.full_name || user.username)}</div>
-                <div class="mention-item-username" style="font-size: 0.75rem;">${escapeHtml(user.username)}</div>
-            </div>
-        </div>
+        <button type="button" class="assign-dropdown-item" data-user-id="${user.id}">
+            <span class="comment-avatar" aria-hidden="true" style="width: 24px; height: 24px; font-size: 0.625rem;">
+                ${escapeHtml((user.full_name || user.username).charAt(0).toUpperCase())}
+            </span>
+            <span>
+                <span class="mention-item-name">${escapeHtml(user.full_name || user.username)}</span>
+                <span class="mention-item-username" style="display: block; font-size: 0.75rem;">${escapeHtml(user.username)}</span>
+            </span>
+        </button>
     `).join('');
     
     userList.querySelectorAll('.assign-dropdown-item').forEach(item => {
-        item.onclick = () => quickAssignUser(requestId, parseInt(item.dataset.userId), item.dataset.userName);
+        item.onclick = () => quickAssignUser(requestId, parseInt(item.dataset.userId), item.querySelector('.mention-item-name').textContent);
     });
     
     modal.classList.add('active');
+    userList.querySelector('button')?.focus();
 }
 
 async function quickAssignUser(requestId, userId, name) {
@@ -3571,7 +3492,8 @@ async function quickAssignUser(requestId, userId, name) {
         // Get current assignments first
         const resp = await fetch(`/api/assignments.php?request_id=${requestId}`);
         const current = await resp.json();
-        const currentIds = current.success ? current.data.map(a => a.user_id) : [];
+        if (!current.success) throw new Error(current.error || 'No se pudieron consultar las asignaciones');
+        const currentIds = current.data.map(a => Number(a.user_id));
         
         // Add new user if not already assigned
         if (!currentIds.includes(userId)) {
@@ -3594,9 +3516,12 @@ async function quickAssignUser(requestId, userId, name) {
                 message: name + ' asignado correctamente',
                 icon: 'iconoir-user-badge-check'
             }, 'toast-completed');
+        } else {
+            alert(data.error || 'No se pudo asignar la mejora');
         }
     } catch (error) {
         console.error('Error assigning user:', error);
+        alert('No se pudo asignar la mejora. Vuelve a intentarlo.');
     }
 }
 

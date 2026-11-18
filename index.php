@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/work.css?v=6">
+    <link rel="stylesheet" href="/assets/css/work.css?v=7">
     <link rel="stylesheet" href="/assets/css/team.css?v=1">
     <link rel="stylesheet" href="/assets/css/request-quick-add.css?v=1">
 </head>
@@ -308,9 +308,9 @@ $company_name = $user['company_name'] ?? '';
                     </div>
 
                     <div class="view-toggle-group" id="view-toggle-group">
-                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)" title="Vista tarjetas" aria-label="Vista tarjetas">
-                            <i class="iconoir-view-grid"></i>
-                            <span>Tarjetas</span>
+                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)" title="Vista lista" aria-label="Vista lista">
+                            <i class="iconoir-list"></i>
+                            <span>Lista</span>
                         </button>
                         <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)" title="Vista tabla" aria-label="Vista tabla">
                             <i class="iconoir-table-rows"></i>
@@ -358,9 +358,9 @@ $company_name = $user['company_name'] ?? '';
                 <?php endif; ?>
             </div>
 
-            <!-- Cards Grid -->
+            <!-- Compact request list -->
             <div class="cards-grid" id="requests-grid">
-                <!-- Cards will be loaded dynamically -->
+                <!-- Rows rendered dynamically -->
             </div>
 
             <div class="requests-table-wrapper" id="requests-table-wrapper" style="display: none;">
@@ -1000,7 +1000,7 @@ $company_name = $user['company_name'] ?? '';
             <div class="modal-header">
                 <div class="modal-header-left">
                     <i class="iconoir-user-plus modal-header-icon"></i>
-                    <h3 class="modal-title">Asignar tarea</h3>
+                    <h3 class="modal-title">Asignar mejora</h3>
                 </div>
                 <button class="close-modal" onclick="closeModal('assign-modal')">
                     <i class="iconoir-xmark"></i>
@@ -1008,7 +1008,7 @@ $company_name = $user['company_name'] ?? '';
             </div>
             <input type="hidden" id="assign-request-id">
             <div class="modal-body">
-                <p class="text-small text-muted" style="margin-bottom: 1rem;">Selecciona quién trabajará en esta tarea:</p>
+                <p class="text-small text-muted" style="margin-bottom: 1rem;">Selecciona quién trabajará en esta mejora.</p>
                 <div id="assign-user-list" style="max-height: 300px; overflow-y: auto;">
                     <!-- Users will be loaded here -->
                 </div>
@@ -1039,7 +1039,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=5"></script>
-    <script src="/assets/js/main.js?v=5.8"></script>
+    <script src="/assets/js/main.js?v=5.9"></script>
     <script src="/assets/js/my-work.js?v=5"></script>
     <script src="/assets/js/request-create-helpers.js?v=1"></script>
     <script src="/assets/js/request-create.js?v=2"></script>

@@ -132,7 +132,7 @@ assert_file_contains('assets/css/work.css', ['.my-work-new', '.my-work-whom .tas
 
 // Versiones (la PWA cachea los assets).
 assert_file_contains('tasks.php', ['/assets/js/task-parser.js?v=9', '/assets/js/tasks.js?v=18', '/assets/css/tasks.css?v=3.4'], 'tasks page loads the new assets');
-assert_file_contains('index.php', ['/assets/js/task-parser.js?v=9', '/assets/js/my-work.js?v=5', '/assets/css/work.css?v=6'], 'index loads the new assets');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v56';"], 'service worker cache is bumped');
+assert_file_contains('index.php', ['/assets/js/task-parser.js?v=9', '/assets/js/my-work.js?v=5', '/assets/css/work.css?v=7'], 'index loads the new assets');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v57';"], 'service worker cache is bumped');
 
 fwrite(STDOUT, "Task seen UI completed successfully.\n");

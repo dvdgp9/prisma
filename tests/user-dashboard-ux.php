@@ -47,17 +47,15 @@ assert_contains_ux($pwa, 'pwa-install-menu-item', 'user install prompt moves int
 
 assert_contains_ux($main, "widget.classList.toggle('is-clear'", 'empty task widget switches to a compact state');
 assert_contains_ux(read_project_file('assets/js/my-work.js'), 'Todo al día', 'empty work list explains the zero state');
-assert_contains_ux($main, 'request-card-detail-cta', 'user cards expose a text detail action');
-assert_contains_ux($main, "showFinished || currentQuickView === 'completed'", 'completed filter reveals completed cards directly');
+assert_contains_ux($main, 'request-card-detail-trigger', 'the request title opens its detail');
+assert_contains_ux($main, "showFinished || currentQuickView === 'completed'", 'completed filter reveals finished rows directly');
 assert_contains_ux($main, 'Creada hace', 'request age is explicitly labelled');
-assert_contains_ux($main, 'Responsable:', 'request ownership is explicitly labelled');
+assert_contains_ux($main, 'aria-label="Responsable"', 'request ownership is explicitly labelled');
 assert_contains_ux($main, 'prisma:notifications-updated', 'user activity summary reacts to notification state');
 assert_contains_ux($sidebarJs, 'prisma:notifications-updated', 'notification updates are shared with the dashboard');
 assert_contains_ux($styles, '.tasks-widget.is-clear', 'compact empty-task state has dedicated styles');
-assert_contains_ux($styles, '.request-card-detail-cta', 'text detail action has dedicated styles');
-assert_contains_ux($styles, 'min-height: 34px;', 'detail action has a comfortable hit area');
-assert_contains_ux($styles, 'margin-left: var(--sp-8);', 'detail action is visually separated from voting controls');
-assert_contains_ux($styles, '.request-card-detail-cta:focus-visible', 'detail action has a keyboard focus state');
+assert_contains_ux($styles, '.request-card-detail-trigger', 'the detail trigger has dedicated styles');
+assert_contains_ux($styles, '.request-card-detail-trigger:focus-visible', 'detail action has a keyboard focus state');
 
 assert_contains_ux($index, '<span>En curso</span>', 'status quick filter uses En curso');
 assert_contains_ux($index, '<span>Completadas</span>', 'completed quick filter uses consistent terminology');
