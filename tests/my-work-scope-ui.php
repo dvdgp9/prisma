@@ -33,72 +33,54 @@ function assert_file_contains($relativePath, $needles, $message)
     fwrite(STDOUT, "PASS: {$message}\n");
 }
 
-// --- index.php: el selector y el filtro por persona solo se pintan para quien puede verlos.
+// --- El filtro único se muestra solo a quienes pueden consultar el equipo.
 assert_file_contains('index.php', [
     "\$canSeeTeamWork = in_array(\$user['role'], ['programador', 'admin', 'superadmin'], true);",
-    '<?php if ($canSeeTeamWork): ?>',
-    'id="work-scope"',
-    'data-work-scope="mine"',
-    'data-work-scope="all"',
-    'aria-pressed="true"',
-    'Para mí',
-    'De todos',
+    'id="work-team"',
+    'id="work-team-cards"',
     'id="work-person"',
-    'id="my-work-sub"',
+    'Todo el equipo',
     'class="my-work-toolbar"',
-], 'index has the scope switch and the person filter for the team roles');
+], 'index has one people filter for the team roles');
 
 $index = read_project_file('index.php');
-$scopeAt = strpos($index, 'id="work-scope"');
-$guardAt = strrpos(substr($index, 0, (int) $scopeAt), '<?php if ($canSeeTeamWork): ?>');
-assert_true($scopeAt !== false && $guardAt !== false && $scopeAt - $guardAt < 300, 'the scope switch is inside the role check');
-$personAt = strpos($index, 'id="work-person"');
-$guardPersonAt = strrpos(substr($index, 0, (int) $personAt), '<?php if ($canSeeTeamWork): ?>');
-assert_true($personAt !== false && $guardPersonAt !== false && $personAt - $guardPersonAt < 400, 'the person filter is inside the role check');
+$teamAt = strpos($index, 'id="work-team"');
+$guardAt = strrpos(substr($index, 0, (int) $teamAt), '<?php if ($canSeeTeamWork): ?>');
+assert_true($teamAt !== false && $guardAt !== false && $teamAt - $guardAt < 130, 'the people filter is inside the role check');
+assert_true(strpos($index, 'id="work-scope"') === false, 'the separate scope switch was removed');
 
-// --- my-work.js
 assert_file_contains('assets/js/my-work.js', [
     "const MY_WORK_SCOPE_ROLES = ['programador', 'admin', 'superadmin'];",
     "localStorage.getItem('prisma_mywork_scope')",
-    "localStorage.setItem('prisma_mywork_scope'",
-    'function setMyWorkScope(',
-    'function canSeeTeamWork(',
+    'localStorage.setItem(myWorkPersonStorageKey(), person)',
+    'function setMyWorkPerson(',
+    "return this.person === document.body.dataset.userId ? 'mine' : 'all';",
     "'/api/tasks.php?completed=0&shared=0'",
     "'/api/tasks.php?completed=1&completed_days=30&shared=1'",
     "fetch('/api/task-shares.php')",
     'buildWorkItems(list.data, myWork.requests, viewer, scope)',
-    'workPeople(',
     'filterWorkItemsByPerson(',
-    'function renderMyWorkPeople(',
     'my-work-whom',
     'De ${escapeHtml(item.from)}',
     'Trabajo del equipo',
     'function myWorkTaskRecords(',
-], 'my-work.js switches scope, loads the team tasks and filters by person');
+], 'my-work.js remembers the person and reuses the personal and team scopes');
 
-$myWorkJs = read_project_file('assets/js/my-work.js');
-assert_true(substr_count($myWorkJs, 'try {') >= 4, 'filter and scope reads and writes in localStorage are guarded');
-assert_true(strpos($myWorkJs, "viewer.role === 'superadmin'") === false, 'superadmin no longer has its own rule in the rows (scope decides)');
-
-// --- work.css
 assert_file_contains('assets/css/work.css', [
-    '.work-scope',
-    '.work-scope-btn[aria-pressed="true"]',
-    '.work-scope-btn:focus-visible',
     '.my-work-toolbar',
     '.work-person',
     '.work-person select:focus-visible',
     '.my-work-whom',
-], 'work.css styles the scope switch, the toolbar, the person filter and the "for whom" label');
+], 'work.css styles the toolbar, the mobile person filter and the assignee label');
 
 // --- Versiones: la PWA cachea los assets.
 assert_file_contains('index.php', [
-    '/assets/css/work.css?v=8',
+    '/assets/css/work.css?v=9',
     '/assets/js/work-helpers.js?v=5',
-    '/assets/js/my-work.js?v=5',
+    '/assets/js/my-work.js?v=6',
     '/assets/js/task-parser.js?v=9',
 ], 'index loads the new versions of the work assets');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v58';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v59';"], 'service worker cache is bumped');
 
 foreach (['assets/js/my-work.js', 'assets/css/work.css', 'assets/js/work-helpers.js'] as $file) {
     $contents = read_project_file($file);

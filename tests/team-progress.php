@@ -122,7 +122,7 @@ assert_same(['hoy 12:40', 'ayer 18:05', 'vie 16 oct', '1 oct', '30 dic 2025', ''
 assert_file_contains('assets/js/my-work.js', [
     "/api/tasks.php?completed=1&completed_days=30&shared=1",
     "'prisma_mywork_done_period'",
-    'buildDoneItems(list.data, myWork.requests, viewer, doneSince(myWork.donePeriod, now))',
+    'buildDoneItems(teamList.data, myWork.requests, viewer, doneSince(myWork.donePeriod, now))',
     'teamSummary(',
     'function renderMyWorkTeam(',
     'function myWorkDoneGroupHtml(',
@@ -133,19 +133,19 @@ assert_file_contains('assets/js/my-work.js', [
 assert_file_contains('index.php', [
     'id="work-team"',
     'id="work-team-cards"',
-    'data-done-period="today"',
-    'data-done-period="7"',
-    'data-done-period="30"',
-    '/assets/css/team.css?v=1',
+    'id="work-done-period"',
+    '<option value="7" selected>',
+    '<option value="30">',
+    '/assets/css/team.css?v=2',
     '/assets/js/work-helpers.js?v=5',
-    '/assets/js/my-work.js?v=5',
+    '/assets/js/my-work.js?v=6',
 ], 'index has the team panel and loads the new files');
 
 assert_file_contains('assets/css/team.css', [
     '.work-team',
     '.work-team-card',
     '.work-team-card[aria-pressed="true"]',
-    '.work-period-btn',
+    '.work-period select',
     '.my-work-row--done',
 ], 'team panel styles');
 

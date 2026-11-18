@@ -1,9 +1,7 @@
 /**
  * Vista global "Mi trabajo": tareas y mejoras en una sola lista, agrupadas por
- * cuándo hay que hacerlas. "Para mí" enseña lo tuyo; "De todos" (programador,
- * admin y superadmin) todo lo que ves, con para quién es y filtro por persona,
- * y además es el panel de avance del equipo: una tarjeta por persona y "Hecho"
- * (lo completado hoy, en 7 o en 30 días, con quién y cuándo).
+ * cuándo hay que hacerlas. El filtro de personas elige el trabajo personal,
+ * el de todo el equipo, el de otra persona o las mejoras sin asignar.
  * El alcance, la agrupación y el orden viven en work-helpers.js (probados con
  * Node). De main.js usa: currentView, requests, unreadRequestIds, escapeHtml,
  * getPriorityLabel, showToast y openRequestDetailModal.
@@ -16,14 +14,10 @@ const MY_WORK_GROUP_LIMIT = 8; // filas visibles por grupo antes de "Ver N más"
 const MY_WORK_DONE_PERIODS = ['today', '7', '30']; // "Hecho" en "De todos" (7 por defecto, recordado)
 const MY_WORK_DONE_TITLES = { today: 'Hecho hoy', 7: 'Hecho en los últimos 7 días', 30: 'Hecho en los últimos 30 días' };
 
-const MY_WORK_SCOPE_TEXT = {
-    mine: { title: 'Mi trabajo', sub: 'Tus tareas y las mejoras que tienes asignadas' },
-    all: { title: 'Trabajo del equipo', sub: 'Todas las tareas que ves y todas las mejoras activas' }
-};
+const myWorkDateFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
 
 const myWork = {
-    // Tareas de cada alcance: "Para mí" pide las pendientes con shared=0; "De todos", shared=1 (incluye
-    // las de equipo) y también las completadas en los últimos 30 días, para "Hecho".
+    // La API personal y la de equipo tienen alcances distintos.
     lists: {
         mine: { data: null, loading: false, error: false }, // data null = todavía sin cargar
         all: { data: null, loading: false, error: false }
@@ -33,9 +27,11 @@ const myWork = {
     requests: [],          // copia de las mejoras cargadas en la Vista global
     requestsLoaded: false,
     requestsError: false,
-    scope: readMyWorkScope(),
     filter: readMyWorkFilter(),
-    person: 'all',         // filtro por persona de "De todos": 'all' | 'none' | id
+    person: readMyWorkPerson(),
+    get scope() {
+        return this.person === document.body.dataset.userId ? 'mine' : 'all';
+    },
     donePeriod: readMyWorkDonePeriod(), // periodo de "Hecho": 'today' | '7' | '30'
     personNames: {},       // nombres vistos, para no perder la opción elegida si se queda sin nada
     expanded: new Set(),   // grupos con "Ver más" abierto
@@ -47,70 +43,58 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.work-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => setMyWorkFilter(btn.dataset.workFilter));
     });
-    document.querySelectorAll('.work-scope-btn').forEach(btn => {
-        btn.addEventListener('click', () => setMyWorkScope(btn.dataset.workScope));
-    });
-    document.getElementById('work-person')?.addEventListener('change', e => {
-        myWork.person = e.target.value;
-        renderMyWork();
-    });
+    document.getElementById('work-person')?.addEventListener('change', e => setMyWorkPerson(e.target.value));
     document.getElementById('my-work-body')?.addEventListener('click', handleMyWorkClick);
-    document.querySelectorAll('.work-period-btn').forEach(btn => {
-        btn.addEventListener('click', () => setMyWorkDonePeriod(btn.dataset.donePeriod));
-    });
-    // Tarjeta de una persona: filtra por ella (otra vez, vuelve a todas).
+    const period = document.getElementById('work-done-period');
+    if (period) {
+        period.value = myWork.donePeriod;
+        period.addEventListener('change', e => setMyWorkDonePeriod(e.target.value));
+    }
     document.getElementById('work-team-cards')?.addEventListener('click', e => {
         const card = e.target.closest('.work-team-card');
-        if (!card) return;
-        myWork.person = myWork.person === card.dataset.person ? 'all' : card.dataset.person;
-        renderMyWork();
+        if (card) setMyWorkPerson(card.dataset.person);
     });
     syncMyWorkFilterButtons();
-    syncMyWorkScope();
+    syncMyWorkTitle();
 });
-
-// ========== Para mí | De todos (solo programador, admin y superadmin), recordado en el navegador ==========
 
 function canSeeTeamWork() {
     return MY_WORK_SCOPE_ROLES.includes(document.body.dataset.userRole);
 }
 
-function readMyWorkScope() {
-    if (!canSeeTeamWork()) return 'mine';
+function myWorkPersonStorageKey() {
+    return `prisma_mywork_person:${document.body.dataset.userId}`;
+}
+
+function readMyWorkPerson() {
+    const self = document.body.dataset.userId;
+    if (!canSeeTeamWork()) return self;
     try {
-        return localStorage.getItem('prisma_mywork_scope') === 'all' ? 'all' : 'mine';
+        const saved = localStorage.getItem(myWorkPersonStorageKey());
+        if (saved && /^(all|none|[1-9]\d*)$/.test(saved)) return saved;
+        return localStorage.getItem('prisma_mywork_scope') === 'all' ? 'all' : self;
     } catch (error) {
-        console.warn('Mi trabajo: no se pudo leer la vista guardada', error);
-        return 'mine';
+        console.warn('Mi trabajo: no se pudo leer la persona guardada', error);
+        return self;
     }
 }
 
-function setMyWorkScope(scope) {
-    if (!MY_WORK_SCOPES.includes(scope) || scope === myWork.scope || !canSeeTeamWork()) return;
-    myWork.scope = scope;
+function setMyWorkPerson(person) {
+    if (person === myWork.person || !canSeeTeamWork()) return;
+    myWork.person = person;
     try {
-        localStorage.setItem('prisma_mywork_scope', scope);
+        localStorage.setItem(myWorkPersonStorageKey(), person);
     } catch (error) {
-        console.warn('Mi trabajo: no se pudo recordar la vista', error);
+        console.warn('Mi trabajo: no se pudo recordar la persona', error);
     }
     closeMyWorkMenu();
-    syncMyWorkScope();
+    syncMyWorkTitle();
     loadMyWork();
 }
 
-function syncMyWorkScope() {
-    const text = MY_WORK_SCOPE_TEXT[myWork.scope];
+function syncMyWorkTitle() {
     const title = document.getElementById('my-work-title');
-    const sub = document.getElementById('my-work-sub');
-    if (title) title.textContent = text.title;
-    if (sub) sub.textContent = text.sub;
-    document.querySelectorAll('.work-scope-btn').forEach(btn => {
-        btn.setAttribute('aria-pressed', btn.dataset.workScope === myWork.scope ? 'true' : 'false');
-    });
-    const personWrap = document.getElementById('work-person-wrap');
-    if (personWrap) personWrap.hidden = myWork.scope !== 'all';
-    const team = document.getElementById('work-team');
-    if (team) team.hidden = myWork.scope !== 'all';
+    if (title) title.textContent = myWork.scope === 'mine' ? 'Mi trabajo' : 'Trabajo del equipo';
 }
 
 // ========== Periodo de "Hecho" (Hoy / 7 días / 30 días), recordado en el navegador ==========
@@ -172,21 +156,19 @@ function syncMyWorkFilterButtons() {
 
 // Al abrir la Vista global o cambiar de alcance; force = true tras crear una tarea desde esta página.
 function loadMyWork(forceTasks) {
-    const scope = myWork.scope;
-    if (forceTasks) {
-        // La lista del otro alcance se vuelve a pedir cuando se abra.
-        MY_WORK_SCOPES.filter(s => s !== scope && !myWork.lists[s].loading).forEach(s => { myWork.lists[s].data = null; });
+    const team = canSeeTeamWork();
+    for (const scope of team ? MY_WORK_SCOPES : ['mine']) {
+        const list = myWork.lists[scope];
+        if (forceTasks || (!list.loading && (list.error || list.data === null))) loadMyWorkTasks(scope);
     }
-    const list = myWork.lists[scope];
-    if (forceTasks || list.error || (list.data === null && !list.loading)) {
-        loadMyWorkTasks(scope);
-    }
-    if (scope === 'all') loadMyWorkMembers();
+    if (team) loadMyWorkMembers();
     renderMyWork();
 }
 
 async function loadMyWorkTasks(scope) {
     const list = myWork.lists[scope];
+    const request = Symbol();
+    list.request = request;
     list.loading = true;
     list.error = false;
     try {
@@ -195,8 +177,10 @@ async function loadMyWorkTasks(scope) {
             : '/api/tasks.php?completed=0&shared=0');
         const data = await res.json();
         if (!data.success) throw new Error(`${res.status} ${data.error}`);
+        if (list.request !== request) return;
         list.data = data.data;
     } catch (error) {
+        if (list.request !== request) return;
         console.error('Mi trabajo: error cargando tareas', scope, error);
         list.error = true;
     }
@@ -249,8 +233,24 @@ function renderMyWork(update) {
     const body = document.getElementById('my-work-body');
     if (!body || typeof currentView === 'undefined' || currentView !== 'home') return;
 
+    const team = canSeeTeamWork();
     const scope = myWork.scope;
     const list = myWork.lists[scope];
+    const teamList = myWork.lists.all;
+    const viewer = { id: Number(document.body.dataset.userId), role: document.body.dataset.userRole, members: myWork.members || [] };
+    const now = new Date();
+    let done = [];
+
+    if (team) {
+        const teamItems = buildWorkItems(teamList.data, myWork.requests, viewer, 'all');
+        const doneAll = buildDoneItems(teamList.data, myWork.requests, viewer, doneSince(myWork.donePeriod, now));
+        const mine = myWork.lists.mine;
+        const myItems = mine.data === null ? null : buildWorkItems(mine.data, myWork.requests, viewer, 'mine');
+        renderMyWorkTeam(teamItems, doneAll, myItems, viewer, now);
+        done = filterWorkItemsByPerson(doneAll, myWork.person)
+            .filter(item => myWork.filter === 'all' || item.type === myWork.filter);
+    }
+
     if (list.error || myWork.requestsError) {
         body.removeAttribute('aria-busy');
         body.innerHTML = myWorkMessageHtml('iconoir-warning-circle', scope === 'all' ? 'No se pudo cargar el trabajo del equipo' : 'No se pudo cargar tu trabajo',
@@ -265,19 +265,8 @@ function renderMyWork(update) {
     }
     body.removeAttribute('aria-busy');
 
-    const viewer = { id: Number(document.body.dataset.userId), role: document.body.dataset.userRole, members: myWork.members || [] };
-    const now = new Date();
     let items = buildWorkItems(list.data, myWork.requests, viewer, scope);
-    let done = [];
-    if (scope === 'all') {
-        // Panel del equipo: tarjetas con todo lo de cada persona (antes del filtro) y "Hecho" filtrado como la lista.
-        const doneAll = buildDoneItems(list.data, myWork.requests, viewer, doneSince(myWork.donePeriod, now));
-        renderMyWorkTeam(teamSummary(items, doneAll, viewer, now));
-        renderMyWorkPeople(workPeople(items, viewer));
-        items = filterWorkItemsByPerson(items, myWork.person);
-        done = filterWorkItemsByPerson(doneAll, myWork.person)
-            .filter(item => myWork.filter === 'all' || item.type === myWork.filter);
-    }
+    if (scope === 'all') items = filterWorkItemsByPerson(items, myWork.person);
     myWork.items = items;
     const counts = countWorkItems(items);
     MY_WORK_FILTERS.forEach(key => {
@@ -289,7 +278,7 @@ function renderMyWork(update) {
     body.innerHTML = (groups.length
         ? groups.map(group => myWorkGroupHtml(group)).join('')
         : myWorkEmptyHtml())
-        + (scope === 'all' ? myWorkDoneGroupHtml(done, now) : '');
+        + (team && teamList.data !== null ? myWorkDoneGroupHtml(done, now) : '');
 
     // Las tareas que te han asignado y ya se ven en pantalla cuentan como vistas (no las de "Ver más" cerrado).
     if (typeof markTasksSeen === 'function') {
@@ -298,58 +287,61 @@ function renderMyWork(update) {
     }
 }
 
-/**
- * Opciones del filtro por persona ("De todos"): todas, tú, el resto por nombre y "Sin asignar".
- * Si la persona elegida se queda sin nada, su opción sigue (con 0) para que el filtro no salte.
- */
-function renderMyWorkPeople({ people, unassigned }) {
-    const select = document.getElementById('work-person');
-    if (!select) return;
-
-    people.forEach(person => { myWork.personNames[person.key] = person.label; });
-    const options = [{ value: 'all', label: 'Todas las personas' }]
-        .concat(people.map(person => ({ value: person.key, label: `${person.label} (${person.count})` })));
-    if (unassigned > 0 || myWork.person === 'none') options.push({ value: 'none', label: `Sin asignar (${unassigned})` });
-    if (!options.some(option => option.value === myWork.person)) {
-        options.push({ value: myWork.person, label: `${myWork.personNames[myWork.person] || 'Persona'} (0)` });
-    }
-
-    const html = options.map(option => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`).join('');
-    if (select.dataset.options !== html) { // sin cambios no se toca (el desplegable puede estar abierto)
-        select.innerHTML = html;
-        select.dataset.options = html;
-    }
-    select.value = myWork.person;
-    select.closest('.work-person')?.classList.toggle('is-filtered', myWork.person !== 'all');
-}
-
-// Tarjetas del equipo ("De todos"): pendientes, atrasadas y hechas en el periodo. La activa filtra.
-function renderMyWorkTeam(cards) {
+function renderMyWorkTeam(items, done, mine, viewer, now) {
     const list = document.getElementById('work-team-cards');
-    if (!list) return;
-    document.querySelectorAll('.work-period-btn').forEach(btn => {
-        btn.setAttribute('aria-pressed', btn.dataset.donePeriod === myWork.donePeriod ? 'true' : 'false');
-    });
+    const select = document.getElementById('work-person');
+    if (!list || !select) return;
 
-    const plural = (n, one, many) => `<strong>${n}</strong> ${n === 1 ? one : many}`;
-    const html = cards.length
-        ? cards.map(card => {
-            const active = myWork.person === card.key;
-            const label = escapeHtml(card.label);
-            return `
-                <button type="button" class="work-team-card" data-person="${escapeHtml(card.key)}" aria-pressed="${active ? 'true' : 'false'}"
-                        title="${active ? 'Ver todas las personas' : `Ver solo el trabajo de ${label}`}">
-                    <span class="work-team-name">${label}</span>
-                    <span class="work-team-stat">${plural(card.pending, 'pendiente', 'pendientes')}</span>
-                    ${card.overdue ? `<span class="work-team-stat is-overdue">${plural(card.overdue, 'atrasada', 'atrasadas')}</span>` : ''}
-                    <span class="work-team-stat is-done"><i class="iconoir-check" aria-hidden="true"></i>${plural(card.done, 'hecha', 'hechas')}</span>
-                </button>`;
-        }).join('')
-        : '<p class="work-team-empty">Nadie tiene trabajo pendiente ni hecho en este periodo.</p>';
-    if (list.dataset.html !== html) { // sin cambios no se toca (mantiene el foco del teclado)
+    const totals = (key, label, openItems, doneItems) => ({
+        key, label, pending: openItems.length, done: doneItems.length,
+        overdue: groupWorkItems(openItems, now, 'all').find(group => group.key === 'overdue')?.items.length || 0
+    });
+    const self = String(viewer.id);
+    const people = teamSummary(items, done, viewer, now);
+    const ownCard = totals(self, 'Tú', mine || filterWorkItemsByPerson(items, self), filterWorkItemsByPerson(done, self));
+    const cards = [
+        totals('all', 'Todo el equipo', items, done),
+        ownCard,
+        ...people.filter(card => card.key !== self),
+        totals('none', 'Sin asignar', filterWorkItemsByPerson(items, 'none'), filterWorkItemsByPerson(done, 'none'))
+    ];
+    people.forEach(person => { myWork.personNames[person.key] = person.label; });
+    for (const member of viewer.members) {
+        myWork.personNames[String(member.id)] ||= member.full_name || member.username;
+    }
+    if (!cards.some(card => card.key === myWork.person)) {
+        const label = myWork.personNames[myWork.person] || 'Persona seleccionada';
+        cards.splice(-1, 0, totals(myWork.person, label, [], []));
+    }
+
+    const statsHtml = card => {
+        const plural = (n, one, many) => `<strong>${n}</strong> ${n === 1 ? one : many}`;
+        return [
+            `<span class="work-team-stat">${plural(card.pending, 'pendiente', 'pendientes')}</span>`,
+            card.overdue ? `<span class="work-team-stat is-overdue">${plural(card.overdue, 'atrasada', 'atrasadas')}</span>` : '',
+            `<span class="work-team-stat is-done">${plural(card.done, 'hecha', 'hechas')}</span>`
+        ].filter(Boolean).join('<span class="work-team-separator" aria-hidden="true">·</span>');
+    };
+    const html = cards.map(card => `
+        <button type="button" class="work-team-card" data-person="${escapeHtml(card.key)}" aria-pressed="${card.key === myWork.person}">
+            <span class="work-team-name">${escapeHtml(card.label)}</span>
+            <span class="work-team-stats">${statsHtml(card)}</span>
+        </button>`).join('');
+    if (list.dataset.html !== html) {
+        const focused = list.contains(document.activeElement) ? document.activeElement.dataset.person : null;
         list.innerHTML = html;
         list.dataset.html = html;
+        if (focused) Array.from(list.children).find(button => button.dataset.person === focused)?.focus({ preventScroll: true });
     }
+
+    const options = cards.map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(card.label)}</option>`).join('');
+    if (select.dataset.options !== options) {
+        select.innerHTML = options;
+        select.dataset.options = options;
+    }
+    select.value = myWork.person;
+    select.closest('.work-person').classList.toggle('is-filtered', myWork.person !== 'all');
+    document.getElementById('work-person-stats').innerHTML = statsHtml(cards.find(card => card.key === myWork.person));
 }
 
 // "Hecho": lo completado en el periodo, con quién y cuándo (más reciente primero).
@@ -374,7 +366,7 @@ function myWorkDoneGroupHtml(items, now) {
 
 function myWorkDoneRowHtml(item, now) {
     const isTask = item.type === 'task';
-    const meta = [`<span class="my-work-kind">${isTask ? 'Tarea' : 'Mejora'}</span>`];
+    const meta = [];
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
     meta.push(`<span class="my-work-whom" title="${escapeHtml(item.whoTitle)}"><i class="iconoir-user" aria-hidden="true"></i>${escapeHtml(item.whoLabel)}</span>`);
 
@@ -384,8 +376,8 @@ function myWorkDoneRowHtml(item, now) {
             <div class="my-work-row my-work-row--done" data-type="${item.type}" data-id="${item.id}">
                 <span class="my-work-done-icon" aria-hidden="true"><i class="iconoir-check"></i></span>
                 <a class="my-work-link" href="${href}">
-                    <span class="my-work-row-title">${escapeHtml(item.title)}</span>
-                    <span class="my-work-meta">${meta.join('')}</span>
+                    <span class="my-work-row-title"><span class="visually-hidden">${isTask ? 'Tarea' : 'Mejora'}. </span>${escapeHtml(item.title)}</span>
+                    ${meta.length ? `<span class="my-work-meta">${meta.join('')}</span>` : ''}
                 </a>
                 <span class="my-work-side">
                     <time class="my-work-done-when" datetime="${escapeHtml(item.doneAt.replace(' ', 'T'))}">${escapeHtml(doneWhenLabel(item.doneAt, now))}</time>
@@ -423,10 +415,14 @@ function myWorkRowHtml(item, groupKey) {
     // Urgencia: la API pide permiso de editar la mejora (programador, admin y superadmin).
     const canSetPriority = !isTask && item.raw.capabilities?.edit === true;
     const due = requestDueInfo(item.dueDate);
+    const date = parseDueDate(item.dueDate);
+    const dateLabel = groupKey === 'overdue' && date
+        ? (date.getFullYear() === new Date().getFullYear() ? myWorkDateFormatter.format(date) : date.toLocaleDateString('es-ES', { dateStyle: 'medium' }))
+        : due.label;
     const unread = !isTask && typeof unreadRequestIds !== 'undefined' && unreadRequestIds.has(item.id);
     const viewerId = Number(document.body.dataset.userId);
 
-    const meta = [`<span class="my-work-kind">${isTask ? 'Tarea' : 'Mejora'}</span>`];
+    const meta = [];
     // Te la han asignado y es la primera vez que la ves.
     if (isTask && taskIsNewForMe(item.raw, viewerId)) meta.push('<span class="my-work-new" title="Te la acaban de asignar">Nueva</span>');
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
@@ -467,11 +463,11 @@ function myWorkRowHtml(item, groupKey) {
     if (canPlan) {
         dateControl = `
             <button type="button" class="request-due is-${due.tone} my-work-date-btn${item.dueDate ? '' : ' is-empty'}" data-action="date"
-                    aria-haspopup="menu" aria-expanded="false" title="${item.dueDate ? 'Cambiar la fecha' : 'Poner fecha'}">
-                <i class="iconoir-calendar" aria-hidden="true"></i><span>${escapeHtml(item.dueDate ? due.label : 'Fecha')}</span>
+                    aria-haspopup="menu" aria-expanded="false" aria-label="${date ? `Cambiar fecha. ${escapeHtml(due.label)}` : 'Poner fecha'}" title="${item.dueDate ? 'Cambiar la fecha' : 'Poner fecha'}">
+                <i class="iconoir-calendar" aria-hidden="true"></i><span>${groupKey === 'today' ? '' : escapeHtml(date ? dateLabel : 'Fecha')}</span>
             </button>`;
     } else if (item.dueDate && groupKey !== 'today') { // sin permiso: solo se muestra (en "Hoy" sobra)
-        dateControl = `<span class="request-due is-${due.tone}">${escapeHtml(due.label)}</span>`;
+        dateControl = `<span class="request-due is-${due.tone}">${escapeHtml(dateLabel)}</span>`;
     }
 
     const href = isTask ? `/tasks.php?task=${item.id}` : `/index.php?open_request=${item.id}`;
@@ -480,8 +476,8 @@ function myWorkRowHtml(item, groupKey) {
             <div class="my-work-row my-work-row--${item.type}" data-type="${item.type}" data-id="${item.id}">
                 ${lead}
                 <a class="my-work-link" href="${href}">
-                    <span class="my-work-row-title">${escapeHtml(item.title)}</span>
-                    <span class="my-work-meta">${meta.join('')}</span>
+                    <span class="my-work-row-title"><span class="visually-hidden">${isTask ? 'Tarea' : 'Mejora'}. </span>${escapeHtml(item.title)}</span>
+                    ${meta.length ? `<span class="my-work-meta">${meta.join('')}</span>` : ''}
                 </a>
                 <span class="my-work-side">
                     ${priorityControl}
@@ -496,7 +492,7 @@ function myWorkEmptyHtml() {
 
     // "De todos" con una persona elegida: se dice de quién y se ofrece volver a todas.
     if (myWork.scope === 'all' && myWork.person !== 'all') {
-        const showAll = '<button type="button" class="btn btn-secondary btn-sm" data-action="person-all">Ver todas las personas</button>';
+        const showAll = '<button type="button" class="btn btn-secondary btn-sm" data-action="person-all">Ver todo el equipo</button>';
         if (myWork.person === 'none') {
             return myWorkMessageHtml('iconoir-check-circle', 'No hay mejoras sin asignar', 'Todas las mejoras activas tienen a alguien.', showAll);
         }
@@ -575,8 +571,8 @@ function handleMyWorkClick(e) {
                 myWork.expanded.delete(group);
                 break;
             case 'person-all':
-                myWork.person = 'all';
-                break;
+                setMyWorkPerson('all');
+                return;
             case 'retry':
                 if (myWork.lists[myWork.scope].error) loadMyWorkTasks(myWork.scope);
                 if (myWork.requestsError) {

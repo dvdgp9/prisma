@@ -139,7 +139,7 @@ button.request-due.is-interactive:focus-visible,
 
 .my-work {
     margin-bottom: var(--sp-24);
-    padding: var(--sp-20) var(--sp-24) var(--sp-16);
+    padding: var(--sp-12) var(--sp-16);
     background: var(--surface);
     border: 1px solid var(--ink-200);
     border-radius: var(--r-12);
@@ -149,7 +149,7 @@ button.request-due.is-interactive:focus-visible,
 .my-work-head {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: var(--sp-12) var(--sp-16);
     margin-bottom: var(--sp-4);
@@ -163,74 +163,13 @@ button.request-due.is-interactive:focus-visible,
     letter-spacing: -0.01em;
 }
 
-.my-work-sub {
-    margin: var(--sp-2) 0 0;
-    color: var(--ink-500);
-    font-size: var(--fs-13);
-}
-
-/* Para mí | De todos: el control principal de la sección, con el acento de marca */
-.work-scope {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 3px;
-    border: 1px solid var(--ink-200);
-    border-radius: var(--r-8);
-    background: var(--surface);
-}
-
-.work-scope-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-6);
-    height: 30px;
-    padding: 0 var(--sp-12);
-    border: 0;
-    border-radius: var(--r-6);
-    background: transparent;
-    color: var(--ink-600);
-    font-family: var(--font-sans);
-    font-size: var(--fs-13);
-    font-weight: var(--fw-medium);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-
-.work-scope-btn > i {
-    font-size: var(--fs-15);
-}
-
-.work-scope-btn:hover {
-    color: var(--ink-950);
-    background: var(--ink-50);
-}
-
-.work-scope-btn[aria-pressed="true"] {
-    background: var(--brand-soft);
-    color: var(--brand-ink);
-    font-weight: var(--fw-semibold);
-}
-
-.work-scope-btn:active {
-    transform: scale(0.98);
-}
-
-.work-scope-btn:focus-visible {
-    outline: none;
-    box-shadow: var(--shadow-focus);
-}
-
-/* Debajo del título: qué ver (Todo / Tareas / Mejoras) y, en "De todos", de quién */
 .my-work-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-8) var(--sp-12);
-    margin-top: var(--sp-12);
+    margin-top: var(--sp-8);
 }
 
 .work-person {
@@ -352,7 +291,7 @@ button.request-due.is-interactive:focus-visible,
 
 /* Grupos */
 .my-work-group {
-    margin-top: var(--sp-16);
+    margin-top: var(--sp-10);
 }
 
 .my-work-group-head {
@@ -360,7 +299,7 @@ button.request-due.is-interactive:focus-visible,
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--sp-4) var(--sp-8);
-    padding: 0 var(--sp-10) var(--sp-6);
+    padding: 0 var(--sp-10) var(--sp-4);
 }
 
 .my-work-group-title {
@@ -399,8 +338,8 @@ button.request-due.is-interactive:focus-visible,
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--sp-12);
-    padding: var(--sp-8) var(--sp-10);
+    gap: var(--sp-8);
+    padding: var(--sp-4) var(--sp-10);
     border-radius: var(--r-8);
     color: inherit;
     text-decoration: none;
@@ -417,14 +356,8 @@ button.request-due.is-interactive:focus-visible,
     width: 28px;
     height: 28px;
     border-radius: var(--r-8);
-    background: var(--ink-100);
     color: var(--ink-600);
     font-size: var(--fs-15);
-}
-
-.my-work-row--request .my-work-icon {
-    background: var(--brand-soft);
-    color: var(--brand-ink);
 }
 
 .my-work-link {
@@ -448,14 +381,9 @@ button.request-due.is-interactive:focus-visible,
 .my-work-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--sp-2) var(--sp-10);
+    gap: 0 var(--sp-8);
     color: var(--ink-500);
     font-size: var(--fs-12);
-}
-
-.my-work-kind {
-    color: var(--ink-600);
-    font-weight: var(--fw-medium);
 }
 
 .my-work-progress,
@@ -515,7 +443,7 @@ button.request-due.is-interactive:focus-visible,
     color: #2B7A56;
 }
 
-.my-work-meta .visually-hidden {
+.my-work-link .visually-hidden {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -530,6 +458,16 @@ button.request-due.is-interactive:focus-visible,
     flex-shrink: 0;
     align-items: center;
     gap: var(--sp-6);
+}
+
+/* Mantiene las fechas alineadas y visibles en cada grupo. */
+.my-work-group--overdue .my-work-side .request-due {
+    min-width: 86px;
+    justify-content: center;
+}
+
+.my-work-group--today .my-work-date-btn > span:empty {
+    display: none;
 }
 
 .my-work-more {
@@ -861,18 +799,11 @@ button.my-work-priority[aria-expanded="true"] {
         padding: var(--sp-16) var(--sp-12) var(--sp-12);
     }
 
-    .my-work-head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .work-filter,
-    .work-scope {
+    .work-filter {
         display: flex;
     }
 
-    .work-filter-btn,
-    .work-scope-btn {
+    .work-filter-btn {
         flex: 1;
         padding: 0 var(--sp-8);
     }
@@ -888,7 +819,7 @@ button.my-work-priority[aria-expanded="true"] {
 
     .my-work-row {
         grid-template-columns: 28px minmax(0, 1fr);
-        row-gap: var(--sp-6);
+        row-gap: var(--sp-2);
     }
 
     .my-work-side {
@@ -908,7 +839,6 @@ button.my-work-priority[aria-expanded="true"] {
 @media (prefers-reduced-motion: reduce) {
     .my-work-row,
     .work-filter-btn,
-    .work-scope-btn,
     .work-person select,
     .my-work-check,
     button.my-work-date-btn,
@@ -916,8 +846,7 @@ button.my-work-priority[aria-expanded="true"] {
         transition: none;
     }
 
-    .my-work-check:active,
-    .work-scope-btn:active {
+    .my-work-check:active {
         transform: none;
     }
 }

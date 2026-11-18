@@ -41,8 +41,7 @@ assert_file_contains('index.php', [
     'id="work-count-all"',
     'id="work-count-task"',
     'id="work-count-request"',
-    'Tus tareas y las mejoras que tienes asignadas', // "Para mí"; "De todos" cambia el texto desde my-work.js (plan PT3)
-    '/assets/js/my-work.js?v=5',
+    '/assets/js/my-work.js?v=6',
 ], 'overview has the unified work list with its filter');
 
 $index = read_project_file('index.php');
@@ -61,7 +60,6 @@ assert_file_contains('assets/js/my-work.js', [
     'function setMyWorkFilter(',
     "'/api/tasks.php?completed=0&shared=0'", // "Para mí": pendientes; "De todos" (avance del equipo) añade las completadas en 30 días
     "'/api/tasks.php?completed=1&completed_days=30&shared=1'",
-    'Todas las tareas que ves y todas las mejoras activas',
     'buildWorkItems(',
     'groupWorkItems(',
     'countWorkItems(',
