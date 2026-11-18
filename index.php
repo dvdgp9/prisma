@@ -21,7 +21,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/tokens.css?v=2.7">
     <link rel="stylesheet" href="/assets/css/styles.css?v=5.4">
-    <link rel="stylesheet" href="/assets/css/work.css?v=7">
+    <link rel="stylesheet" href="/assets/css/work.css?v=8">
     <link rel="stylesheet" href="/assets/css/team.css?v=1">
     <link rel="stylesheet" href="/assets/css/request-quick-add.css?v=1">
 </head>
@@ -44,7 +44,7 @@ $company_name = $user['company_name'] ?? '';
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="content-header content-header--workspace">
+            <div class="content-header content-header--workspace improvements-header">
                 <h1 class="page-title" id="page-title">Vista global</h1>
                 <?php include __DIR__ . '/includes/workspace-tools.php'; ?>
                 <div class="actions">
@@ -52,7 +52,7 @@ $company_name = $user['company_name'] ?? '';
                         <i class="iconoir-download"></i>
                         Exportar
                     </button>
-                    <button class="btn btn-primary" onclick="openNewRequestModal()">
+                    <button type="button" class="btn btn-primary" id="request-quick-toggle" onclick="toggleQuickRequestForm()" aria-controls="request-quick-form" aria-expanded="false">
                         <i class="iconoir-plus"></i>
                         Nueva Mejora
                     </button>
@@ -137,7 +137,9 @@ $company_name = $user['company_name'] ?? '';
             </div>
 
             <!-- App Info Section (visible only when viewing specific app) -->
-            <div class="app-info-section" id="app-info-section" style="display: none;">
+            <details class="app-info-section" id="app-info-section" style="display: none;">
+                <summary><i class="iconoir-folder" aria-hidden="true"></i> <span id="app-resources-label">Recursos</span> <span id="app-resources-count"></span></summary>
+                <div class="app-resources-body">
                 <!-- Notes Section - Prominent, below app name -->
                 <div class="app-notes-section" id="app-notes-section">
                     <div class="app-notes-display" id="app-notes-display">
@@ -180,11 +182,12 @@ $company_name = $user['company_name'] ?? '';
                         </div>
                     </div>
                 </div>
-            </div>
+                </div>
+            </details>
 
             <!-- Listado de mejoras (Mejoras, apps y empresas); oculto en la Vista global -->
             <div class="requests-area" id="requests-area">
-            <form class="request-quick-add" id="request-quick-form" aria-labelledby="request-quick-label">
+            <form class="request-quick-add" id="request-quick-form" hidden aria-labelledby="request-quick-label">
                 <label class="request-quick-label" id="request-quick-label" for="request-quick-input">Añadir mejora</label>
                 <textarea id="request-quick-input" rows="1" placeholder="Qué hay que mejorar… @app +nombre mañana prioridad alta" aria-describedby="request-quick-help request-quick-error" autocomplete="off"></textarea>
                 <div class="request-quick-chips" id="request-quick-chips" aria-label="Datos detectados" hidden></div>
@@ -207,7 +210,7 @@ $company_name = $user['company_name'] ?? '';
                     <p>Las siguientes líneas son la descripción. Usa « :: » para empezarla en la misma línea, «- [ ] Paso» para el checklist, «Solicitante: Nombre» y «Email: correo@ejemplo.com» para quien la pide. Quitar un dato detectado conserva ese texto. En Más opciones puedes revisar todo y adjuntar archivos.</p>
                 </details>
             </form>
-            <div class="requests-toolbar-shell is-advanced" id="requests-toolbar-shell">
+            <div class="requests-toolbar-shell" id="requests-toolbar-shell">
                 <div class="sorting-bar" id="sorting-bar">
                     <div class="sorting-controls">
                         <div class="sort-group sort-group-search">
@@ -218,14 +221,56 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                         </div>
 
+                    </div>
+                </div>
+
+                <div class="quick-views-bar" id="quick-views-bar">
+                    <div class="quick-views-primary" role="tablist" aria-label="Filtro rápido por estado">
+                        <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
+                            <i class="iconoir-view-grid"></i>
+                            <span>Todas</span><span class="request-filter-count" id="summary-visible-count"></span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
+                            <i class="iconoir-pause"></i>
+                            <span>Pendientes</span><span class="request-filter-count" id="summary-pending-count"></span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
+                            <i class="iconoir-play"></i>
+                            <span>En curso</span><span class="request-filter-count" id="summary-in-progress-count"></span>
+                        </button>
+                        <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
+                            <i class="iconoir-check-circle"></i>
+                            <span>Completadas</span><span class="request-filter-count" id="summary-completed-count"></span>
+                        </button>
+                    </div>
+
+                        <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
+                            <i class="iconoir-user-badge-check"></i>
+                            <span>Mis asignadas</span><span class="request-filter-count" id="summary-assigned-count"></span>
+                        </button>
+
+                    <div class="view-toggle-group" id="view-toggle-group">
+                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)" title="Vista lista" aria-label="Vista lista">
+                            <i class="iconoir-list"></i>
+                            <span>Lista</span>
+                        </button>
+                        <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)" title="Vista tabla" aria-label="Vista tabla">
+                            <i class="iconoir-table-rows"></i>
+                            <span>Tabla</span>
+                        </button>
+                    </div>
+                </div>
+                <details class="requests-advanced" id="requests-advanced">
+                    <summary>Filtros y orden <span id="requests-advanced-active" hidden>· Activos</span></summary>
+                    <div class="request-advanced-controls">
                         <div class="sort-group sort-group-order sort-group-primary">
                             <label class="sort-label" for="sort-primary">Ordenar por</label>
-                            <select id="sort-primary" onchange="loadRequests()" class="sort-select">
+                            <select id="sort-primary" onchange="saveRequestSort()" class="sort-select">
                                 <option value="votes">Votos</option>
                                 <option value="priority">Prioridad</option>
                                 <option value="difficulty">Dificultad</option>
                                 <option value="status">Estado</option>
-                                <option value="due_date">Fecha objetivo</option>
+                                <option value="due_date" selected>Fecha objetivo</option>
                                 <option value="date">Fecha (nueva)</option>
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
@@ -233,7 +278,7 @@ $company_name = $user['company_name'] ?? '';
 
                         <div class="sort-group sort-group-order sort-group-secondary">
                             <label class="sort-label" for="sort-secondary">Luego por</label>
-                            <select id="sort-secondary" onchange="loadRequests()" class="sort-select">
+                            <select id="sort-secondary" onchange="saveRequestSort()" class="sort-select">
                                 <option value="">Ninguno</option>
                                 <option value="votes">Votos</option>
                                 <option value="priority" selected>Prioridad</option>
@@ -247,53 +292,26 @@ $company_name = $user['company_name'] ?? '';
 
                         <div class="sort-group sort-group-order sort-group-tertiary">
                             <label class="sort-label" for="sort-tertiary">Finalmente por</label>
-                            <select id="sort-tertiary" onchange="loadRequests()" class="sort-select">
+                            <select id="sort-tertiary" onchange="saveRequestSort()" class="sort-select">
                                 <option value="">Ninguno</option>
                                 <option value="votes">Votos</option>
                                 <option value="priority">Prioridad</option>
                                 <option value="difficulty">Dificultad</option>
                                 <option value="status">Estado</option>
                                 <option value="due_date">Fecha objetivo</option>
-                                <option value="date" selected>Fecha (nueva)</option>
+                                <option value="date">Fecha (nueva)</option>
                                 <option value="date_asc">Fecha (antigua)</option>
                             </select>
                         </div>
-
                     </div>
-                </div>
-
-                <div class="quick-views-bar" id="quick-views-bar">
-                    <div class="quick-views-primary" role="tablist" aria-label="Filtro rápido por estado">
-                        <button type="button" class="quick-view-chip active" data-quick-view="all" onclick="setQuickView('all', event)">
-                            <i class="iconoir-view-grid"></i>
-                            <span>Todas</span>
-                        </button>
-                        <button type="button" class="quick-view-chip" data-quick-view="pending" onclick="setQuickView('pending', event)">
-                            <i class="iconoir-pause"></i>
-                            <span>Pendientes</span>
-                        </button>
-                        <button type="button" class="quick-view-chip" data-quick-view="in_progress" onclick="setQuickView('in_progress', event)">
-                            <i class="iconoir-play"></i>
-                            <span>En curso</span>
-                        </button>
-                        <button type="button" class="quick-view-chip" data-quick-view="completed" onclick="setQuickView('completed', event)">
-                            <i class="iconoir-check-circle"></i>
-                            <span>Completadas</span>
-                        </button>
-                    </div>
-
-                    <div class="quick-views-secondary" aria-label="Filtros adicionales">
-                        <button type="button" class="quick-view-chip" data-quick-view="mine" onclick="setQuickView('mine', event)">
-                            <i class="iconoir-user-badge-check"></i>
-                            <span>Mis asignadas</span>
-                        </button>
+                    <div class="request-advanced-controls">
                         <button type="button" class="quick-view-chip" data-quick-view="unassigned" onclick="setQuickView('unassigned', event)">
                             <i class="iconoir-user-xmark"></i>
-                            <span>Sin asignar</span>
+                            <span>Sin asignar</span><span class="request-filter-count" id="summary-unassigned-count"></span>
                         </button>
                         <button type="button" class="quick-view-chip" data-quick-view="commented" onclick="setQuickView('commented', event)">
                             <i class="iconoir-chat-bubble"></i>
-                            <span>Con comentarios</span>
+                            <span>Con comentarios</span><span class="request-filter-count" id="summary-commented-count"></span>
                         </button>
                         <div class="assignee-filter-field">
                             <label for="assignee-filter">Asignada a</label>
@@ -306,56 +324,13 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                         </div>
                     </div>
-
-                    <div class="view-toggle-group" id="view-toggle-group">
-                        <button type="button" class="view-toggle-btn active" data-view-mode="cards" onclick="setRequestsViewMode('cards', event)" title="Vista lista" aria-label="Vista lista">
-                            <i class="iconoir-list"></i>
-                            <span>Lista</span>
-                        </button>
-                        <button type="button" class="view-toggle-btn" data-view-mode="table" onclick="setRequestsViewMode('table', event)" title="Vista tabla" aria-label="Vista tabla">
-                            <i class="iconoir-table-rows"></i>
-                            <span>Tabla</span>
-                        </button>
+                    <?php if ($user['role'] === 'user'): ?>
+                    <div class="request-advanced-counts">
+                        <span>Con actividad · <strong id="summary-activity-count"></strong></span>
+                        <span>Completadas recientes · <strong id="summary-recent-completed-count"></strong></span>
                     </div>
-                </div>
-            </div>
-
-            <div class="requests-summary-bar" id="requests-summary-bar">
-                <?php if ($user['role'] === 'user'): ?>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Asignadas a mí</span>
-                    <strong class="summary-stat-value" id="summary-assigned-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Con actividad nueva</span>
-                    <strong class="summary-stat-value" id="summary-activity-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">En curso</span>
-                    <strong class="summary-stat-value" id="summary-in-progress-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Completadas recientes</span>
-                    <strong class="summary-stat-value" id="summary-recent-completed-count">0</strong>
-                </div>
-                <?php else: ?>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Visibles</span>
-                    <strong class="summary-stat-value" id="summary-visible-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">En curso</span>
-                    <strong class="summary-stat-value" id="summary-in-progress-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Pendientes</span>
-                    <strong class="summary-stat-value" id="summary-pending-count">0</strong>
-                </div>
-                <div class="summary-stat-card">
-                    <span class="summary-stat-label">Sin asignar</span>
-                    <strong class="summary-stat-value" id="summary-unassigned-count">0</strong>
-                </div>
-                <?php endif; ?>
+                    <?php endif; ?>
+                </details>
             </div>
 
             <!-- Compact request list -->
@@ -491,20 +466,24 @@ $company_name = $user['company_name'] ?? '';
     </div>
 
     <!-- Edit Request Modal (Admin/Superadmin) -->
-    <div class="modal" id="edit-request-modal">
+    <div class="modal" id="edit-request-modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
         <div class="modal-content modal-wide" id="request-modal-content">
             <div class="modal-header">
-                <div class="modal-header-left">
-                    <i class="iconoir-edit-pencil modal-header-icon" id="request-modal-icon"></i>
-                    <h3 class="modal-title" id="request-modal-title">Editar Petición</h3>
-                    <span class="request-modal-mode" id="request-modal-mode" hidden>Colaboración</span>
-                    <span class="modal-request-id" id="edit-request-id-display"></span>
+                <div class="request-detail-heading">
+                    <div class="request-detail-context">
+                        <span id="edit-request-app"></span>
+                        <span id="edit-request-id-display"></span>
+                        <span class="request-modal-mode" id="request-modal-mode" hidden>Colaboración</span>
+                    </div>
+                    <h3 class="modal-title" id="request-modal-title">Detalle de mejora</h3>
                 </div>
                 <button type="button" class="assistant-context-open" data-assistant-open><i class="iconoir-sparks" aria-hidden="true"></i><span class="assistant-context-open-long">Preguntar sobre esta mejora</span><span class="assistant-context-open-short" aria-hidden="true">Preguntar</span></button>
-                <button class="close-modal" onclick="closeModal('edit-request-modal')">
+                <button type="button" class="close-modal" aria-label="Cerrar detalle" onclick="closeModal('edit-request-modal')">
                     <i class="iconoir-xmark"></i>
                 </button>
             </div>
+
+            <p class="request-detail-loading" id="request-detail-loading" role="status" hidden>Cargando detalle…</p>
 
             <!-- Property bar: estado, prioridad, dificultad, asignados y metadatos.
                  Controles con guardado inmediato (fuera del form). Render por JS. -->
@@ -514,7 +493,7 @@ $company_name = $user['company_name'] ?? '';
                 <input type="hidden" id="edit-request-id">
 
                 <div class="modal-column-main">
-                        <div class="form-group">
+                        <div class="form-group" id="edit-request-title-group">
                             <label for="edit-request-title">
                                 <i class="iconoir-text"></i> Título *
                             </label>
@@ -550,28 +529,6 @@ $company_name = $user['company_name'] ?? '';
                             </div>
                         </div>
 
-                        <!-- Attachments section -->
-                        <div class="form-group">
-                            <div class="attachments-header">
-                                <label>
-                                    <i class="iconoir-attachment"></i> Archivos adjuntos
-                                </label>
-                                <span id="edit-attachment-count" class="badge-count-inline"></span>
-                            </div>
-                            
-                            <!-- Upload area in edit modal -->
-                            <div class="file-upload-area file-upload-area--compact" id="edit-file-upload-area">
-                                <i class="iconoir-cloud-upload"></i>
-                                <p>Haz clic o arrastra para añadir más archivos</p>
-                                <input type="file" id="edit-file-input" style="display: none;" multiple>
-                            </div>
-
-                            <div id="edit-attachments-list" class="attachments-grid">
-                                <!-- Attachments will be loaded here -->
-                            </div>
-                        </div>
-
-                        <!-- Comments section -->
                         <div class="comments-section">
                             <div class="attachments-header">
                                 <label>
@@ -603,39 +560,57 @@ $company_name = $user['company_name'] ?? '';
                                 <!-- Checklist items loaded dynamically -->
                             </div>
 
-                            <div class="attachments-header comments-header">
-                                <label>
-                                    <i class="iconoir-chat-bubble"></i> Comentarios
-                                </label>
-                                <span id="edit-comments-count" class="badge-count-inline"></span>
-                                <button type="button" id="comments-summary-btn" class="comments-summary-btn" onclick="summarizeComments()" hidden>
-                                    <i class="iconoir-sparks"></i> <span>Resumir</span>
-                                </button>
-                            </div>
+                            <details class="request-detail-section" id="edit-comments-section">
+                                <summary><i class="iconoir-chat-bubble" aria-hidden="true"></i> Comentarios <span id="edit-comments-count" class="badge-count-inline"></span></summary>
+                                <div class="comments-header">
+                                        <button type="button" id="comments-summary-btn" class="comments-summary-btn" onclick="summarizeComments()" hidden>
+                                            <i class="iconoir-sparks"></i> <span>Resumir</span>
+                                        </button>
+                                </div>
 
-                            <div id="comments-summary-card" class="comments-summary-card" hidden>
-                                <div class="comments-summary-header">
-                                    <span class="comments-summary-title"><i class="iconoir-sparks"></i> Resumen IA</span>
-                                    <button type="button" class="comments-summary-close" onclick="closeCommentsSummary()" aria-label="Cerrar resumen">
-                                        <i class="iconoir-xmark"></i>
+                                <div id="comments-summary-card" class="comments-summary-card" hidden>
+                                    <div class="comments-summary-header">
+                                        <span class="comments-summary-title"><i class="iconoir-sparks"></i> Resumen IA</span>
+                                        <button type="button" class="comments-summary-close" onclick="closeCommentsSummary()" aria-label="Cerrar resumen">
+                                            <i class="iconoir-xmark"></i>
+                                        </button>
+                                    </div>
+                                    <div id="comments-summary-body" class="comments-summary-body"></div>
+                                    <p class="comments-summary-disclaimer">Generado con IA · puede contener errores</p>
+                                </div>
+
+                                <div id="edit-comments-list" class="comments-list">
+                                    <!-- Comments will be loaded here -->
+                                </div>
+
+                                <div class="comment-input-wrapper" style="position: relative;">
+                                    <textarea id="edit-comment-input" class="comment-input" placeholder="Escribe un comentario... Usa @usuario para mencionar" rows="2"></textarea>
+                                    <div id="edit-mentions-dropdown" class="mentions-dropdown" style="display: none;"></div>
+                                    <button type="button" class="comment-submit-btn" onclick="submitComment(document.getElementById('edit-request-id').value)">
+                                        <i class="iconoir-send"></i>
                                     </button>
                                 </div>
-                                <div id="comments-summary-body" class="comments-summary-body"></div>
-                                <p class="comments-summary-disclaimer">Generado con IA · puede contener errores</p>
+                            </details>
+                        </div>
+
+                        <!-- Attachments section -->
+                        <details class="form-group request-detail-section" id="edit-attachments-section">
+                            <summary>
+                                <i class="iconoir-attachment" aria-hidden="true"></i> Archivos adjuntos
+                                <span id="edit-attachment-count" class="badge-count-inline"></span>
+                            </summary>
+
+                            <!-- Upload area in edit modal -->
+                            <div class="file-upload-area file-upload-area--compact" id="edit-file-upload-area">
+                                <i class="iconoir-cloud-upload"></i>
+                                <p>Haz clic o arrastra para añadir más archivos</p>
+                                <input type="file" id="edit-file-input" style="display: none;" multiple>
                             </div>
 
-                            <div id="edit-comments-list" class="comments-list">
-                                <!-- Comments will be loaded here -->
+                            <div id="edit-attachments-list" class="attachments-grid">
+                                <!-- Attachments will be loaded here -->
                             </div>
-                            
-                            <div class="comment-input-wrapper" style="position: relative;">
-                                <textarea id="edit-comment-input" class="comment-input" placeholder="Escribe un comentario... Usa @usuario para mencionar" rows="2"></textarea>
-                                <div id="edit-mentions-dropdown" class="mentions-dropdown" style="display: none;"></div>
-                                <button type="button" class="comment-submit-btn" onclick="submitComment(document.getElementById('edit-request-id').value)">
-                                    <i class="iconoir-send"></i>
-                                </button>
-                            </div>
-                        </div>
+                        </details>
                 </div>
 
                 <div class="modal-footer">
@@ -1039,12 +1014,12 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/file-viewer.js?v=1"></script>
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=5"></script>
-    <script src="/assets/js/main.js?v=5.9"></script>
+    <script src="/assets/js/main.js?v=5.10"></script>
     <script src="/assets/js/my-work.js?v=5"></script>
     <script src="/assets/js/request-create-helpers.js?v=1"></script>
     <script src="/assets/js/request-create.js?v=2"></script>
     <script src="/assets/js/request-parser.js?v=1"></script>
-    <script src="/assets/js/request-quick-add.js?v=1"></script>
+    <script src="/assets/js/request-quick-add.js?v=2"></script>
     <?php if (has_role('admin')): ?>
         <script src="/assets/js/pending-approvals.js?v=2"></script>
     <?php endif; ?>

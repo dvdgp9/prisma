@@ -32,8 +32,8 @@ $sidebarJs = read_project_file('assets/js/sidebar.js');
 $pwa = read_project_file('assets/js/pwa.js');
 $styles = read_project_file('assets/css/styles.css');
 
-assert_contains_ux($index, 'class="requests-toolbar-shell is-advanced"', 'advanced filters are expanded by default');
-assert_not_contains_ux($index, 'id="toolbar-more-btn"', 'the redundant more-filters toggle is removed');
+assert_contains_ux($index, '<details class="requests-advanced" id="requests-advanced">', 'advanced filters are collapsed by default');
+assert_contains_ux($index, 'id="request-quick-form" hidden', 'quick creation starts collapsed');
 assert_contains_ux($index, '<span>Mis asignadas</span>', 'my assignments remains directly visible');
 assert_contains_ux($index, 'Buscar por título, descripción o aplicación', 'user search copy does not promise requester data');
 assert_contains_ux($index, 'id="summary-assigned-count"', 'user summary includes assigned improvements');

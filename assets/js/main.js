@@ -13,6 +13,10 @@ let selectedAssigneeId = null;
 let unreadRequestIds = new Set();
 let currentChecklistItems = [];
 let currentModalRequest = null;
+let requestDetailVersion = 0;
+let requestsLoadVersion = 0;
+const requestSortDefaults = { primary: 'due_date', secondary: 'priority', tertiary: '' };
+const requestSortStorageKey = 'prisma_requests_sort';
 let currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
 let currentRequestsViewMode = localStorage.getItem('prisma_requests_view_mode') || 'cards';
 let currentTableSort = {
@@ -32,7 +36,7 @@ window.addEventListener('prisma:notifications-updated', (event) => {
     );
 
     if (requests.length > 0) {
-        updateRequestsSummary(getFilteredRequests());
+        updateRequestsSummary();
         if (typeof renderMyWork === 'function') renderMyWork();
     }
 });
@@ -60,6 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         currentView = 'mejoras';
         document.getElementById('page-title').textContent = 'Mejoras';
     }
+    restoreRequestSort();
     updateViewLayout();
 
     if (urlParams.get('profile') === '1') openProfileModal();
@@ -93,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Open request from notification link
     if (openRequestId) {
-        setTimeout(() => openRequestDetailModal(parseInt(openRequestId)), 500);
+        openRequestDetailModal(parseInt(openRequestId, 10));
     }
 
     setupAppFilesUpload();
@@ -122,6 +127,7 @@ function setTableSort(field) {
         currentTableSort.direction = 'asc';
     }
 
+    storeRequestSort();
     if (currentRequestsViewMode === 'table') {
         renderRequests();
     }
@@ -180,9 +186,12 @@ function sortRequestsForTable(requestsToSort) {
                 bValue = parseInt(b.comment_count || 0, 10);
                 break;
             case 'due_date':
-                // Sin fecha al final (en orden ascendente)
-                aValue = a.due_date || '9999-12-31';
-                bValue = b.due_date || '9999-12-31';
+                if (!a.due_date !== !b.due_date) return a.due_date ? -1 : 1;
+                if (a.due_date === b.due_date || (!a.due_date && !b.due_date)) {
+                    return (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
+                }
+                aValue = a.due_date;
+                bValue = b.due_date;
                 break;
             case 'checklist': {
                 const aChecklist = getChecklistProgress(a);
@@ -262,6 +271,7 @@ function getTableStatusBadgeMarkup(request, canEdit) {
 }
 
 async function loadChecklistItems(requestId) {
+    const version = requestDetailVersion;
     const countEl = document.getElementById('edit-checklist-count');
     const progressText = document.getElementById('edit-checklist-progress-text');
     const progressFill = document.getElementById('edit-checklist-progress-fill');
@@ -269,7 +279,9 @@ async function loadChecklistItems(requestId) {
     try {
         const response = await fetch(`/api/request-checklist.php?request_id=${requestId}`);
         const data = await response.json();
+        if (version !== requestDetailVersion || Number(currentModalRequest?.id) !== Number(requestId)) return;
 
+        if (!response.ok || !data.success) throw new Error(data.error || response.statusText);
         if (data.success) {
             currentChecklistItems = data.data || [];
             renderChecklistItems();
@@ -290,6 +302,9 @@ async function loadChecklistItems(requestId) {
             }
         }
     } catch (error) {
+        if (version === requestDetailVersion && Number(currentModalRequest?.id) === Number(requestId)) {
+            document.getElementById('edit-checklist-list').textContent = 'No se pudo cargar esta sección.';
+        }
         console.error('Error loading checklist:', error);
     }
 }
@@ -744,26 +759,33 @@ function computeRequestsSummary(list) {
     };
 }
 
-function updateRequestsSummary(filteredRequests) {
-    const summary = computeRequestsSummary(filteredRequests);
-    const setCount = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
+function updateRequestsSummary() {
+    const summary = computeRequestsSummary(requests);
+    const counts = {
+        visible: requests.length,
+        pending: summary.pending,
+        'in-progress': summary.inProgress,
+        completed: requests.filter(request => request.status === 'completed').length,
+        assigned: requests.filter(request => (request.assignments || []).some(
+            assignment => Number(assignment.id) === Number(document.body.dataset.userId)
+        )).length,
+        unassigned: requests.filter(request => !(request.assignments || []).length).length,
+        commented: requests.filter(request => Number(request.comment_count) > 0).length,
+        activity: summary.activity,
+        'recent-completed': summary.recentCompleted
     };
 
-    setCount('summary-in-progress-count', summary.inProgress);
-
-    if (userRole === 'user') {
-        setCount('summary-assigned-count', summary.assigned);
-        setCount('summary-activity-count', summary.activity);
-        setCount('summary-recent-completed-count', summary.recentCompleted);
-        return;
+    for (const [key, value] of Object.entries(counts)) {
+        const count = document.getElementById(`summary-${key}-count`);
+        if (count) count.textContent = value;
     }
 
-    setCount('summary-visible-count', summary.visible);
-    setCount('summary-pending-count', summary.pending);
-    setCount('summary-unassigned-count', summary.unassigned);
-    setCount('summary-commented-count', summary.commented);
+    const indicator = document.getElementById('requests-advanced-active');
+    if (indicator) {
+        const customSort = Object.entries(getRequestSort()).some(([level, value]) => value !== requestSortDefaults[level]);
+        const tableSort = currentRequestsViewMode === 'table' && currentTableSort.field;
+        indicator.hidden = !(customSort || tableSort || selectedAssigneeId !== null || ['unassigned', 'commented'].includes(currentQuickView));
+    }
 }
 
 function getRelativeAge(dateString) {
@@ -1194,6 +1216,7 @@ function loadView(type, entityId = null, sourceEvent = null) {
             loadAppResources();
         } else {
             appInfoSection.style.display = 'none';
+            delete appInfoSection.dataset.scope;
         }
     }
 
@@ -1277,12 +1300,62 @@ function renderNotesWidget() {
     }).join('');
 }
 
+function getRequestSort() {
+    return Object.fromEntries(Object.entries(requestSortDefaults).map(([level, fallback]) => [
+        level, document.getElementById(`sort-${level}`)?.value ?? fallback
+    ]));
+}
+
+function restoreRequestSort() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(requestSortStorageKey));
+        const table = saved?.table;
+        if (table && ['asc', 'desc'].includes(table.direction) && Array.from(
+            document.querySelectorAll('#requests-table [data-sort-field]')
+        ).some(header => header.dataset.sortField === table.field)) {
+            currentTableSort = table;
+        }
+        for (const level of Object.keys(requestSortDefaults)) {
+            const select = document.getElementById(`sort-${level}`);
+            if (select && Array.from(select.options).some(option => option.value === saved?.[level])) {
+                select.value = saved[level];
+            }
+        }
+    } catch (error) {
+        console.warn('Unable to restore request sort:', error);
+    }
+}
+
+function storeRequestSort() {
+    try {
+        localStorage.setItem(requestSortStorageKey, JSON.stringify({ ...getRequestSort(), table: currentTableSort }));
+    } catch (error) {
+        console.warn('Unable to save request sort:', error);
+    }
+}
+
+function saveRequestSort() {
+    currentTableSort.field = null;
+    storeRequestSort();
+    loadRequests();
+}
+
+function toggleQuickRequestForm() {
+    if (currentView === 'home' || currentView === 'pending') {
+        openNewRequestModal();
+        return;
+    }
+    const form = document.getElementById('request-quick-form');
+    form.hidden = !form.hidden;
+    document.getElementById('request-quick-toggle').setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) document.getElementById('request-quick-input').focus();
+}
+
 // Load requests with multi-level sorting and filters
 async function loadRequests() {
+    const loadVersion = ++requestsLoadVersion;
     try {
-        const sortPrimary = document.getElementById('sort-primary')?.value || 'votes';
-        const sortSecondary = document.getElementById('sort-secondary')?.value || '';
-        const sortTertiary = document.getElementById('sort-tertiary')?.value || '';
+        const { primary: sortPrimary, secondary: sortSecondary, tertiary: sortTertiary } = getRequestSort();
         const priority = document.getElementById('priority-filter')?.value || '';
         const status = document.getElementById('status-filter')?.value || '';
         const difficulty = document.getElementById('difficulty-filter')?.value || '';
@@ -1314,6 +1387,8 @@ async function loadRequests() {
         const response = await fetch(url);
         const data = await response.json();
 
+        if (loadVersion !== requestsLoadVersion) return;
+
         if (data.success) {
             requests = data.data;
             populateAssigneeFilter();
@@ -1344,7 +1419,7 @@ function renderRequests() {
     );
     const revealFinishedRequests = showFinished || currentQuickView === 'completed';
 
-    updateRequestsSummary(filteredRequests);
+    updateRequestsSummary();
     syncRequestsViewModeUI();
 
     if (filteredRequests.length === 0) {
@@ -1909,6 +1984,9 @@ function closeModal(modalId) {
         resetNewRequestModal();
     }
     if (modalId === 'edit-request-modal') {
+        document.getElementById(modalId).classList.remove('is-loading');
+        requestDetailVersion++;
+        currentModalRequest = null;
         currentRequestCapabilities = { view: false, comment: false, checklist: false, edit: false, delete: false };
         currentChecklistItems = [];
         const checklistInput = document.getElementById('edit-checklist-input');
@@ -2020,8 +2098,6 @@ function configureRequestModalMode(request) {
     const canEdit = currentRequestCapabilities.edit;
     const canManageChecklist = currentRequestCapabilities.checklist;
     const modalContent = document.getElementById('request-modal-content');
-    const modalTitle = document.getElementById('request-modal-title');
-    const modalIcon = document.getElementById('request-modal-icon');
     const modeLabel = document.getElementById('request-modal-mode');
     const titleField = document.getElementById('edit-request-title');
     const descriptionField = document.getElementById('edit-request-description');
@@ -2032,8 +2108,8 @@ function configureRequestModalMode(request) {
     const closeButton = document.getElementById('edit-request-close');
 
     modalContent?.classList.toggle('request-modal--readonly', !canEdit);
-    if (modalTitle) modalTitle.textContent = canEdit ? 'Editar petición' : 'Detalle de petición';
-    if (modalIcon) modalIcon.className = `${canEdit ? 'iconoir-edit-pencil' : 'iconoir-eye'} modal-header-icon`;
+    document.getElementById('edit-request-title-group').hidden = !canEdit;
+    document.querySelector('#edit-request-modal .comment-input-wrapper').hidden = !currentRequestCapabilities.comment;
     if (modeLabel) {
         modeLabel.hidden = canEdit;
         modeLabel.textContent = 'Colaboración';
@@ -2049,84 +2125,97 @@ function configureRequestModalMode(request) {
 
 // Open the shared request modal in view or edit mode from backend capabilities.
 async function openRequestDetailModal(requestId) {
+    const version = ++requestDetailVersion;
+    const modal = document.getElementById('edit-request-modal');
+    const form = document.getElementById('edit-request-form');
+    const meta = document.getElementById('edit-request-meta-bar');
+    const loading = document.getElementById('request-detail-loading');
+    const assistant = modal.querySelector('[data-assistant-open]');
+    const renderHeading = request => {
+        const app = request?.app_name || apps.find(app => Number(app.id) === Number(request?.app_id))?.name;
+        document.getElementById('request-modal-title').textContent = request?.title || 'Detalle de mejora';
+        document.getElementById('edit-request-app').textContent = app || '';
+        document.getElementById('edit-request-id-display').textContent = `#${requestId}`;
+    };
+
+    currentModalRequest = null;
+    form.hidden = meta.hidden = assistant.hidden = true;
+    loading.hidden = false;
+    document.getElementById('edit-request-id').value = '';
+    document.getElementById('request-modal-mode').hidden = true;
+    renderHeading(findRequestById(requestId));
+    modal.classList.add('active', 'is-loading');
+    modal.querySelector('.close-modal').focus();
+
     try {
-        const response = await fetch(`/api/requests.php?id=${requestId}`);
+        const response = await fetch(`/api/requests.php?id=${encodeURIComponent(requestId)}`);
         const data = await response.json();
+        if (version !== requestDetailVersion) return;
+        const request = data.data?.[0];
+        if (!response.ok || !data.success || !request) throw new Error('Detalle no disponible');
 
-        if (response.ok && data.success && data.data.length > 0) {
-            const request = data.data[0];
-            configureRequestModalMode(request);
+        currentModalRequest = request;
+        window.currentRequestAppId = request.app_id;
+        currentComments = [];
+        currentChecklistItems = [];
+        mentionableUsers = [];
+        window.currentAssignments = (request.assignments || []).map(({ id, username, full_name }) => ({ id, username, full_name }));
 
-            // Populate form
-            document.getElementById('edit-request-id').value = request.id;
-            const idDisplay = document.getElementById('edit-request-id-display');
-            if (idDisplay) idDisplay.textContent = `#${request.id}`;
-            document.getElementById('edit-request-title').value = request.title;
-            document.getElementById('edit-request-description').value = request.description || '';
+        renderHeading(request);
+        configureRequestModalMode(request);
+        document.getElementById('edit-request-id').value = request.id;
+        document.getElementById('edit-request-title').value = request.title;
+        document.getElementById('edit-request-description').value = request.description || '';
+        document.getElementById('edit-request-requester-name').value = request.requester_name || '';
+        document.getElementById('edit-request-requester-email').value = request.requester_email || '';
+        document.getElementById('edit-requester-section').classList.remove('active');
+        updateRequesterDot('edit');
 
-            // Store the request so the meta bar controls can update it in place
-            currentModalRequest = request;
-
-            // Store current request's app_id for "Complete and Schedule" flow
-            window.currentRequestAppId = request.app_id;
-
-            // Set requester info if available
-            const requesterNameField = document.getElementById('edit-request-requester-name');
-            const requesterEmailField = document.getElementById('edit-request-requester-email');
-            if (requesterNameField) requesterNameField.value = request.requester_name || '';
-            if (requesterEmailField) requesterEmailField.value = request.requester_email || '';
-
-            // Update requester dot; el bloque queda colapsado por defecto (uso puntual).
-            // El punto indica si hay datos sin obligar a desplegarlo.
-            updateRequesterDot('edit');
-            const editRequesterSection = document.getElementById('edit-requester-section');
-            if (editRequesterSection) editRequesterSection.classList.remove('active');
-
-            // Load attachments
-            await loadRequestAttachments(requestId);
-
-            // Load checklist
-            await loadChecklistItems(requestId);
-
-            // Load comments
-            await loadComments(requestId);
-
-            // Store current assignments for the meta bar (immediate-save)
-            window.currentAssignments = (request.assignments || []).map(a => ({
-                id: a.id,
-                username: a.username,
-                full_name: a.full_name
-            }));
-
-            // Render the property bar (status, priority, difficulty, assignees, facts)
-            renderRequestMetaBar(request);
-
-            // Update read-only facts (creada por / creada / última actividad)
-            updateEditRequestSummary(request);
-
-            // Setup mentions autocomplete
-            const commentInput = document.getElementById('edit-comment-input');
-            const mentionsDropdown = document.getElementById('edit-mentions-dropdown');
-            if (commentInput && mentionsDropdown) {
-                await loadMentionableUsers(requestId);
-                setupMentionsAutocomplete(commentInput, mentionsDropdown);
-            }
-
-            // Open modal
-            document.getElementById('edit-request-modal').classList.add('active');
-        } else {
-            console.error('Request detail unavailable:', data.error || response.statusText);
-            showToast({
-                title: 'No se pudo abrir',
-                message: data.error || 'La petición no existe o ya no tienes acceso.',
-                icon: 'iconoir-warning-triangle'
-            }, 'toast-discarded');
+        for (const section of ['attachments', 'comments']) {
+            document.getElementById(`edit-${section}-section`).open = false;
         }
+        for (const [section, count] of [
+            ['attachments', request.attachment_count], ['comments', request.comment_count], ['checklist', request.checklist_count]
+        ]) {
+            document.getElementById(`edit-${section}-list`).textContent = 'Cargando…';
+            const countId = section === 'attachments' ? 'attachment' : section;
+            document.getElementById(`edit-${countId}-count`).textContent = Number(count) || '';
+        }
+        document.getElementById('edit-checklist-progress-text').textContent = '—';
+        document.getElementById('edit-checklist-progress-fill').style.width = '0%';
+        document.getElementById('edit-checklist-input').value = '';
+        document.getElementById('edit-checklist-error').hidden = true;
+        const summaryButton = document.getElementById('comments-summary-btn');
+        summaryButton.hidden = true;
+        summaryButton.disabled = false;
+        summaryButton.classList.remove('is-loading');
+        summaryButton.querySelector('span').textContent = 'Resumir';
+        document.getElementById('comments-summary-card').hidden = true;
+
+        const commentInput = document.getElementById('edit-comment-input');
+        const mentionsDropdown = document.getElementById('edit-mentions-dropdown');
+        commentInput.value = '';
+        hideMentionsDropdown(mentionsDropdown);
+        if (currentRequestCapabilities.comment) setupMentionsAutocomplete(commentInput, mentionsDropdown);
+
+        renderRequestMetaBar(request);
+        loading.hidden = true;
+        form.hidden = meta.hidden = assistant.hidden = false;
+        modal.classList.remove('is-loading');
+
+        await Promise.all([
+            loadChecklistItems(requestId),
+            loadRequestAttachments(requestId),
+            loadComments(requestId),
+            currentRequestCapabilities.comment ? loadMentionableUsers(requestId) : null
+        ]);
     } catch (error) {
+        if (version !== requestDetailVersion) return;
         console.error('Error loading request:', error);
+        closeModal('edit-request-modal');
         showToast({
-            title: 'Error de conexión',
-            message: 'No se pudo cargar el detalle de la petición.',
+            title: 'No se pudo abrir la mejora',
+            message: 'Comprueba la conexión o vuelve a abrirla desde la lista.',
             icon: 'iconoir-warning-triangle'
         }, 'toast-discarded');
     }
@@ -2139,6 +2228,7 @@ function openEditRequestModal(requestId) {
 
 // Load attachments for a request
 async function loadRequestAttachments(requestId) {
+    const version = requestDetailVersion;
     const container = document.getElementById('edit-attachments-list');
     const countEl = document.getElementById('edit-attachment-count');
     
@@ -2147,7 +2237,9 @@ async function loadRequestAttachments(requestId) {
     try {
         const response = await fetch(`/api/attachments.php?request_id=${requestId}`);
         const data = await response.json();
+        if (version !== requestDetailVersion || Number(currentModalRequest?.id) !== Number(requestId)) return;
         
+        if (!response.ok || !data.success) throw new Error(data.error || response.statusText);
         if (data.success) {
             const attachments = data.data;
             
@@ -2173,8 +2265,10 @@ async function loadRequestAttachments(requestId) {
             }
         }
     } catch (error) {
+        if (version === requestDetailVersion && Number(currentModalRequest?.id) === Number(requestId)) {
+            document.getElementById('edit-attachments-list').textContent = 'No se pudo cargar esta sección.';
+        }
         console.error('Error loading attachments:', error);
-        container.innerHTML = '<p class="text-muted text-small">Error al cargar archivos</p>';
     }
 }
 
@@ -2867,13 +2961,24 @@ async function loadAppResources() {
     }
     
     section.style.display = 'block';
+    const name = document.getElementById('page-title').textContent;
+    const label = document.getElementById('app-resources-label');
+    const scope = `${currentView}:${currentAppId}:${currentCompanyId}`;
+    if (section.dataset.scope !== scope) {
+        section.open = false;
+        section.dataset.scope = scope;
+        appResourcesData = { files: [], links: [], notes: [] };
+    }
+    label.textContent = `Recursos de ${name}`;
+    updateAppResourceCount();
     updateResourceActionsVisibility();
     
-    // Load files
-    await loadAppFiles();
-    
-    // Load links and notes
-    await loadAppLinksAndNotes();
+    await Promise.all([loadAppFiles(), loadAppLinksAndNotes()]);
+}
+
+function updateAppResourceCount() {
+    const count = Object.values(appResourcesData).reduce((total, items) => total + items.length, 0);
+    document.getElementById('app-resources-count').textContent = count ? `· ${count}` : '';
 }
 
 // Load app files (compact chips)
@@ -2883,14 +2988,19 @@ async function loadAppFiles() {
     if ((!currentAppId && !currentCompanyId) || !list) return;
     
     try {
+        const section = document.getElementById('app-info-section');
+        const scope = section.dataset.scope;
         const query = currentView === 'company' && currentCompanyId
             ? `company_id=${currentCompanyId}`
             : `app_id=${currentAppId}`;
         const response = await fetch(`/api/app-files.php?${query}`);
         const data = await response.json();
         
+        if (scope !== section.dataset.scope) return;
+
         if (data.success) {
             appResourcesData.files = data.data;
+            updateAppResourceCount();
             const files = data.data;
             
             if (files.length === 0) {
@@ -2977,12 +3087,16 @@ async function loadAppLinksAndNotes() {
     if (!currentAppId && !currentCompanyId) return;
     
     try {
+        const section = document.getElementById('app-info-section');
+        const scope = section.dataset.scope;
         const query = currentView === 'company' && currentCompanyId
             ? `company_id=${currentCompanyId}`
             : `app_id=${currentAppId}`;
         const response = await fetch(`/api/app-resources.php?${query}`);
         const data = await response.json();
         
+        if (scope !== section.dataset.scope) return;
+
         if (data.success) {
             const resources = data.data;
             const links = resources.filter(r => r.type === 'link');
@@ -2990,6 +3104,7 @@ async function loadAppLinksAndNotes() {
             
             appResourcesData.links = links;
             appResourcesData.notes = notes;
+            updateAppResourceCount();
             
             // Update links count
             if (linksCount) {
@@ -3438,11 +3553,13 @@ async function loadAvailableUsers() {
 }
 
 async function loadMentionableUsers(requestId) {
+    const version = requestDetailVersion;
     mentionableUsers = [];
 
     try {
         const response = await fetch(`/api/users-list.php?request_id=${encodeURIComponent(requestId)}`);
         const data = await response.json();
+        if (version !== requestDetailVersion || Number(currentModalRequest?.id) !== Number(requestId)) return;
         if (response.ok && data.success) {
             mentionableUsers = data.data;
         } else {
@@ -3532,15 +3649,21 @@ async function quickAssignUser(requestId, userId, name) {
 let currentComments = [];
 
 async function loadComments(requestId) {
+    const version = requestDetailVersion;
     try {
         const response = await fetch(`/api/comments.php?request_id=${requestId}`);
         const data = await response.json();
+        if (version !== requestDetailVersion || Number(currentModalRequest?.id) !== Number(requestId)) return;
         
+        if (!response.ok || !data.success) throw new Error(data.error || response.statusText);
         if (data.success) {
             currentComments = data.data;
             renderComments(requestId);
         }
     } catch (error) {
+        if (version === requestDetailVersion && Number(currentModalRequest?.id) === Number(requestId)) {
+            document.getElementById('edit-comments-list').textContent = 'No se pudo cargar esta sección.';
+        }
         console.error('Error loading comments:', error);
     }
 }
@@ -3614,6 +3737,7 @@ function renderComments(requestId) {
 let aiSummaryRequestId = null;
 
 async function summarizeComments() {
+    const version = requestDetailVersion;
     const requestId = parseInt(document.getElementById('edit-request-id').value, 10);
     const btn = document.getElementById('comments-summary-btn');
     const card = document.getElementById('comments-summary-card');
@@ -3632,6 +3756,7 @@ async function summarizeComments() {
             body: JSON.stringify({ request_id: requestId })
         });
         const data = await response.json();
+        if (version !== requestDetailVersion) return;
 
         if (data.success && Array.isArray(data.data?.points)) {
             body.innerHTML = `<ul>${data.data.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`;
@@ -3641,6 +3766,7 @@ async function summarizeComments() {
             card.classList.add('has-error');
         }
     } catch (error) {
+        if (version !== requestDetailVersion) return;
         console.error('Error generating AI summary:', error);
         body.innerHTML = '<p class="comments-summary-error">No se pudo conectar con el servidor. Vuelve a intentarlo.</p>';
         card.classList.add('has-error');

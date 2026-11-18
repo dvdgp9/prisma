@@ -49,13 +49,14 @@ function setupQuickRequest() {
 function syncQuickRequestContext() {
     const form = quickRequestEl('form');
     if (!form) return;
-    form.hidden = currentView === 'home' || currentView === 'pending';
     const context = `${currentView}:${currentAppId}:${currentCompanyId}`;
     const scopedApps = currentView === 'company'
         ? apps.filter(app => Number(app.company_id) === Number(currentCompanyId))
         : apps;
     if (context !== quickRequestContext) {
         quickRequestContext = context;
+        form.hidden = true;
+        document.getElementById('request-quick-toggle')?.setAttribute('aria-expanded', 'false');
         quickRequestFallbackAppId = null;
     }
     if (!quickRequestFallbackAppId) {
