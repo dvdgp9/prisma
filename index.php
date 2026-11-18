@@ -1003,7 +1003,7 @@ $company_name = $user['company_name'] ?? '';
     <script src="/assets/js/notes-helpers.js?v=1"></script>
     <script src="/assets/js/work-helpers.js?v=5"></script>
     <script src="/assets/js/main.js?v=5.10"></script>
-    <script src="/assets/js/my-work.js?v=6"></script>
+    <script src="/assets/js/my-work.js?v=7"></script>
     <script src="/assets/js/request-create-helpers.js?v=1"></script>
     <script src="/assets/js/request-create.js?v=2"></script>
     <script src="/assets/js/request-parser.js?v=1"></script>

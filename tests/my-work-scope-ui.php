@@ -77,10 +77,10 @@ assert_file_contains('assets/css/work.css', [
 assert_file_contains('index.php', [
     '/assets/css/work.css?v=9',
     '/assets/js/work-helpers.js?v=5',
-    '/assets/js/my-work.js?v=6',
+    '/assets/js/my-work.js?v=7',
     '/assets/js/task-parser.js?v=9',
 ], 'index loads the new versions of the work assets');
-assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v59';"], 'service worker cache is bumped');
+assert_file_contains('sw.js', ["const CACHE_NAME = 'prisma-v60';"], 'service worker cache is bumped');
 
 foreach (['assets/js/my-work.js', 'assets/css/work.css', 'assets/js/work-helpers.js'] as $file) {
     $contents = read_project_file($file);

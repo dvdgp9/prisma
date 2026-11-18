@@ -41,7 +41,7 @@ assert_file_contains('index.php', [
     'id="work-count-all"',
     'id="work-count-task"',
     'id="work-count-request"',
-    '/assets/js/my-work.js?v=6',
+    '/assets/js/my-work.js?v=7',
 ], 'overview has the unified work list with its filter');
 
 $index = read_project_file('index.php');

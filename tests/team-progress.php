@@ -138,7 +138,7 @@ assert_file_contains('index.php', [
     '<option value="30">',
     '/assets/css/team.css?v=2',
     '/assets/js/work-helpers.js?v=5',
-    '/assets/js/my-work.js?v=6',
+    '/assets/js/my-work.js?v=7',
 ], 'index has the team panel and loads the new files');
 
 assert_file_contains('assets/css/team.css', [

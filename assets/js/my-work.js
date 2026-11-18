@@ -368,7 +368,9 @@ function myWorkDoneRowHtml(item, now) {
     const isTask = item.type === 'task';
     const meta = [];
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
-    meta.push(`<span class="my-work-whom" title="${escapeHtml(item.whoTitle)}"><i class="iconoir-user" aria-hidden="true"></i>${escapeHtml(item.whoLabel)}</span>`);
+    if (myWork.person === 'all' || item.doneBy) {
+        meta.push(`<span class="my-work-whom" title="${escapeHtml(item.whoTitle)}"><i class="iconoir-user" aria-hidden="true"></i>${escapeHtml(item.whoLabel)}</span>`);
+    }
 
     const href = isTask ? `/tasks.php?task=${item.id}` : `/index.php?open_request=${item.id}`;
     return `
@@ -427,17 +429,21 @@ function myWorkRowHtml(item, groupKey) {
     if (isTask && taskIsNewForMe(item.raw, viewerId)) meta.push('<span class="my-work-new" title="Te la acaban de asignar">Nueva</span>');
     if (item.appName) meta.push(`<span>${escapeHtml(item.appName)}</span>`);
     if (!isTask && item.status === 'in_progress') meta.push('<span class="my-work-progress">En curso</span>');
-    // "De todos": para quién es (tú, nombres, equipo o sin asignar). En "Para mí" todo es tuyo.
+    // El filtro ya indica para quién es. El estado de lectura sigue disponible.
     if (myWork.scope === 'all' && item.forWhom) {
         // En las que has asignado tú: ✓ si aún no la han visto, ✓✓ cuando sí.
         const receipt = isTask ? taskSeenReceipt(item.raw, myWork.members || [], viewerId, new Date()) : null;
         const receiptHtml = receipt
             ? `<i class="task-seen task-seen--${receipt.state} ${receipt.icon}" aria-hidden="true"></i><span class="visually-hidden">· ${escapeHtml(receipt.label)}</span>`
             : '';
-        const whomTitle = receipt ? `${item.forWhom.title} · ${receipt.title}` : item.forWhom.title;
-        meta.push(item.forWhom.kind === 'unassigned'
-            ? '<span class="my-work-unassigned">Sin asignar</span>'
-            : `<span class="my-work-whom" title="${escapeHtml(whomTitle)}"><i class="${item.forWhom.kind === 'team' ? 'iconoir-group' : 'iconoir-user'}" aria-hidden="true"></i>${escapeHtml(item.forWhom.label)}${receiptHtml}</span>`);
+        if (myWork.person !== 'all') {
+            if (receipt) meta.push(`<span class="my-work-whom" title="${escapeHtml(receipt.title)}">${receiptHtml}</span>`);
+        } else {
+            const whomTitle = receipt ? `${item.forWhom.title} · ${receipt.title}` : item.forWhom.title;
+            meta.push(item.forWhom.kind === 'unassigned'
+                ? '<span class="my-work-unassigned">Sin asignar</span>'
+                : `<span class="my-work-whom" title="${escapeHtml(whomTitle)}"><i class="${item.forWhom.kind === 'team' ? 'iconoir-group' : 'iconoir-user'}" aria-hidden="true"></i>${escapeHtml(item.forWhom.label)}${receiptHtml}</span>`);
+        }
     }
     // Tareas que te ha pasado otra persona (o de equipo creadas por otra persona).
     if (item.from) meta.push(`<span class="my-work-from">De ${escapeHtml(item.from)}</span>`);
